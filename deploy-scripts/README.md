@@ -1,12 +1,11 @@
 # Deployment-Anleitung für den Hetzner-Server
 
-Diese Anleitung beschreibt, wie das IoT Gateway-Relay-System auf einem Hetzner-Server mit automatischem Deployment über Git eingerichtet wird.
+Diese Anleitung beschreibt, wie das IoT Gateway-Relay-System auf einem Hetzner-Server mit automatischem Deployment eingerichtet wird.
 
 ## Voraussetzungen
 
 - Ein Hetzner-Server mit Ubuntu/Debian
 - Root-Zugriff auf den Server
-- Git-Repository für das Projekt
 
 ## Einrichtung des Servers
 
@@ -33,71 +32,143 @@ PM2 ist ein Prozessmanager für Node.js-Anwendungen, der auch Python-Skripte ver
 npm install -g pm2
 ```
 
-### 3. Erstelle den Deployment-Hook
+### 3. Repository direkt klonen
+
+Statt ein separates Git-Repository einzurichten, klonen wir das GitHub-Repository direkt:
 
 ```bash
-mkdir -p /var/git/hooks
-cd /var/git/hooks
+# Deployment-Verzeichnis erstellen
+mkdir -p /var/www/iot-gateway
+cd /var/www/iot-gateway
 
-# Erstelle den Hook
-cat > post-receive << 'EOF'
-#!/bin/bash
+# Repository klonen
+git clone https://github.com/nextX-AG/roombankerRestAPIWeb.git .
 
-echo "Deployment wird gestartet..."
-/var/www/iot-gateway/deploy-scripts/deploy.sh "https://github.com/nextX-AG/roombankerRestAPIWeb.git" main
-echo "Deployment abgeschlossen!"
+# Python-Umgebung einrichten
+python3 -m venv venv
+source venv/bin/activate
+pip install -r api/requirements.txt
+
+# Frontend bauen
+cd frontend
+npm install
+npm run build
+cd ..
+
+# PM2 starten
+pm2 start deploy-scripts/production.config.js
+pm2 save
+pm2 startup
+```
+
+### 4. Webhook für automatische Updates einrichten
+
+```bash
+# Webhook-Server installieren
+cd /var/www
+npm init -y
+npm install express
+
+# Webhook-Skript erstellen
+cat > webhook.js << 'EOF'
+const express = require('express');
+const { exec } = require('child_process');
+const app = express();
+const port = 8000;
+
+app.use(express.json());
+
+app.post('/deploy', (req, res) => {
+  console.log('Deployment-Webhook empfangen');
+  
+  exec('cd /var/www/iot-gateway && git pull && source venv/bin/activate && pip install -r api/requirements.txt && cd frontend && npm install && npm run build && cd .. && pm2 reload all', 
+    (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Fehler beim Deployment: ${error}`);
+        return res.status(500).send('Deployment fehlgeschlagen');
+      }
+      console.log(`Deployment erfolgreich: ${stdout}`);
+      if (stderr) console.error(`Deployment Fehler: ${stderr}`);
+      res.status(200).send('Deployment erfolgreich');
+    }
+  );
+});
+
+app.listen(port, () => {
+  console.log(`Webhook-Server läuft auf Port ${port}`);
+});
 EOF
 
-chmod +x post-receive
+# Webhook als Service starten
+pm2 start webhook.js --name webhook
+pm2 save
 ```
 
-### 4. Git-Repository einrichten
+### 5. GitHub-Webhook einrichten
+
+1. Gehe zu deinem Repository: https://github.com/nextX-AG/roombankerRestAPIWeb
+2. Navigiere zu "Settings" > "Webhooks" > "Add webhook"
+3. Trage als Payload URL `http://deine-server-ip:8000/deploy` ein
+4. Wähle als Content Type `application/json`
+5. Wähle "Just the push event"
+6. Aktiviere den Webhook
+
+### 6. Nginx-Konfiguration
 
 ```bash
-# Erstelle das bare Repository
-mkdir -p /var/git/iot-gateway.git
-cd /var/git/iot-gateway.git
-git init --bare
+cat > /etc/nginx/sites-available/iot-gateway << 'EOF'
+server {
+    listen 80;
+    server_name iot-gateway.nextx.de;  # Domain anpassen!
 
-# Hook-Datei verlinken
-ln -sf /var/git/hooks/post-receive hooks/post-receive
+    location / {
+        root /var/www/iot-gateway/frontend/dist;
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:8080/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/auth/ {
+        proxy_pass http://localhost:8082/api/auth/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/(templates|endpoints|process|reload-templates|test-transform) {
+        proxy_pass http://localhost:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+EOF
+
+# Konfiguration aktivieren
+ln -sf /etc/nginx/sites-available/iot-gateway /etc/nginx/sites-enabled/
+nginx -t && systemctl restart nginx
 ```
 
-### 5. Deployment-Verzeichnis vorbereiten
+### 7. Manuelles Deployment (falls nötig)
 
-```bash
-mkdir -p /var/www/iot-gateway
-chown -R www-data:www-data /var/www/iot-gateway
-```
-
-## Lokale Einrichtung
-
-### 1. Remote hinzufügen
-
-Auf deinem lokalen Entwicklungsrechner:
-
-```bash
-cd dein-projekt-verzeichnis
-git remote add production ssh://root@deine-server-ip/var/git/iot-gateway.git
-```
-
-### 2. Änderungen pushen
-
-```bash
-git add .
-git commit -m "Initial deployment"
-git push production main
-```
-
-Der Post-Receive-Hook wird automatisch ausgeführt und das Deployment-Skript starten.
-
-## Manuelles Deployment
-
-Bei Bedarf kannst du das Deployment auch manuell auf dem Server ausführen:
+Falls du ein manuelles Deployment durchführen möchtest:
 
 ```bash
 cd /var/www/iot-gateway
-./deploy-scripts/deploy.sh "https://github.com/nextX-AG/roombankerRestAPIWeb.git" main
+git pull
+source venv/bin/activate
+pip install -r api/requirements.txt
+cd frontend
+npm install
+npm run build
+cd ..
+pm2 reload all
 ```
 
 ## Fehlerbehandlung
@@ -129,7 +200,7 @@ Für HTTPS-Unterstützung kannst du Let's Encrypt verwenden:
 
 ```bash
 apt install -y certbot python3-certbot-nginx
-certbot --nginx -d deine-domain.de
+certbot --nginx -d iot-gateway.nextx.de
 ```
 
 ## Firewall konfigurieren
@@ -140,5 +211,6 @@ apt install -y ufw
 ufw allow ssh
 ufw allow http
 ufw allow https
+ufw allow 8000/tcp  # Für den Webhook
 ufw enable
 ``` 
