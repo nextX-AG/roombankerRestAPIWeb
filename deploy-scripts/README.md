@@ -44,7 +44,7 @@ cat > post-receive << 'EOF'
 #!/bin/bash
 
 echo "Deployment wird gestartet..."
-/var/www/iot-gateway/deploy-scripts/deploy.sh "git@github.com:dein-username/dein-repository.git" main
+/var/www/iot-gateway/deploy-scripts/deploy.sh "https://github.com/nextX-AG/roombankerRestAPIWeb.git" main
 echo "Deployment abgeschlossen!"
 EOF
 
@@ -97,7 +97,7 @@ Bei Bedarf kannst du das Deployment auch manuell auf dem Server ausführen:
 
 ```bash
 cd /var/www/iot-gateway
-./deploy-scripts/deploy.sh "git@github.com:dein-username/dein-repository.git" main
+./deploy-scripts/deploy.sh "https://github.com/nextX-AG/roombankerRestAPIWeb.git" main
 ```
 
 ## Fehlerbehandlung

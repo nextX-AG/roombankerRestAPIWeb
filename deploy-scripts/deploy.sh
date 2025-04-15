@@ -8,8 +8,8 @@ set -e  # Bei Fehlern abbrechen
 # Variablen
 APP_NAME="iot-gateway"
 DEPLOY_DIR="/var/www/$APP_NAME"
-GIT_REPO="$1"  # Git-Repository als Parameter übergeben
-BRANCH="${2:-main}"  # Branch als Parameter, Standard ist main/master
+GIT_REPO="${1:-https://github.com/nextX-AG/roombankerRestAPIWeb.git}"  # Standard-Repository, falls kein Parameter angegeben
+BRANCH="${2:-main}"  # Branch als Parameter, Standard ist main
 
 # Farbige Ausgabe
 RED='\033[0;31m'
@@ -77,7 +77,7 @@ if [ ! -f "$NGINX_CONF" ]; then
     cat > "$NGINX_CONF" << EOF
 server {
     listen 80;
-    server_name ${APP_NAME}.example.com;  # Domain anpassen!
+    server_name ${APP_NAME}.nextx.de;  # Domain anpassen!
 
     location / {
         root $DEPLOY_DIR/frontend/dist;
@@ -137,7 +137,7 @@ EOF
     nginx -t && systemctl reload nginx
     
     echo -e "${GREEN}Nginx-Konfiguration erstellt und aktiviert.${NC}"
-    echo -e "${YELLOW}Bitte passen Sie die Domain in der Nginx-Konfiguration an!${NC}"
+    echo -e "${YELLOW}Bitte passe die Domain in der Nginx-Konfiguration an!${NC}"
 fi
 
 # Berechtigungen setzen
@@ -146,5 +146,5 @@ chown -R www-data:www-data $DEPLOY_DIR
 chmod -R 755 $DEPLOY_DIR
 
 echo -e "${GREEN}=== Deployment abgeschlossen! ===${NC}"
-echo -e "${GREEN}Die Anwendung ist nun unter http://${APP_NAME}.example.com (oder IP) verfügbar.${NC}"
+echo -e "${GREEN}Die Anwendung ist nun unter http://${APP_NAME}.nextx.de (oder IP) verfügbar.${NC}"
 echo -e "${YELLOW}Hinweis: Stellen Sie sicher, dass die Firewall Ports 80 und 443 freigibt.${NC}" 
