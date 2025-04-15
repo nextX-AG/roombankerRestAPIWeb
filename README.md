@@ -194,6 +194,40 @@ Das System kann wie folgt erweitert werden:
 4. Erweiterung der Benutzerrechte und -rollen
 5. Hinzufügen von Statistiken und Berichten
 
+## Wichtige Hinweise für Entwickler
+
+### JSX-Syntax und Template-Darstellung
+
+Bei der Darstellung von Template-Platzhaltern in JSX-Komponenten (wie z.B. in `frontend/src/pages/Templates.jsx`) ist besondere Vorsicht geboten. Die doppelten geschweiften Klammern (`{{ }}`) in Template-Beispielen müssen in JSX wie folgt geschrieben werden:
+
+```jsx
+// NICHT SO - verursacht Syntaxfehler:
+Platzhalter wie {{ "{{variable}}" }} werden durch Werte ersetzt.
+
+// RICHTIG:
+Platzhalter wie {'{{'} variable {'}}'}  werden durch Werte ersetzt.
+```
+
+Die falsche Syntax führt zu Build-Fehlern, die das Deployment verhindern können.
+
+### Deployment-Verzeichnisstruktur
+
+Beim Deployment auf dem Server muss die korrekte Verzeichnisstruktur beachtet werden. Es gibt zwei mögliche Ansätze:
+
+1. **Direkte Klonung in Zielverzeichnis:**
+   ```bash
+   mkdir -p /var/www/iot-gateway
+   cd /var/www/iot-gateway
+   git clone https://github.com/nextX-AG/roombankerRestAPIWeb.git .  # Beachte den Punkt am Ende
+   ```
+
+2. **Wenn das Repository in ein Unterverzeichnis geklont wurde:**
+   - Alle Pfade in den Konfigurationsdateien müssen angepasst werden
+   - Zum Beispiel: `/var/www/iot-gateway/roombankerRestAPIWeb/api/` statt `/var/www/iot-gateway/api/`
+   - Dies betrifft insbesondere die PM2-Konfiguration in `deploy-scripts/production.config.js`
+
+Für eine problemlose Deployment-Erfahrung empfehlen wir die direkte Klonung in das Zielverzeichnis.
+
 ## Deployment
 
 Dieses Projekt unterstützt verschiedene Deployment-Methoden für Produktionsumgebungen.

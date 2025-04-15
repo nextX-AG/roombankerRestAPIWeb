@@ -34,14 +34,14 @@ npm install -g pm2
 
 ### 3. Repository direkt klonen
 
-Statt ein separates Git-Repository einzurichten, klonen wir das GitHub-Repository direkt:
+WICHTIG: Um Pfadprobleme zu vermeiden, clone das Repository direkt in das Zielverzeichnis (beachte den Punkt am Ende des Befehls):
 
 ```bash
 # Deployment-Verzeichnis erstellen
 mkdir -p /var/www/iot-gateway
 cd /var/www/iot-gateway
 
-# Repository klonen
+# Repository klonen (BEACHTE DEN PUNKT AM ENDE - dadurch wird in das aktuelle Verzeichnis geklont)
 git clone https://github.com/nextX-AG/roombankerRestAPIWeb.git .
 
 # Python-Umgebung einrichten
@@ -60,6 +60,24 @@ pm2 start deploy-scripts/production.config.js
 pm2 save
 pm2 startup
 ```
+
+Falls das Repository versehentlich in ein Unterverzeichnis geklont wurde (z.B. `/var/www/iot-gateway/roombankerRestAPIWeb/`), gibt es zwei Optionen:
+
+1. **Empfohlen**: Starten Sie noch einmal von vorne mit dem korrekten Klonbefehl
+   ```bash
+   rm -rf /var/www/iot-gateway
+   mkdir -p /var/www/iot-gateway
+   cd /var/www/iot-gateway
+   git clone https://github.com/nextX-AG/roombankerRestAPIWeb.git .
+   ```
+
+2. **Alternative**: Passen Sie alle Konfigurationsdateien an die tatsächliche Verzeichnisstruktur an
+   ```bash
+   # Bearbeiten Sie die PM2-Konfigurationsdatei
+   vim /var/www/iot-gateway/roombankerRestAPIWeb/deploy-scripts/production.config.js
+   
+   # Und die Nginx-Konfiguration entsprechend
+   ```
 
 ### 4. Webhook für automatische Updates einrichten
 
