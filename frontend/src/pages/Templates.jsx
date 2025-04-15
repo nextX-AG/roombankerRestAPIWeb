@@ -5,7 +5,7 @@ import { faSave, faPlus, faTrash, faInfoCircle } from '@fortawesome/free-solid-s
 import axios from 'axios';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import CodeEditor from '../components/CodeEditor';
+import SimpleCodeEditor from '../components/CodeEditor';
 import config from '../config';
 
 const Templates = () => {
@@ -408,7 +408,7 @@ const Templates = () => {
                   
                   <Form.Group className="mb-3">
                     <Form.Label>Template-Code</Form.Label>
-                    <CodeEditor
+                    <SimpleCodeEditor
                       value={templateCode}
                       onChange={setTemplateCode}
                       readOnly={!isEditing}

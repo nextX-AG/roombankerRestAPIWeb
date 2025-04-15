@@ -1,97 +1,58 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 
-// CodeMirror und erforderliche Addons
-import CodeMirror from 'codemirror';
-import 'codemirror/lib/codemirror.css';
-import 'codemirror/theme/material.css';
-import 'codemirror/mode/javascript/javascript';
-import 'codemirror/addon/edit/matchbrackets';
-import 'codemirror/addon/edit/closebrackets';
-import 'codemirror/addon/selection/active-line';
-
-const CodeEditor = ({ value, onChange, readOnly, language, height }) => {
-  const textareaRef = useRef(null);
-  const editorRef = useRef(null);
-
-  useEffect(() => {
-    // CodeMirror-Instanz erstellen, wenn das Komponente mounted wird
-    if (textareaRef.current && !editorRef.current) {
-      editorRef.current = CodeMirror.fromTextArea(textareaRef.current, {
-        mode: language === 'json' ? { name: 'javascript', json: true } : language,
-        theme: 'material',
-        lineNumbers: true,
-        matchBrackets: true,
-        autoCloseBrackets: true,
-        styleActiveLine: true,
-        readOnly: readOnly,
-        lineWrapping: true,
-        tabSize: 2,
-        indentWithTabs: false,
-        extraKeys: {
-          'Tab': (cm) => cm.execCommand('indentMore'),
-          'Shift-Tab': (cm) => cm.execCommand('indentLess')
-        }
-      });
-
-      // Event-Handler für Änderungen
-      editorRef.current.on('change', (instance) => {
-        if (onChange) {
-          onChange(instance.getValue());
-        }
-      });
-    }
-
-    // Wert aktualisieren, wenn er von außen geändert wird
-    if (editorRef.current && value !== editorRef.current.getValue()) {
-      editorRef.current.setValue(value);
-    }
-
-    // readOnly-Eigenschaft aktualisieren, wenn sie sich ändert
-    if (editorRef.current) {
-      editorRef.current.setOption('readOnly', readOnly);
-    }
-
-    // Cleanup beim Unmount
-    return () => {
-      if (editorRef.current) {
-        editorRef.current.toTextArea();
-        editorRef.current = null;
-      }
-    };
-  }, [value, onChange, readOnly, language]);
-
+/**
+ * Eine vereinfachte Version des CodeEditors ohne externe Abhängigkeiten
+ * Diese Komponente verwendet ein einfaches Textarea mit einigen Styling-Anpassungen
+ */
+const SimpleCodeEditor = ({ value, onChange, readOnly, height }) => {
   return (
-    <div className="code-editor-container" style={{ height: height || '300px' }}>
-      <textarea ref={textareaRef} defaultValue={value} />
+    <div className="simple-code-editor" style={{ height: height || '300px' }}>
+      <textarea
+        value={value}
+        onChange={(e) => onChange && onChange(e.target.value)}
+        readOnly={readOnly}
+        className="code-textarea"
+        style={{
+          width: '100%',
+          height: '100%',
+          padding: '10px',
+          fontFamily: "'Fira Code', 'Courier New', monospace",
+          fontSize: '14px',
+          backgroundColor: readOnly ? '#f5f5f5' : '#fff',
+          border: '1px solid #ced4da',
+          borderRadius: '0.25rem',
+          resize: 'none',
+          tabSize: '2',
+          overflowY: 'auto'
+        }}
+      />
       <style jsx="true">{`
-        .code-editor-container {
-          border: 1px solid #ced4da;
-          border-radius: 0.25rem;
+        .simple-code-editor {
+          position: relative;
+          width: 100%;
         }
-        .code-editor-container .CodeMirror {
-          height: 100%;
-          font-family: 'Fira Code', 'Courier New', monospace;
-          font-size: 14px;
+        .code-textarea:focus {
+          outline: none;
+          border-color: #80bdff;
+          box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
         }
       `}</style>
     </div>
   );
 };
 
-CodeEditor.propTypes = {
+SimpleCodeEditor.propTypes = {
   value: PropTypes.string,
   onChange: PropTypes.func,
   readOnly: PropTypes.bool,
-  language: PropTypes.string,
   height: PropTypes.string
 };
 
-CodeEditor.defaultProps = {
+SimpleCodeEditor.defaultProps = {
   value: '',
   readOnly: false,
-  language: 'javascript',
   height: '300px'
 };
 
-export default CodeEditor; 
+export default SimpleCodeEditor; 
