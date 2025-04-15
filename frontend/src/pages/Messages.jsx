@@ -5,6 +5,7 @@ import { faSync, faSearch } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
+import config from '../config';
 
 const Messages = () => {
   const [messages, setMessages] = useState([]);
@@ -16,15 +17,12 @@ const Messages = () => {
   const fetchMessages = async () => {
     try {
       setLoading(true);
-      setError('');
-      const response = await axios.get('http://localhost:8080/api/messages');
-      if (response.status === 200) {
-        setMessages(response.data);
-      }
-    } catch (err) {
-      setError('Fehler beim Abrufen der Nachrichten. Bitte stellen Sie sicher, dass der API-Server läuft.');
-      console.error('Fehler beim Abrufen der Nachrichten:', err);
-    } finally {
+      const response = await axios.get(`${config.apiBaseUrl}/messages`);
+      setMessages(response.data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Fehler beim Abrufen der Nachrichten:', error);
+      setError('Fehler beim Abrufen der Nachrichten.');
       setLoading(false);
     }
   };

@@ -1,22 +1,22 @@
-2025-04-15 10:40:42 - Starte alle Dienste...
-2025-04-15 10:40:42 - Warte 10 Sekunden, bis alle Dienste gestartet sind...
-2025-04-15 10:40:52 - Test: API-Server Health-Check
-2025-04-15 10:40:52 - URL: http://localhost:8080/api/health
-2025-04-15 10:40:52 - ✅ Erfolgreich: Status 200 (erwartet: 200)
-2025-04-15 10:40:52 - Test: Message Processor Templates-Endpunkt
-2025-04-15 10:40:52 - URL: http://localhost:8081/api/templates
-2025-04-15 10:40:52 - ✅ Erfolgreich: Status 200 (erwartet: 200)
-2025-04-15 10:40:52 - Test: Auth Service Login-Endpunkt
-2025-04-15 10:40:52 - URL: http://localhost:8082/api/auth/login
-2025-04-15 10:40:52 - Daten: {"username":"admin","password":"password"}
-2025-04-15 10:40:52 - ✅ Erfolgreich: Status 200 (erwartet: 200)
-2025-04-15 10:40:52 - Test: API-Server Testnachricht-Endpunkt
-2025-04-15 10:40:52 - URL: http://localhost:8080/api/test-message
-2025-04-15 10:40:52 - Daten: {}
-2025-04-15 10:40:52 - ✅ Erfolgreich: Status 200 (erwartet: 200)
-2025-04-15 10:40:52 - Test: Message Processor Template-Transformation
-2025-04-15 10:40:52 - URL: http://localhost:8081/api/test-transform
-2025-04-15 10:40:52 - Daten: {
+2025-04-15 16:49:37 - Starte alle Dienste...
+2025-04-15 16:49:37 - Warte 10 Sekunden, bis alle Dienste gestartet sind...
+2025-04-15 16:49:47 - Test: API-Server Health-Check
+2025-04-15 16:49:47 - URL: http://localhost:8080/api/health
+2025-04-15 16:49:47 - ✅ Erfolgreich: Status 200 (erwartet: 200)
+2025-04-15 16:49:47 - Test: Message Processor Templates-Endpunkt
+2025-04-15 16:49:47 - URL: http://localhost:8081/api/templates
+2025-04-15 16:49:47 - ✅ Erfolgreich: Status 200 (erwartet: 200)
+2025-04-15 16:49:48 - Test: Auth Service Login-Endpunkt
+2025-04-15 16:49:48 - URL: http://localhost:8082/api/auth/login
+2025-04-15 16:49:48 - Daten: {"username":"admin","password":"password"}
+2025-04-15 16:49:48 - ✅ Erfolgreich: Status 200 (erwartet: 200)
+2025-04-15 16:49:48 - Test: API-Server Testnachricht-Endpunkt
+2025-04-15 16:49:48 - URL: http://localhost:8080/api/test-message
+2025-04-15 16:49:48 - Daten: {}
+2025-04-15 16:49:48 - ✅ Erfolgreich: Status 200 (erwartet: 200)
+2025-04-15 16:49:48 - Test: Message Processor Template-Transformation
+2025-04-15 16:49:48 - URL: http://localhost:8081/api/test-transform
+2025-04-15 16:49:48 - Daten: {
   "message": {
     "data": {
       "ts": 1744663550,
@@ -36,13 +36,13 @@
   },
   "template": "standard"
 }
-2025-04-15 10:40:52 - ✅ Erfolgreich: Status 200 (erwartet: 200)
-2025-04-15 10:40:52 - Prüfe, ob Nachrichten im Datenverzeichnis gespeichert wurden...
-2025-04-15 10:40:52 - ✅ Erfolgreich: 2 Nachricht(en) im Datenverzeichnis gefunden
-2025-04-15 10:40:52 - === Zusammenfassung der Testergebnisse ===
-2025-04-15 10:40:52 - Erfolgreiche Tests: 6
-2025-04-15 10:40:52 - Fehlgeschlagene Tests: 0
-2025-04-15 10:40:52 - Gesamtzahl Tests: 6
-2025-04-15 10:40:52 - 🎉 Alle Tests erfolgreich!
-2025-04-15 10:40:52 - Stoppe alle Dienste...
-2025-04-15 10:40:52 - Tests abgeschlossen. Ergebnisse wurden in /home/ubuntu/iot-gateway-project/tests/test_results.log gespeichert.
+2025-04-15 16:49:48 - ✅ Erfolgreich: Status 200 (erwartet: 200)
+2025-04-15 16:49:48 - Prüfe, ob Nachrichten im Datenverzeichnis gespeichert wurden...
+2025-04-15 16:49:48 - ✅ Erfolgreich:        3 Nachricht(en) im Datenverzeichnis gefunden
+2025-04-15 16:49:48 - === Zusammenfassung der Testergebnisse ===
+2025-04-15 16:49:48 - Erfolgreiche Tests: 6
+2025-04-15 16:49:48 - Fehlgeschlagene Tests: 0
+2025-04-15 16:49:48 - Gesamtzahl Tests: 6
+2025-04-15 16:49:48 - 🎉 Alle Tests erfolgreich!
+2025-04-15 16:49:48 - Stoppe alle Dienste...
+2025-04-15 16:49:48 - Tests abgeschlossen. Ergebnisse wurden in /Users/sayedamirkarim/Documents/nextX/Entwicklung/roombankerRestAPIWeb/tests/test_results.log gespeichert.

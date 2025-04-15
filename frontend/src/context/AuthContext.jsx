@@ -1,5 +1,6 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import axios from 'axios';
+import config from '../config';
 
 // Erstelle Auth-Kontext
 const AuthContext = createContext();
@@ -9,26 +10,32 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [token, setToken] = useState(null);
+  const [authenticated, setAuthenticated] = useState(false);
 
   // Beim Laden der App prüfen, ob ein Token im localStorage vorhanden ist
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       if (token) {
         try {
-          const response = await axios.post('http://localhost:8082/api/auth/verify', { token });
+          const response = await axios.post(`${config.authUrl}/verify`, { token });
           if (response.status === 200) {
             setUser({
-              ...response.data.user,
+              ...JSON.parse(localStorage.getItem('user')),
               token
             });
+            setToken(token);
+            setAuthenticated(true);
           } else {
             // Token ist ungültig, aus localStorage entfernen
-            localStorage.removeItem('token');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
           }
         } catch (err) {
           console.error('Fehler bei der Token-Überprüfung:', err);
-          localStorage.removeItem('token');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
         }
       }
       setLoading(false);
@@ -37,44 +44,68 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Login-Funktion
-  const login = async (username, password) => {
+  // Token verifizieren
+  const verifyToken = async (token) => {
     try {
-      setError('');
-      const response = await axios.post('http://localhost:8082/api/auth/login', { username, password });
-      if (response.status === 200) {
-        const { token, user } = response.data;
-        localStorage.setItem('token', token);
-        setUser({
-          ...user,
-          token
-        });
-        return true;
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Anmeldefehler');
+      const response = await axios.post(`${config.authUrl}/verify`, { token });
+      return response.data.valid;
+    } catch (error) {
+      console.error('Fehler bei der Token-Verifizierung:', error);
       return false;
     }
   };
 
-  // Logout-Funktion
+  // Benutzer einloggen
+  const login = async (username, password) => {
+    try {
+      setError('');
+      setLoading(true);
+      const response = await axios.post(`${config.authUrl}/login`, { username, password });
+      
+      const { token, user } = response.data;
+      
+      // Token und Benutzer im localStorage speichern
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      // State aktualisieren
+      setToken(token);
+      setUser(user);
+      setAuthenticated(true);
+      setLoading(false);
+      
+      return true;
+    } catch (error) {
+      console.error('Fehler beim Login:', error);
+      setError('Fehler bei der Anmeldung. Bitte überprüfen Sie Ihre Zugangsdaten.');
+      setLoading(false);
+      return false;
+    }
+  };
+
+  // Benutzer ausloggen
   const logout = async () => {
     try {
-      const token = localStorage.getItem('token');
       if (token) {
-        await axios.post('http://localhost:8082/api/auth/logout', { token });
+        await axios.post(`${config.authUrl}/logout`, { token });
       }
-    } catch (err) {
-      console.error('Fehler beim Logout:', err);
+    } catch (error) {
+      console.error('Fehler beim Logout:', error);
     } finally {
-      localStorage.removeItem('token');
+      // Token und Benutzer aus localStorage entfernen
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      
+      // State zurücksetzen
+      setToken(null);
       setUser(null);
+      setAuthenticated(false);
     }
   };
 
   // Auth-Header für API-Anfragen
   const getAuthHeader = () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 

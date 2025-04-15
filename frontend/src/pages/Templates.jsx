@@ -3,6 +3,7 @@ import { Container, Row, Col, Card, Form, Button, Alert, Tab, Tabs } from 'react
 import axios from 'axios';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
+import config from '../config';
 
 const Templates = () => {
   const [templates, setTemplates] = useState([]);
@@ -24,23 +25,22 @@ const Templates = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [transformLoading, setTransformLoading] = useState(false);
+  const [transformError, setTransformError] = useState('');
 
   // Templates laden
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
         setLoading(true);
-        setError('');
-        const response = await axios.get('http://localhost:8081/api/templates');
-        if (response.status === 200) {
-          setTemplates(response.data);
-          if (response.data.length > 0) {
-            setSelectedTemplate(response.data[0]);
-          }
+        const response = await axios.get(`${config.processorUrl}/templates`);
+        setTemplates(response.data);
+        if (response.data.length > 0) {
+          setSelectedTemplate(response.data[0]);
         }
-      } catch (err) {
-        setError('Fehler beim Abrufen der Templates. Bitte stellen Sie sicher, dass der Message Processor läuft.');
-        console.error('Fehler beim Abrufen der Templates:', err);
+      } catch (error) {
+        console.error('Fehler beim Abrufen der Templates:', error);
+        setError('Fehler beim Abrufen der Templates');
       } finally {
         setLoading(false);
       }
@@ -102,27 +102,17 @@ const Templates = () => {
 
   const handleTestTransform = async () => {
     try {
-      setError('');
-      setSuccess('');
-      setTransformedMessage(null);
-      
-      const response = await axios.post('http://localhost:8081/api/test-transform', {
-        message: {
-          data: testMessage,
-          id: 'test-' + Date.now(),
-          timestamp: Math.floor(Date.now() / 1000),
-          received_at: new Date().toISOString()
-        },
+      setTransformLoading(true);
+      const response = await axios.post(`${config.processorUrl}/test-transform`, {
+        message: testMessage,
         template: selectedTemplate
       });
-      
-      if (response.status === 200) {
-        setTransformedMessage(response.data.transformed_message);
-        setSuccess('Transformation erfolgreich!');
-      }
-    } catch (err) {
-      setError('Fehler bei der Transformation: ' + (err.response?.data?.message || err.message));
-      console.error('Fehler bei der Transformation:', err);
+      setTransformedMessage(response.data);
+      setTransformLoading(false);
+    } catch (error) {
+      console.error('Fehler bei der Transformation:', error);
+      setTransformError('Fehler bei der Transformation');
+      setTransformLoading(false);
     }
   };
 
@@ -178,7 +168,7 @@ const Templates = () => {
                   />
                   <Form.Text className="text-muted">
                     Dieses Template wird verwendet, um Nachrichten zu transformieren.
-                    Platzhalter wie {{ "{{variable}}" }} werden durch Werte aus der Nachricht ersetzt.
+                    Platzhalter wie {'{{'} variable {'}}'}  werden durch Werte aus der Nachricht ersetzt.
                   </Form.Text>
                 </Form.Group>
               ) : (

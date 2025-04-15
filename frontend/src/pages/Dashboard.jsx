@@ -5,6 +5,8 @@ import { faServer, faExchangeAlt, faCheckCircle, faExclamationTriangle, faBell }
 import axios from 'axios';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
+import { Link } from 'react-router-dom';
+import config from '../config';
 
 const Dashboard = () => {
   const [apiStatus, setApiStatus] = useState('checking');
@@ -13,18 +15,22 @@ const Dashboard = () => {
   const [templates, setTemplates] = useState([]);
   const [endpoints, setEndpoints] = useState([]);
   const [error, setError] = useState('');
+  const [templateCount, setTemplateCount] = useState(0);
+  const [endpointCount, setEndpointCount] = useState(0);
+  const [messageCount, setMessageCount] = useState(0);
+  const [latestMessages, setLatestMessages] = useState([]);
+  const [creatingMessage, setCreatingMessage] = useState(false);
+  const [creationSuccess, setCreationSuccess] = useState(false);
+  const [creationError, setCreationError] = useState(false);
 
   // API-Status prüfen
   useEffect(() => {
     const checkApiStatus = async () => {
       try {
-        const response = await axios.get('http://localhost:8080/api/health');
-        if (response.status === 200) {
-          setApiStatus('online');
-        } else {
-          setApiStatus('offline');
-        }
-      } catch (err) {
+        const response = await axios.get(`${config.apiBaseUrl}/health`);
+        setApiStatus(response.data.status === 'ok' ? 'online' : 'offline');
+      } catch (error) {
+        console.error('Fehler beim Prüfen des API-Status:', error);
         setApiStatus('offline');
       }
     };
@@ -45,23 +51,23 @@ const Dashboard = () => {
 
     const fetchEndpoints = async () => {
       try {
-        const response = await axios.get('http://localhost:8081/api/endpoints');
-        if (response.status === 200) {
-          setEndpoints(response.data);
-        }
-      } catch (err) {
-        console.error('Fehler beim Abrufen der Endpunkte:', err);
+        const response = await axios.get(`${config.processorUrl}/endpoints`);
+        setEndpointCount(response.data.length);
+      } catch (error) {
+        console.error('Fehler beim Abrufen der Endpunkte:', error);
+        setEndpointCount(0);
       }
     };
 
-    const fetchLastMessages = async () => {
+    const fetchMessages = async () => {
       try {
-        const response = await axios.get('http://localhost:8080/api/messages');
-        if (response.status === 200) {
-          setLastMessages(response.data.slice(0, 5)); // Nur die letzten 5 Nachrichten anzeigen
-        }
-      } catch (err) {
-        console.error('Fehler beim Abrufen der Nachrichten:', err);
+        const response = await axios.get(`${config.apiBaseUrl}/messages`);
+        setMessageCount(response.data.length);
+        setLatestMessages(response.data.slice(0, 3));
+      } catch (error) {
+        console.error('Fehler beim Abrufen der Nachrichten:', error);
+        setMessageCount(0);
+        setLatestMessages([]);
       }
     };
 
@@ -69,12 +75,13 @@ const Dashboard = () => {
     checkApiStatus();
     checkProcessorStatus();
     fetchEndpoints();
-    fetchLastMessages();
+    fetchMessages();
 
     const interval = setInterval(() => {
       checkApiStatus();
       checkProcessorStatus();
-      fetchLastMessages();
+      fetchEndpoints();
+      fetchMessages();
     }, 10000);
 
     return () => clearInterval(interval);
@@ -82,18 +89,22 @@ const Dashboard = () => {
 
   const createTestMessage = async () => {
     try {
-      setError('');
-      const response = await axios.post('http://localhost:8080/api/test-message');
-      if (response.status === 200) {
-        // Nachrichten neu laden
-        const messagesResponse = await axios.get('http://localhost:8080/api/messages');
-        if (messagesResponse.status === 200) {
-          setLastMessages(messagesResponse.data.slice(0, 5));
-        }
-      }
-    } catch (err) {
-      setError('Fehler beim Erstellen der Testnachricht. Bitte stellen Sie sicher, dass der API-Server läuft.');
-      console.error('Fehler beim Erstellen der Testnachricht:', err);
+      setCreatingMessage(true);
+      const response = await axios.post(`${config.apiBaseUrl}/test-message`);
+      setCreationSuccess(true);
+      
+      // Nachrichten aktualisieren
+      const messagesResponse = await axios.get(`${config.apiBaseUrl}/messages`);
+      setMessageCount(messagesResponse.data.length);
+      setLatestMessages(messagesResponse.data.slice(0, 3));
+      
+      setTimeout(() => setCreationSuccess(false), 3000);
+    } catch (error) {
+      console.error('Fehler beim Erstellen einer Testnachricht:', error);
+      setCreationError(true);
+      setTimeout(() => setCreationError(false), 3000);
+    } finally {
+      setCreatingMessage(false);
     }
   };
 
@@ -241,12 +252,12 @@ const Dashboard = () => {
         <Col>
           <Card>
             <Card.Header className="bg-primary text-white">
-              Letzte Nachrichten ({lastMessages.length})
+              Letzte Nachrichten ({latestMessages.length})
             </Card.Header>
             <Card.Body>
-              {lastMessages.length > 0 ? (
+              {latestMessages.length > 0 ? (
                 <div>
-                  {lastMessages.map((message, index) => (
+                  {latestMessages.map((message, index) => (
                     <Card key={index} className="mb-3">
                       <Card.Header className="d-flex justify-content-between">
                         <span>ID: {message.id}</span>
