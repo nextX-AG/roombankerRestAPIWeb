@@ -87,35 +87,69 @@ cd /var/www
 npm init -y
 npm install express
 
-# Webhook-Skript erstellen
+# Webhook-Skript erstellen - WICHTIG: Beachte die verbesserte Fehlerbehandlung
 cat > webhook.js << 'EOF'
+/**
+ * GitHub Webhook Server für automatisches Deployment
+ * Robuste Version mit verbesserter Fehlerbehandlung
+ */
 const express = require('express');
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const app = express();
 const port = 8000;
 
-app.use(express.json());
+// JSON-Parser mit erhöhtem Limit für große Payloads
+app.use(express.json({ limit: '5mb' }));
 
-app.post('/deploy', (req, res) => {
-  console.log('Deployment-Webhook empfangen');
-  
-  exec('/bin/bash -c "cd /var/www/iot-gateway && git pull && . venv/bin/activate && pip install -r api/requirements.txt && cd frontend && npm install && npm run build && cd .. && pm2 reload all"', 
-    (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Fehler beim Deployment: ${error}`);
-        return res.status(500).send('Deployment fehlgeschlagen');
-      }
-      console.log(`Deployment erfolgreich: ${stdout}`);
-      if (stderr) console.error(`Deployment Fehler: ${stderr}`);
-      res.status(200).send('Deployment erfolgreich');
-    }
-  );
+// Einfaches Logging-Middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
 });
 
+// Status-Endpunkt für Tests
 app.get('/status', (req, res) => {
   res.status(200).send('Webhook-Server läuft');
 });
 
+// Deployment-Endpunkt
+app.post('/deploy', (req, res) => {
+  console.log('Deployment-Webhook empfangen');
+  
+  // WICHTIG: Sofort antworten, um Timeouts zu vermeiden
+  // Dies verhindert EOF-Fehler in GitHub
+  res.status(202).send('Deployment wird ausgeführt');
+
+  // Verzögerung, um sicherzustellen, dass die Antwort gesendet wurde
+  setTimeout(() => {
+    // Deployment-Skript ausführen
+    // WICHTIG: Verwende spawn statt exec für bessere Fehlerbehandlung
+    // WICHTIG: Verwende /bin/bash explizit und . statt source
+    const deploy = spawn('/bin/bash', [
+      '-c', 
+      'cd /var/www/iot-gateway && git pull && . venv/bin/activate && pip install -r api/requirements.txt && cd frontend && npm install && npm run build && cd .. && pm2 reload all'
+    ]);
+
+    // Output-Handler
+    deploy.stdout.on('data', (data) => {
+      console.log(`Deployment-Ausgabe: ${data}`);
+    });
+
+    deploy.stderr.on('data', (data) => {
+      console.error(`Deployment-Fehler: ${data}`);
+    });
+
+    deploy.on('close', (code) => {
+      if (code === 0) {
+        console.log('Deployment erfolgreich abgeschlossen');
+      } else {
+        console.error(`Deployment fehlgeschlagen mit Code ${code}`);
+      }
+    });
+  }, 100);
+});
+
+// Server starten
 app.listen(port, () => {
   console.log(`Webhook-Server läuft auf Port ${port}`);
 });
@@ -133,7 +167,7 @@ pm2 save
 3. Trage als Payload URL `http://deine-server-ip:8000/deploy` ein
 4. Wähle als Content Type `application/json`
 5. Wähle "Just the push event"
-6. Bei SSL-Verifizierung wähle "Disable (not recommended)" für Testumgebungen ohne SSL
+6. **WICHTIG**: Bei SSL-Verifizierung wähle "Disable (not recommended)" für Testumgebungen ohne SSL. Dies verhindert Probleme mit selbst-signierten Zertifikaten.
 7. Aktiviere den Webhook
 
 ### 6. Nginx-Konfiguration
@@ -247,16 +281,58 @@ ufw enable
    ```
    /bin/sh: 1: source: not found
    ```
+   Lösung: Verwende explizit `/bin/bash -c` und `.` statt `source` in der exec-Anweisung:
+   ```javascript
+   const { spawn } = require('child_process');
+   const deploy = spawn('/bin/bash', ['-c', 'cd /pfad && . venv/bin/activate && ...']);
+   ```
+
+2. **GitHub-Webhook EOF-Fehler**:
+   ```
+   We couldn't deliver this payload: EOF
+   ```
+   Lösung:
+   - Antworte sofort mit einem 202-Status und führe die Verarbeitung asynchron durch
+   - Verwende `spawn` statt `exec` für stabilere Prozessausführung
+   - Füge eine kleine Verzögerung (setTimeout) ein, bevor du mit der eigentlichen Verarbeitung beginnst
+
+3. **PM2 findet Skripte nicht**:
+   ```
+   Error: Script not found: /var/www/iot-gateway/roombankerRestAPIWeb/api/app.py
+   ```
+   Lösungen:
+   - Prüfe, ob die Pfade in `production.config.js` mit der tatsächlichen Verzeichnisstruktur übereinstimmen
+   - Stelle sicher, dass das Repository mit dem Punkt am Ende geklont wurde: `git clone URL .`
+   - Falls nötig, passe die PM2-Konfiguration an die tatsächliche Verzeichnisstruktur an
+
+4. **Frontend-Build-Fehler mit Template-Syntax**:
+   ```
+   Unexpected token (181:54) in Platzhalter wie {{ "{{variable}}" }}
+   ```
+   Lösung:
+   - In JSX müssen Template-Platzhalter als `{'{{'} variable {'}}'}` geschrieben werden
+   - Überprüfe die Datei `frontend/src/pages/Templates.jsx`
+
+5. **Webhook wird nicht aufgerufen**:
+   - Prüfe, ob Port 8000 in der Firewall geöffnet ist: `ufw allow 8000/tcp`
+   - Teste den Webhook manuell: `curl -X POST http://localhost:8000/deploy`
+   - Überprüfe die GitHub-Webhook-Lieferungen im Repository unter Settings > Webhooks
+   - Stelle sicher, dass der Webhook-Server mit `pm2 status` läuft
+
+6. **Fehler mit `source` in Webhook-Skripten**:
+   ```
+   /bin/sh: 1: source: not found
+   ```
    Lösung: Verwende explizit `/bin/bash -c` und `.` statt `source` in der exec-Anweisung
 
-2. **PM2 findet Skripte nicht**:
+7. **PM2 findet Skripte nicht**:
    Prüfe, ob die Pfade in `production.config.js` mit der tatsächlichen Verzeichnisstruktur übereinstimmen
 
-3. **Frontend-Build-Fehler mit Template-Syntax**:
+8. **Frontend-Build-Fehler mit Template-Syntax**:
    JSX kann keine doppelten geschweiften Klammern wie `{{ variable }}` verarbeiten. 
    Lösung: Verwende stattdessen `{'{{'} variable {'}}'}` in React-Komponenten.
 
-4. **Webhook wird nicht aufgerufen**:
+9. **Webhook wird nicht aufgerufen**:
    - Prüfe, ob Port 8000 in der Firewall geöffnet ist: `ufw allow 8000/tcp`
    - Teste den Webhook manuell: `curl -X POST http://localhost:8000/deploy`
    - Überprüfe die GitHub-Webhook-Lieferungen im Repository unter Settings > Webhooks 

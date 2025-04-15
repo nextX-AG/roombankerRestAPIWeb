@@ -196,6 +196,7 @@ Das System kann wie folgt erweitert werden:
 6. Automatisches Deployment via GitHub-Webhooks
 7. Monitoring und Alerting
 8. Lastverteilung mit Load Balancing
+9. Container-Basiertes Deployment (Docker)
 
 ## Wichtige Hinweise für Entwickler
 
@@ -211,7 +212,7 @@ Platzhalter wie {{ "{{variable}}" }} werden durch Werte ersetzt.
 Platzhalter wie {'{{'} variable {'}}'}  werden durch Werte ersetzt.
 ```
 
-Die falsche Syntax führt zu Build-Fehlern, die das Deployment verhindern können.
+Die falsche Syntax führt zu Build-Fehlern, die das Deployment verhindern können. Diese Fehler können besonders bei der Ausführung von `npm run build` auftreten und den CI/CD-Prozess unterbrechen.
 
 ### Shell-Skripte und venv-Aktivierung
 
@@ -223,6 +224,43 @@ Bei der Ausführung von Shell-Befehlen in Node.js über `exec` ist zu beachten:
    exec('/bin/bash -c "cd /path && . venv/bin/activate && ..."')
    ```
 3. Alternativ kann auch der Punkt-Operator (`.`) statt `source` verwendet werden
+
+### Webhook-Server-Konfiguration
+
+Bei der Einrichtung des Webhook-Servers für automatisches Deployment müssen folgende Punkte beachtet werden:
+
+1. **EOF-Fehler vermeiden**: GitHub-Webhooks können mit einem EOF-Fehler fehlschlagen, wenn der Server nicht rechtzeitig antwortet. Um dies zu vermeiden:
+   - Antworte sofort und führe die Verarbeitung asynchron durch
+   - Setze angemessene Timeouts für den Server und die Prozesse
+   - Verwende `spawn` statt `exec` für stabilere Prozessausführung
+
+2. **Fehlerhafte Antworten**: Achte auf korrekte HTTP-Status-Codes und -Header
+   - Verwende einen 202 Accepted-Status für lange Verarbeitungen
+   - Stelle sicher, dass die Content-Type-Header korrekt gesetzt sind
+
+Ein robuster Webhook-Server sollte so aufgebaut sein:
+
+```javascript
+const express = require('express');
+const { spawn } = require('child_process');
+const app = express();
+
+app.use(express.json());
+
+app.post('/deploy', (req, res) => {
+  // Sofort antworten, um Timeouts zu vermeiden
+  res.status(202).send('Deployment wird ausgeführt');
+
+  // Asynchrone Verarbeitung
+  const deploy = spawn('/bin/bash', ['-c', 'cd /pfad && git pull && . venv/bin/activate && ...' ]);
+  
+  deploy.on('close', (code) => {
+    console.log(`Deployment abgeschlossen mit Code ${code}`);
+  });
+});
+
+app.listen(8000);
+```
 
 ### Deployment-Verzeichnisstruktur
 
