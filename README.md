@@ -195,6 +195,7 @@ Das System kann wie folgt erweitert werden:
 5. Hinzufügen von Statistiken und Berichten
 6. Automatisches Deployment via GitHub-Webhooks
 7. Monitoring und Alerting
+8. Lastverteilung mit Load Balancing
 
 ## Wichtige Hinweise für Entwickler
 
