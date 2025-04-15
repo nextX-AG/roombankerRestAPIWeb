@@ -81,7 +81,7 @@ app.use(express.json());
 app.post('/deploy', (req, res) => {
   console.log('Deployment-Webhook empfangen');
   
-  exec('cd /var/www/iot-gateway && git pull && source venv/bin/activate && pip install -r api/requirements.txt && cd frontend && npm install && npm run build && cd .. && pm2 reload all', 
+  exec('cd /var/www/iot-gateway/roombankerRestAPIWeb && git pull && source ../venv/bin/activate && pip install -r api/requirements.txt && cd frontend && npm install && npm run build && cd .. && pm2 reload all', 
     (error, stdout, stderr) => {
       if (error) {
         console.error(`Fehler beim Deployment: ${error}`);
@@ -122,7 +122,7 @@ server {
     server_name iot-gateway.nextx.de;  # Domain anpassen!
 
     location / {
-        root /var/www/iot-gateway/frontend/dist;
+        root /var/www/iot-gateway/roombankerRestAPIWeb/frontend/dist;
         try_files $uri $uri/ /index.html;
     }
 
