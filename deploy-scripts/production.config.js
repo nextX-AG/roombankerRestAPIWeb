@@ -5,8 +5,8 @@ module.exports = {
     {
       name: 'iot-api',
       script: 'app.py',
-      cwd: '/var/www/iot-gateway/roombankerRestAPIWeb/api',
-      interpreter: '/var/www/iot-gateway/roombankerRestAPIWeb/venv/bin/python',
+      cwd: '/var/www/iot-gateway/api',
+      interpreter: '/var/www/iot-gateway/venv/bin/python',
       env: {
         'FLASK_ENV': 'production',
         'PORT': '8080'
@@ -19,8 +19,8 @@ module.exports = {
     {
       name: 'iot-processor',
       script: 'message_processor.py',
-      cwd: '/var/www/iot-gateway/roombankerRestAPIWeb/api',
-      interpreter: '/var/www/iot-gateway/roombankerRestAPIWeb/venv/bin/python',
+      cwd: '/var/www/iot-gateway/api',
+      interpreter: '/var/www/iot-gateway/venv/bin/python',
       env: {
         'FLASK_ENV': 'production',
         'PORT': '8081'
@@ -33,8 +33,8 @@ module.exports = {
     {
       name: 'iot-auth',
       script: 'auth_service.py',
-      cwd: '/var/www/iot-gateway/roombankerRestAPIWeb/api',
-      interpreter: '/var/www/iot-gateway/roombankerRestAPIWeb/venv/bin/python',
+      cwd: '/var/www/iot-gateway/api',
+      interpreter: '/var/www/iot-gateway/venv/bin/python',
       env: {
         'FLASK_ENV': 'production',
         'PORT': '8082'
