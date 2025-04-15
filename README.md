@@ -194,6 +194,7 @@ Das System kann wie folgt erweitert werden:
 4. Erweiterung der Benutzerrechte und -rollen
 5. Hinzufügen von Statistiken und Berichten
 6. Automatisches Deployment via GitHub-Webhooks
+7. Monitoring und Alerting
 
 ## Wichtige Hinweise für Entwickler
 
