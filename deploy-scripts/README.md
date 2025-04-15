@@ -170,66 +170,101 @@ pm2 save
 6. **WICHTIG**: Bei SSL-Verifizierung wähle "Disable (not recommended)" für Testumgebungen ohne SSL. Dies verhindert Probleme mit selbst-signierten Zertifikaten.
 7. Aktiviere den Webhook
 
-### 6. Nginx-Konfiguration
+### 6. Nginx als Reverse Proxy konfigurieren
+
+Damit die Anwendung über Port 80 (HTTP) erreichbar ist und Frontend und Backend korrekt kommunizieren können, muss Nginx als Reverse Proxy konfiguriert werden.
 
 ```bash
-cat > /etc/nginx/sites-available/iot-gateway << 'EOF'
+# Nginx falls noch nicht installiert
+sudo apt update
+sudo apt install -y nginx
+
+# Nginx-Konfiguration für die Anwendung erstellen
+sudo nano /etc/nginx/sites-available/iot-gateway
+
+# Folgende Konfiguration einfügen:
 server {
     listen 80;
-    server_name iot-gateway.nextx.de;  # Domain anpassen!
+    server_name deine-server-ip;  # Oder deine Domain, falls vorhanden
 
+    # Frontend (statische Dateien)
     location / {
         root /var/www/iot-gateway/frontend/dist;
         try_files $uri $uri/ /index.html;
+        index index.html;
     }
 
+    # Backend API
     location /api/ {
         proxy_pass http://localhost:8080/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
     }
 
+    # Auth-Service API
     location /api/auth/ {
         proxy_pass http://localhost:8082/api/auth/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
     }
 
-    location ~ ^/api/(templates|endpoints|process|reload-templates|test-transform) {
-        proxy_pass http://localhost:8081;
+    # Webhook Endpunkt
+    location /deploy {
+        proxy_pass http://localhost:8000/deploy;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
 }
-EOF
-
-# Konfiguration aktivieren
-ln -sf /etc/nginx/sites-available/iot-gateway /etc/nginx/sites-enabled/
-nginx -t && systemctl restart nginx
 ```
 
-### 7. Manuelles Deployment (falls nötig)
-
-Falls du ein manuelles Deployment durchführen möchtest:
+Aktiviere die Konfiguration und starte Nginx neu:
 
 ```bash
-cd /var/www/iot-gateway
-git pull
+# Aktiviere die Konfiguration
+sudo ln -s /etc/nginx/sites-available/iot-gateway /etc/nginx/sites-enabled/
 
-. venv/bin/activate
-pip install -r api/requirements.txt
-cd frontend
-npm install
-npm run build
-cd ..
-pm2 reload all
+# Entferne die Standard-Konfiguration (zeigt sonst die Nginx-Willkommensseite)
+sudo rm /etc/nginx/sites-enabled/default
+
+# Teste die Konfiguration auf Syntax-Fehler
+sudo nginx -t
+
+# Starte Nginx neu
+sudo systemctl restart nginx
+
+# Stelle sicher, dass Nginx beim Systemstart automatisch startet
+sudo systemctl enable nginx
 ```
 
-## Fehlerbehandlung
+Nach diesen Schritten sollte die Anwendung unter `http://deine-server-ip` (ohne Port) erreichbar sein. Die Nginx-Konfiguration sorgt dafür, dass:
+
+1. Das Frontend (statische Dateien) direkt ausgeliefert wird
+2. API-Anfragen an den Backend-Server weitergeleitet werden
+3. Auth-Anfragen an den Auth-Service weitergeleitet werden
+4. Webhook-Anfragen an den Webhook-Server weitergeleitet werden
+
+**Wichtiger Hinweis**: Bei aktivierter Firewall muss Port 80 freigegeben werden:
+
+```bash
+sudo ufw allow 'Nginx Full'
+```
+
+## Deployment verifizieren
 
 ### Logs überprüfen
 
