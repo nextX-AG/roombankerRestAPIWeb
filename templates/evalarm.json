@@ -1,0 +1,11 @@
+{
+  "events": [
+    {
+      "message": "Alarm Knopf",
+      "address": "0",
+      "namespace": "eva.herford",
+      "id": "{{ uuid }}",
+      "device_id": "{{ device_id }}"
+    }
+  ]
+}

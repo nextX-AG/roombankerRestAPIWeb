@@ -1,0 +1,7 @@
+{
+  "alert": true,
+  "type": "{{ alarm_type }}",
+  "source": "{{ gateway_id }}",
+  "device": "{{ device_id }}",
+  "timestamp": "{{ ts }}"
+}

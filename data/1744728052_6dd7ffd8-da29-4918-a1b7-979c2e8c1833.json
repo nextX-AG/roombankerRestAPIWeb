@@ -1,0 +1,22 @@
+{
+  "id": "6dd7ffd8-da29-4918-a1b7-979c2e8c1833",
+  "timestamp": 1744728052,
+  "received_at": "2025-04-15T10:40:52.538717",
+  "headers": {
+    "Content-Type": "application/json",
+    "User-Agent": "Test-Client"
+  },
+  "data": {
+    "ts": 1744728052,
+    "subdevicelist": [
+      {
+        "id": 665531142918213,
+        "values": {
+          "alarmstatus": "alarm",
+          "alarmtype": "panic"
+        }
+      }
+    ]
+  },
+  "is_test": true
+}
