@@ -193,6 +193,7 @@ Das System kann wie folgt erweitert werden:
 3. Implementierung von Echtzeit-Benachrichtigungen
 4. Erweiterung der Benutzerrechte und -rollen
 5. Hinzufügen von Statistiken und Berichten
+6. Automatisches Deployment via GitHub-Webhooks
 
 ## Wichtige Hinweise für Entwickler
 
