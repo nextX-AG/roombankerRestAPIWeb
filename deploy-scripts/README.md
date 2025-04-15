@@ -112,6 +112,10 @@ app.post('/deploy', (req, res) => {
   );
 });
 
+app.get('/status', (req, res) => {
+  res.status(200).send('Webhook-Server läuft');
+});
+
 app.listen(port, () => {
   console.log(`Webhook-Server läuft auf Port ${port}`);
 });
@@ -129,7 +133,8 @@ pm2 save
 3. Trage als Payload URL `http://deine-server-ip:8000/deploy` ein
 4. Wähle als Content Type `application/json`
 5. Wähle "Just the push event"
-6. Aktiviere den Webhook
+6. Bei SSL-Verifizierung wähle "Disable (not recommended)" für Testumgebungen ohne SSL
+7. Aktiviere den Webhook
 
 ### 6. Nginx-Konfiguration
 
@@ -180,7 +185,8 @@ Falls du ein manuelles Deployment durchführen möchtest:
 ```bash
 cd /var/www/iot-gateway
 git pull
-source venv/bin/activate
+
+. venv/bin/activate
 pip install -r api/requirements.txt
 cd frontend
 npm install
@@ -231,4 +237,26 @@ ufw allow http
 ufw allow https
 ufw allow 8000/tcp  # Für den Webhook
 ufw enable
-``` 
+```
+
+## Troubleshooting
+
+### Häufige Probleme und Lösungen
+
+1. **Fehler mit `source` in Webhook-Skripten**:
+   ```
+   /bin/sh: 1: source: not found
+   ```
+   Lösung: Verwende explizit `/bin/bash -c` und `.` statt `source` in der exec-Anweisung
+
+2. **PM2 findet Skripte nicht**:
+   Prüfe, ob die Pfade in `production.config.js` mit der tatsächlichen Verzeichnisstruktur übereinstimmen
+
+3. **Frontend-Build-Fehler mit Template-Syntax**:
+   JSX kann keine doppelten geschweiften Klammern wie `{{ variable }}` verarbeiten. 
+   Lösung: Verwende stattdessen `{'{{'} variable {'}}'}` in React-Komponenten.
+
+4. **Webhook wird nicht aufgerufen**:
+   - Prüfe, ob Port 8000 in der Firewall geöffnet ist: `ufw allow 8000/tcp`
+   - Teste den Webhook manuell: `curl -X POST http://localhost:8000/deploy`
+   - Überprüfe die GitHub-Webhook-Lieferungen im Repository unter Settings > Webhooks 

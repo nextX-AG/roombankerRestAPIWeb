@@ -213,6 +213,17 @@ Platzhalter wie {'{{'} variable {'}}'}  werden durch Werte ersetzt.
 
 Die falsche Syntax führt zu Build-Fehlern, die das Deployment verhindern können.
 
+### Shell-Skripte und venv-Aktivierung
+
+Bei der Ausführung von Shell-Befehlen in Node.js über `exec` ist zu beachten:
+
+1. Der Befehl `source` ist Bash-spezifisch und wird von `/bin/sh` nicht erkannt
+2. Verwende für die venv-Aktivierung in Skripten immer explizit Bash: 
+   ```javascript
+   exec('/bin/bash -c "cd /path && . venv/bin/activate && ..."')
+   ```
+3. Alternativ kann auch der Punkt-Operator (`.`) statt `source` verwendet werden
+
 ### Deployment-Verzeichnisstruktur
 
 Beim Deployment auf dem Server muss die korrekte Verzeichnisstruktur beachtet werden. Es gibt zwei mögliche Ansätze:
