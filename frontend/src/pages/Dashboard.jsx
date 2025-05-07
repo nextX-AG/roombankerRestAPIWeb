@@ -37,7 +37,7 @@ const Dashboard = () => {
 
     const checkProcessorStatus = async () => {
       try {
-        const response = await axios.get('http://localhost:8081/api/templates');
+        const response = await axios.get(`${config.processorUrl}/templates`);
         if (response.status === 200) {
           setProcessorStatus('online');
           setTemplates(response.data);
