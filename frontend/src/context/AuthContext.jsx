@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       const response = await axios.post(`${config.authUrl}/login`, { username, password });
       
-      const { token, user } = response.data;
+        const { token, user } = response.data;
       
       // Token und Benutzer im localStorage speichern
       localStorage.setItem('authToken', token);
@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }) => {
       setAuthenticated(true);
       setLoading(false);
       
-      return true;
+        return true;
     } catch (error) {
       console.error('Fehler beim Login:', error);
       setError('Fehler bei der Anmeldung. Bitte überprüfen Sie Ihre Zugangsdaten.');

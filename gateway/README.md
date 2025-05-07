@@ -34,9 +34,11 @@ sudo /usr/bin/mqtt-sniffer-relay.sh
 
 ### 2. Automatischer Start beim Hochfahren
 
-Die Datei `rc.local` konfiguriert das System so, dass das MQTT-Sniffer-Relay beim Hochfahren automatisch gestartet wird.
+Die Datei  konfiguriert das System so, dass das MQTT-Sniffer-Relay beim Hochfahren automatisch gestartet wird.
 
 #### Installation:
+
+(Achtung: OpenWrt hat meist kein tcpdump vorinstalliert. Falls möglich: opkg update && opkg install tcpdump)
 
 ```bash
 # Kopiere rc.local
@@ -44,27 +46,26 @@ sudo cp rc.local /etc/
 sudo chmod +x /etc/rc.local
 
 # Bei systemd-basierten Systemen den rc-local Service aktivieren
-if [ -d /lib/systemd/system ]; then
-  cat > /lib/systemd/system/rc-local.service << EOF
-[Unit]
-Description=/etc/rc.local Compatibility
-ConditionPathExists=/etc/rc.local
+cat > /etc/init.d/mqtt-sniffer-relay << 'EOF'
+#!/bin/sh /etc/rc.common
 
-[Service]
-Type=forking
-ExecStart=/etc/rc.local start
-TimeoutSec=0
-StandardOutput=tty
-RemainAfterExit=yes
-SysVStartPriority=99
+START=99
+STOP=10
 
-[Install]
-WantedBy=multi-user.target
+start() {
+    echo "Starte MQTT Sniffer Relay..."
+    /usr/bin/mqtt-sniffer-relay.sh &
+}
+
+stop() {
+    echo "Stoppe MQTT Sniffer Relay..."
+    killall mqtt-sniffer-relay.sh 2>/dev/null
+}
 EOF
 
-  systemctl enable rc-local
-  systemctl start rc-local
-fi
+chmod +x /etc/init.d/mqtt-sniffer-relay
+/etc/init.d/mqtt-sniffer-relay enable
+/etc/init.d/mqtt-sniffer-relay start
 ```
 
 ## Konfiguration

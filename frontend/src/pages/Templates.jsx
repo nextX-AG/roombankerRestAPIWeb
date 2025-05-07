@@ -97,10 +97,10 @@ const Templates = () => {
       try {
         setError(null);
         const response = await axios.get(`${config.processorUrl}/templates`);
-        setTemplates(response.data);
-        if (response.data.length > 0) {
-          setSelectedTemplate(response.data[0]);
-        }
+          setTemplates(response.data);
+          if (response.data.length > 0) {
+            setSelectedTemplate(response.data[0]);
+          }
       } catch (error) {
         console.error('Fehler beim Abrufen der Templates:', error);
         setError('Fehler beim Abrufen der Templates');
@@ -270,7 +270,7 @@ const Templates = () => {
 
   const handleTestTransform = async () => {
     if (!selectedTemplate) return;
-    
+      
     try {
       const response = await axios.post(`${config.processorUrl}/test-transform`, {
         template_id: selectedTemplate.id,
@@ -344,13 +344,13 @@ const Templates = () => {
                           >
                             {template.name}
                           </ListGroup.Item>
-                        ))}
+                    ))}
                     </ListGroup>
                     {templates.filter(t => t.provider_type === provider.id).length === 0 && (
                       <Alert variant="info" className="mt-3">
                         Keine Templates für diesen Anbieter vorhanden.
                       </Alert>
-                    )}
+              )}
                   </Tab>
                 ))}
               </Tabs>
@@ -366,7 +366,7 @@ const Templates = () => {
                 <Form>
                   <Form.Group className="mb-3">
                     <Form.Label>Template-Name</Form.Label>
-                    <Form.Control
+                  <Form.Control
                       type="text"
                       value={tempName}
                       onChange={(e) => setTempName(e.target.value)}
@@ -414,12 +414,12 @@ const Templates = () => {
                       readOnly={!isEditing}
                       language="json"
                       height="300px"
-                    />
-                    <Form.Text className="text-muted">
-                      Dieses Template wird verwendet, um Nachrichten zu transformieren.
+                  />
+                  <Form.Text className="text-muted">
+                    Dieses Template wird verwendet, um Nachrichten zu transformieren.
                       Platzhalter wie {'{{'} variable {'}}'}  werden durch Werte aus der Nachricht ersetzt.
-                    </Form.Text>
-                  </Form.Group>
+                  </Form.Text>
+                </Form.Group>
                   
                   <div className="d-flex justify-content-between">
                     {isEditing ? (

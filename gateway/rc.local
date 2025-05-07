@@ -1,0 +1,20 @@
+cat > /etc/init.d/mqtt-sniffer-relay << 'EOF'
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+start() {
+    echo "Starte MQTT Sniffer Relay..."
+    /usr/bin/mqtt-sniffer-relay.sh &
+}
+
+stop() {
+    echo "Stoppe MQTT Sniffer Relay..."
+    killall mqtt-sniffer-relay.sh 2>/dev/null
+}
+EOF
+
+chmod +x /etc/init.d/mqtt-sniffer-relay
+/etc/init.d/mqtt-sniffer-relay enable
+/etc/init.d/mqtt-sniffer-relay start
