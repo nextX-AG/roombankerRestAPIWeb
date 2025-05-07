@@ -5,7 +5,7 @@ echo "Starte Message Processor..."
 cd "$(dirname "$0")"
 
 # Redis-Konfiguration
-export REDIS_HOST=evAlarmServer  # Hostname des Redis-Servers
+export REDIS_HOST=localhost  # Verwende localhost für lokale Entwicklung
 export REDIS_PORT=6379
 export REDIS_DB=0
 export REDIS_PASSWORD="OW!p3x?"
