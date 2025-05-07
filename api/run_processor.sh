@@ -4,8 +4,20 @@
 echo "Starte Message Processor..."
 cd "$(dirname "$0")"
 
-# Redis-Konfiguration
-export REDIS_HOST=localhost  # Verwende localhost für lokale Entwicklung
+# Ermittle Hostname
+HOSTNAME=$(hostname)
+
+# Redis-Konfiguration basierend auf Umgebung
+if [[ "$HOSTNAME" == "evAlarmServer" ]]; then
+    # Server-Umgebung - Redis läuft lokal
+    export REDIS_HOST=localhost
+    echo "Server-Umgebung erkannt, verwende lokalen Redis-Server"
+else
+    # Entwicklungsumgebung - Redis läuft auf entferntem Server
+    export REDIS_HOST=157.180.37.234
+    echo "Entwicklungsumgebung erkannt, verwende entfernten Redis-Server"
+fi
+
 export REDIS_PORT=6379
 export REDIS_DB=0
 export REDIS_PASSWORD="OW!p3x?"

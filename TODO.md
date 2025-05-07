@@ -1,22 +1,23 @@
 # TODO: Notfall-IoT Gateway Verbesserungen
 
-## 1. Redis Message Queue Integration
+## 1. Redis Message Queue Integration ✅
 
-### Redis Setup
+### Redis Setup ✅
 - [x] Redis auf dem Server installieren: `sudo apt install redis-server`
 - [x] Redis-Service sichern (Passwort, Netzwerkeinstellungen)
 - [x] Redis als Service starten: `sudo systemctl enable redis-server`
 - [x] Python Redis Client installieren: `pip install redis`
 - [x] Node.js Redis Client installieren: `npm install redis`
+- [x] Redis-Server für Remote-Zugriff konfigurieren (Port 6379 öffnen)
 
-### Message Processor Anpassung
+### Message Processor Anpassung ✅
 - [x] Message Queue System in `message_processor.py` implementieren
 - [x] Eingehende Nachrichten in Redis-Queue legen statt direkter Verarbeitung
 - [x] Worker-System für Queue-Verarbeitung implementieren
 - [x] Fehlertolerante Verarbeitung mit Retry-Mechanismus
 - [x] Health-Check-Endpunkt zur Überwachung des Queue-Status
 
-### API-Server Anpassung
+### API-Server Anpassung ✅
 - [x] Schnittstelle für Queue-Statistiken hinzufügen
 - [x] Endpunkt für manuelle Wiederverarbeitung fehlgeschlagener Nachrichten
 
