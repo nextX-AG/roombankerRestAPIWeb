@@ -8,6 +8,8 @@ Diese Anleitung führt Sie durch die Installation und Einrichtung des Notfall- u
 - Node.js (Version 20 oder höher)
 - Python 3.10 oder höher
 - pip3 (Python-Paketmanager)
+- MongoDB (Version 5.0 oder höher)
+- Redis (für Message Queue und Caching)
 - Internetverbindung für die Installation der Abhängigkeiten
 
 ## Schritt 1: Projekt herunterladen
@@ -33,8 +35,57 @@ Dies installiert alle erforderlichen Python-Bibliotheken, darunter:
 - PyYAML (YAML-Verarbeitung)
 - Requests (HTTP-Client)
 - Jinja2 (Template-Engine)
+- PyMongo (MongoDB-Anbindung)
+- Redis (Redis-Anbindung)
 
-## Schritt 3: Frontend-Abhängigkeiten installieren
+## Schritt 3: MongoDB einrichten
+
+Installieren Sie MongoDB je nach Betriebssystem:
+
+### Für macOS (mit Homebrew):
+```bash
+brew tap mongodb/brew
+brew install mongodb-community
+brew services start mongodb-community
+```
+
+### Für Ubuntu/Debian:
+```bash
+sudo apt-get update
+sudo apt-get install -y mongodb
+sudo systemctl start mongodb
+```
+
+### Für Windows:
+Laden Sie den MongoDB Community Server von der offiziellen Website herunter und folgen Sie den Installationsanweisungen.
+
+### Datenbank initialisieren:
+```bash
+# Mit dem Testskript initialisieren
+python3 api/test_db.py
+```
+
+## Schritt 4: Redis einrichten
+
+Stellen Sie sicher, dass Redis installiert und gestartet ist:
+
+### Für macOS (mit Homebrew):
+```bash
+brew install redis
+brew services start redis
+```
+
+### Für Ubuntu/Debian:
+```bash
+sudo apt-get update
+sudo apt-get install -y redis-server
+sudo systemctl start redis-server
+```
+
+### Für Windows:
+Laden Sie Redis für Windows herunter und folgen Sie den Installationsanweisungen.
+
+## Schritt 5: Frontend-Abhängigkeiten installieren
 
 Installieren Sie die benötigten Node.js-Pakete für das Frontend:
 
@@ -52,7 +103,7 @@ Dies installiert alle erforderlichen JavaScript-Bibliotheken, darunter:
 - FontAwesome (Icons)
 - React JSON View Lite (JSON-Visualisierung)
 
-## Schritt 4: Konfiguration anpassen (optional)
+## Schritt 6: Konfiguration anpassen (optional)
 
 Bei Bedarf können Sie die Konfiguration des Systems anpassen:
 
@@ -60,8 +111,10 @@ Bei Bedarf können Sie die Konfiguration des Systems anpassen:
 - Message-Processor-Port: In `api/message_processor.py` (Standardwert: 8081)
 - Auth-Service-Port: In `api/auth_service.py` (Standardwert: 8082)
 - Frontend-Port: In `frontend/package.json` (Standardwert: 5173)
+- MongoDB-Verbindung: Über Umgebungsvariablen `MONGODB_URI` und `MONGODB_DB`
+- Redis-Verbindung: Über Umgebungsvariablen `REDIS_HOST`, `REDIS_PORT`, `REDIS_DB`, `REDIS_PASSWORD`
 
-## Schritt 5: System starten
+## Schritt 7: System starten
 
 Starten Sie das gesamte System mit einem Befehl:
 
@@ -75,7 +128,7 @@ Dies startet alle Komponenten:
 - Auth Service auf Port 8082
 - Frontend auf Port 5173
 
-## Schritt 6: Auf das System zugreifen
+## Schritt 8: Auf das System zugreifen
 
 Öffnen Sie einen Webbrowser und navigieren Sie zu:
 
@@ -87,7 +140,7 @@ Melden Sie sich mit einem der vordefinierten Benutzer an:
 - Administrator: Benutzername `admin`, Passwort `password`
 - Normaler Benutzer: Benutzername `user`, Passwort `user123`
 
-## Schritt 7: System testen
+## Schritt 9: System testen
 
 Sie können das System mit dem integrierten Testskript testen:
 
@@ -97,7 +150,7 @@ Sie können das System mit dem integrierten Testskript testen:
 
 Dies führt automatisierte Tests für alle Komponenten durch und gibt eine Zusammenfassung der Ergebnisse aus.
 
-## Schritt 8: System stoppen
+## Schritt 10: System stoppen
 
 Um das System zu stoppen, führen Sie aus:
 
@@ -116,6 +169,43 @@ netstat -tuln | grep -E '8080|8081|8082|5173'
 ```
 
 Falls Ports bereits belegt sind, ändern Sie die Portkonfiguration in den entsprechenden Dateien.
+
+### Problem: MongoDB-Verbindungsfehler
+
+Prüfen Sie, ob der MongoDB-Dienst läuft:
+
+```bash
+# Für Linux/macOS
+ps aux | grep mongo
+
+# Für Windows
+tasklist | findstr mongo
+```
+
+Stellen Sie sicher, dass die MongoDB-Verbindungseinstellungen korrekt sind:
+
+```bash
+# MongoDB-Verbindung testen
+python3 -c "from pymongo import MongoClient; client = MongoClient('mongodb://localhost:27017/'); print(client.server_info())"
+```
+
+### Problem: Redis-Verbindungsfehler
+
+Prüfen Sie, ob der Redis-Dienst läuft:
+
+```bash
+# Für Linux/macOS
+ps aux | grep redis
+
+# Für Windows
+tasklist | findstr redis
+```
+
+Testen Sie die Redis-Verbindung:
+
+```bash
+redis-cli ping
+```
 
 ### Problem: Frontend zeigt keine Daten an
 

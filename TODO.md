@@ -3,12 +3,12 @@
 ## 1. Datenbank-Erweiterung
 
 ### Datenbank-Setup
-- [ ] MongoDB für persistente Daten einrichten
-- [ ] Redis für Caching und Message Queue weiter nutzen
+- [x] MongoDB für persistente Daten einrichten
+- [x] Redis für Caching und Message Queue weiter nutzen
 - [ ] Verbindungskonfiguration und Absicherung
 
 ### Kundenmanagement
-- [ ] Tabelle/Collection für Kunden anlegen
+- [x] Tabelle/Collection für Kunden anlegen
   - Kunden-ID als Primärschlüssel
   - Name, Ansprechpartner, Kontaktdaten
   - API-Credentials für evAlarm-Schnittstelle (Benutzername/Passwort für Basic Auth)
@@ -16,11 +16,11 @@
   - Status (aktiv, inaktiv)
   - Weiterleitung: sofort oder intervallbasiert
   - Notifikationseinstellungen
-- [ ] CRUD-API-Endpunkte für Kundenverwaltung
-- [ ] Zuordnung von Gateways zu Kunden
+- [x] CRUD-API-Endpunkte für Kundenverwaltung
+- [x] Zuordnung von Gateways zu Kunden
 
 ### Gateway-Verwaltung
-- [ ] Tabelle/Collection für Gateways anlegen
+- [x] Tabelle/Collection für Gateways anlegen
   - Gateway UUID als Primärschlüssel
   - Kunde (Foreign Key)
   - Name und Beschreibung
@@ -28,12 +28,12 @@
   - Template-Zuordnung
   - Konfigurationseinstellungen
   - Letzter Kontakt
-- [ ] CRUD-API-Endpunkte für Gateway-Verwaltung
-- [ ] Automatisierte Status-Aktualisierung
+- [x] CRUD-API-Endpunkte für Gateway-Verwaltung
+- [x] Automatisierte Status-Aktualisierung
 - [ ] Monitoring-System für Gateway-Status
 
 ### Geräte-Verwaltung
-- [ ] Tabelle/Collection für Geräte anlegen
+- [x] Tabelle/Collection für Geräte anlegen
   - Interne ID als Primärschlüssel
   - Gateway-Zuordnung (Foreign Key)
   - Geräte-ID des Herstellers (aus subdevicelist)
@@ -41,7 +41,7 @@
   - Name und Beschreibung (automatisch generiert, manuell anpassbar)
   - Status-Felder basierend auf empfangenen Werten
   - Letzter Status-Update
-- [ ] Automatische Geräteerkennung bei Gateway-Kommunikation
+- [x] Automatische Geräteerkennung bei Gateway-Kommunikation
   - Parsen der subdevicelist und Anlegen neuer Geräte
   - Aktualisierung bestehender Geräte
 - [ ] Gerätestatus-Verlauf speichern
@@ -104,30 +104,30 @@
 ## 3. Frontend-Erweiterung
 
 ### Kundenmanagement-UI
-- [ ] Kundenübersicht mit Such- und Filterfunktion
-- [ ] Kunden-Detailseite
+- [x] Kundenübersicht mit Such- und Filterfunktion
+- [x] Kunden-Detailseite
   - Gateway-Zuordnung
   - evAlarm-API-Konfiguration (Credentials, Namespace)
   - Kontaktdaten
-- [ ] Kundenzugangsmanagement
+- [x] Kundenzugangsmanagement
 
 ### Gateway-Management-UI
-- [ ] Dashboard-Übersicht aller Gateways mit Status
-- [ ] Gateway-Detailseite
+- [x] Dashboard-Übersicht aller Gateways mit Status
+- [x] Gateway-Detailseite
   - Kundenzuordnung
   - Template-Zuweisung
   - Konfigurationseinstellungen
   - Geräteübersicht
-- [ ] Gateway-Hinzufügen/Bearbeiten-Dialog
-- [ ] Monitoring-Widgets für Gateway-Status
+- [x] Gateway-Hinzufügen/Bearbeiten-Dialog
+- [x] Monitoring-Widgets für Gateway-Status
 
 ### Geräte-Management-UI
-- [ ] Automatisch erkannte Geräte anzeigen
-- [ ] Geräteliste mit Filterung und Suche
-- [ ] Gruppierung nach Gateway und Kunde
-- [ ] Statusanzeige und Verlaufsdiagramme
-- [ ] Gerätedetailseite mit Ereignisverlauf
-- [ ] Manuelle Anpassungsmöglichkeiten (Namen, Beschreibungen)
+- [x] Automatisch erkannte Geräte anzeigen
+- [x] Geräteliste mit Filterung und Suche
+- [x] Gruppierung nach Gateway und Kunde
+- [x] Statusanzeige und Verlaufsdiagramme
+- [x] Gerätedetailseite mit Ereignisverlauf
+- [x] Manuelle Anpassungsmöglichkeiten (Namen, Beschreibungen)
 
 ### Template-Management-UI
 - [ ] JavaScript-Editor für Transformationen
@@ -150,15 +150,15 @@
 ## Implementierungsplan
 
 ### Phase 1: Kundenverwaltung & Datenbank (Priorität: Hoch)
-- [ ] MongoDB-Integration
-- [ ] Kundenmanagement-System mit evAlarm-API-Konfiguration
-- [ ] Gateway-Zuordnung zu Kunden
-- [ ] Grundlegende UI-Komponenten
+- [x] MongoDB-Integration
+- [x] Kundenmanagement-System mit evAlarm-API-Konfiguration
+- [x] Gateway-Zuordnung zu Kunden
+- [x] Grundlegende UI-Komponenten
 
 ### Phase 2: Gateway & Gerätemanagement (Priorität: Hoch)
-- [ ] Automatische Geräteerkennung aus Nachrichten
-- [ ] Gateway-Statusüberwachung
-- [ ] Gerätemanagement-UI
+- [x] Automatische Geräteerkennung aus Nachrichten
+- [x] Gateway-Statusüberwachung
+- [x] Gerätemanagement-UI
 
 ### Phase 3: Transformationen & Routing (Priorität: Hoch)
 - [ ] JavaScript-Transformation mit Upload

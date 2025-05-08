@@ -2,7 +2,10 @@ import React from 'react';
 import { Navbar, Nav, Container, Button } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHome, faBell, faGear, faList, faCode, faUser, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import { 
+  faHome, faBell, faGear, faList, faCode, faUser, 
+  faSignOutAlt, faBuilding, faNetworkWired, faDesktop 
+} from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
 
 const AppNavbar = () => {
@@ -27,6 +30,15 @@ const AppNavbar = () => {
               <Nav className="me-auto">
                 <Nav.Link as={Link} to="/" active={location.pathname === '/'}>
                   <FontAwesomeIcon icon={faHome} className="me-1" /> Dashboard
+                </Nav.Link>
+                <Nav.Link as={Link} to="/customers" active={location.pathname === '/customers'}>
+                  <FontAwesomeIcon icon={faBuilding} className="me-1" /> Kunden
+                </Nav.Link>
+                <Nav.Link as={Link} to="/gateways" active={location.pathname === '/gateways'}>
+                  <FontAwesomeIcon icon={faNetworkWired} className="me-1" /> Gateways
+                </Nav.Link>
+                <Nav.Link as={Link} to="/devices" active={location.pathname === '/devices'}>
+                  <FontAwesomeIcon icon={faDesktop} className="me-1" /> Geräte
                 </Nav.Link>
                 <Nav.Link as={Link} to="/messages" active={location.pathname === '/messages'}>
                   <FontAwesomeIcon icon={faList} className="me-1" /> Nachrichten

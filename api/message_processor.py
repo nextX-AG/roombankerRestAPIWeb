@@ -15,6 +15,9 @@ from utils.template_engine import TemplateEngine, MessageForwarder
 from api.message_queue import init_message_queue, get_message_queue
 from api.message_worker import init_worker, get_worker
 
+# Importiere die Datenmodelle
+from api.models import initialize_db, Customer, Gateway, Device, register_device_from_message
+
 # Konfiguriere Logging
 logging.basicConfig(
     level=logging.INFO,
@@ -49,6 +52,12 @@ worker = init_worker(
     auto_start=True
 )
 
+# Initialisiere MongoDB-Verbindung
+initialize_db(
+    connection_string=os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/'),
+    db_name=os.environ.get('MONGODB_DB', 'evalarm_gateway')
+)
+
 @app.route('/api/process', methods=['POST'])
 def process_message():
     """
@@ -66,6 +75,30 @@ def process_message():
                 'status': 'error',
                 'message': 'Nachricht, Template-Name und Endpunkt-Name sind erforderlich'
             }), 400
+        
+        # Gateway-UUID extrahieren und Gateway in der Datenbank aktualisieren
+        gateway_uuid = None
+        if isinstance(message, dict) and 'gateway' in message and 'uuid' in message['gateway']:
+            gateway_uuid = message['gateway']['uuid']
+        else:
+            # Versuche, Gateway-ID aus anderen Feldern zu extrahieren
+            gateway_uuid = message.get('id') or message.get('uuid') or message.get('gatewayId')
+        
+        if gateway_uuid:
+            # Gateway in der Datenbank aktualisieren oder erstellen
+            gateway = Gateway.find_by_uuid(gateway_uuid)
+            if gateway:
+                gateway.update_status('online')
+            else:
+                # Wenn Gateway nicht existiert, erstellen wir ein temporäres Gateway ohne Kundenzuordnung
+                # Dieses kann später über die UI einem Kunden zugeordnet werden
+                Gateway.create(uuid=gateway_uuid, customer_id=None)
+            
+            # Geräte aus subdevicelist registrieren/aktualisieren
+            if isinstance(message, dict) and 'subdevicelist' in message:
+                subdevices = message.get('subdevicelist', [])
+                for device_data in subdevices:
+                    register_device_from_message(gateway_uuid, device_data)
         
         # Füge die Nachricht in die Queue ein (asynchrone Verarbeitung)
         message_id = queue.enqueue_message(message, template_name, endpoint_name)

@@ -6,6 +6,7 @@ import os
 import time
 import uuid
 from datetime import datetime
+from routes import api_bp  # Direkter Import für lokale Ausführung
 
 # Konfiguriere Logging
 logging.basicConfig(
@@ -17,6 +18,9 @@ logger = logging.getLogger('iot-gateway-api')
 # Erstelle Flask-App
 app = Flask(__name__)
 CORS(app)  # Erlaube Cross-Origin Requests für Frontend-Integration
+
+# Registriere den API Blueprint
+app.register_blueprint(api_bp, url_prefix='/api')
 
 # Speicherort für empfangene Nachrichten
 MESSAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')

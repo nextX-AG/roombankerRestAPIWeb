@@ -12,6 +12,9 @@ import Messages from './pages/Messages';
 import Templates from './pages/Templates';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
+import Customers from './pages/Customers';
+import Gateways from './pages/Gateways';
+import Devices from './pages/Devices';
 
 // Auth Context
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -43,6 +46,21 @@ function AppContent() {
           <Route path="/" element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/customers" element={
+            <ProtectedRoute>
+              <Customers />
+            </ProtectedRoute>
+          } />
+          <Route path="/gateways" element={
+            <ProtectedRoute>
+              <Gateways />
+            </ProtectedRoute>
+          } />
+          <Route path="/devices" element={
+            <ProtectedRoute>
+              <Devices />
             </ProtectedRoute>
           } />
           <Route path="/messages" element={
