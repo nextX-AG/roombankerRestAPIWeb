@@ -269,7 +269,7 @@ const Messages = () => {
                                               onClick={() => handleMessageSelect(message)}
                                               style={{ cursor: 'pointer' }}
                                             >
-                                              <td>{formatTimestamp(message.timestamp)}</td>
+                                              <td>{formatTimestamp(message.received_at || message.timestamp)}</td>
                                               <td>
                                                 <Badge bg={getTypeColor(message.type || deviceType)}>
                                                   {message.type || deviceType}
@@ -316,7 +316,7 @@ const Messages = () => {
                             </tr>
                             <tr>
                               <th>Empfangen</th>
-                              <td>{formatTimestamp(selectedMessage.timestamp)}</td>
+                              <td>{formatTimestamp(selectedMessage.received_at || selectedMessage.timestamp)}</td>
                             </tr>
                             <tr>
                               <th>Timestamp</th>
@@ -373,7 +373,7 @@ const Messages = () => {
                         onClick={() => handleMessageSelect(message)}
                               style={{ cursor: 'pointer' }}
                       >
-                              <td>{formatTimestamp(message.timestamp)}</td>
+                              <td>{formatTimestamp(message.received_at || message.timestamp)}</td>
                               <td>{shortenId(message.id)}</td>
                         <td>
                                 <Badge bg={getTypeColor(getDeviceType(message))}>
@@ -424,7 +424,7 @@ const Messages = () => {
                       </tr>
                       <tr>
                         <th>Empfangen</th>
-                              <td>{formatTimestamp(selectedMessage.timestamp)}</td>
+                              <td>{formatTimestamp(selectedMessage.received_at || selectedMessage.timestamp)}</td>
                       </tr>
                       <tr>
                         <th>Timestamp</th>
