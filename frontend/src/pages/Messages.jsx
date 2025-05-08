@@ -131,6 +131,14 @@ const Messages = () => {
     try {
       console.log("Timestamp vor Formatierung:", timestamp, typeof timestamp);
       
+      // Ist der Timestamp bereits ein ISO-String?
+      if (typeof timestamp === 'string' && timestamp.includes('T')) {
+        // ISO-8601 String direkt parsen
+        const date = new Date(timestamp);
+        console.log("ISO-String erkannt, Date-Objekt:", date);
+        return date.toLocaleString('de-DE');
+      }
+      
       // Prüfen, ob der Timestamp in Sekunden ist (Unix-Timestamp) 
       // und nicht in Millisekunden (wie von JavaScript erwartet)
       const isUnixTimestamp = Number(timestamp) < 10000000000; // Unix-Timestamp in Sekunden hat weniger Stellen
