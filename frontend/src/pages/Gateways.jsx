@@ -8,6 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 const Gateways = () => {
   const [gateways, setGateways] = useState([]);
+  const [unassignedGateways, setUnassignedGateways] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,13 +37,15 @@ const Gateways = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [gatewaysResponse, customersResponse] = await Promise.all([
+      const [gatewaysResponse, customersResponse, unassignedResponse] = await Promise.all([
         axios.get(`${API_URL}/gateways`),
-        axios.get(`${API_URL}/customers`)
+        axios.get(`${API_URL}/customers`),
+        axios.get(`${API_URL}/gateways/unassigned`)
       ]);
       
       setGateways(gatewaysResponse.data);
       setCustomers(customersResponse.data);
+      setUnassignedGateways(unassignedResponse.data);
       setError(null);
     } catch (err) {
       console.error('Fehler beim Laden der Daten:', err);
@@ -59,6 +62,22 @@ const Gateways = () => {
       ...formData,
       [name]: value
     });
+  };
+
+  // Handler für Auswahl eines unregistrierten Gateways
+  const handleUnassignedGatewaySelect = (e) => {
+    const selectedUuid = e.target.value;
+    if (selectedUuid) {
+      const selectedGateway = unassignedGateways.find(g => g.uuid === selectedUuid);
+      if (selectedGateway) {
+        setFormData({
+          ...formData,
+          uuid: selectedGateway.uuid,
+          name: selectedGateway.name || formData.name,
+          status: selectedGateway.status || formData.status
+        });
+      }
+    }
   };
 
   // Gateway hinzufügen
@@ -284,6 +303,28 @@ const Gateways = () => {
         </Modal.Header>
         <Form onSubmit={handleAddGateway}>
           <Modal.Body>
+            {unassignedGateways.length > 0 && (
+              <Row className="mb-3">
+                <Col>
+                  <Alert variant="info">
+                    Es wurden unregistrierte Gateways erkannt. Wählen Sie eines aus oder fügen Sie ein neues hinzu.
+                  </Alert>
+                  <Form.Group>
+                    <Form.Label>Unregistrierte Gateways</Form.Label>
+                    <Form.Select
+                      onChange={handleUnassignedGatewaySelect}
+                    >
+                      <option value="">Bitte auswählen</option>
+                      {unassignedGateways.map((gateway) => (
+                        <option key={gateway.uuid} value={gateway.uuid}>
+                          {gateway.uuid} (zuletzt aktiv: {formatDateTime(gateway.last_contact)})
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+              </Row>
+            )}
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">

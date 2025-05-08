@@ -157,6 +157,12 @@ def update_gateway_status(uuid):
     gateway.update_status(status)
     return jsonify(gateway.to_dict())
 
+@api_bp.route('/gateways/unassigned', methods=['GET'])
+def get_unassigned_gateways():
+    """Gibt alle Gateways ohne Kundenzuordnung zurück"""
+    gateways = Gateway.find_unassigned()
+    return jsonify([gateway.to_dict() for gateway in gateways])
+
 # ----- Geräte-Endpunkte -----
 
 @api_bp.route('/devices', methods=['GET'])

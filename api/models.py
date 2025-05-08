@@ -130,6 +130,11 @@ class Gateway:
         """Liefert alle Gateways zurück"""
         return [cls(**data) for data in db[cls.collection].find()]
     
+    @classmethod
+    def find_unassigned(cls):
+        """Findet alle Gateways ohne Kundenzuordnung"""
+        return [cls(**data) for data in db[cls.collection].find({"customer_id": None})]
+    
     def update(self, **kwargs):
         """Aktualisiert die Gateway-Informationen"""
         kwargs['updated_at'] = datetime.datetime.now()
