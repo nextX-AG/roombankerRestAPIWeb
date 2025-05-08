@@ -1,67 +1,102 @@
-# TODO: Notfall-IoT Gateway Verbesserungen
+# TODO: evAlarm-IoT Gateway Management System
 
-## 1. Redis Message Queue Integration ✅
+## 1. Datenbank-Erweiterung
 
-### Redis Setup ✅
-- [x] Redis auf dem Server installieren: `sudo apt install redis-server`
-- [x] Redis-Service sichern (Passwort, Netzwerkeinstellungen)
-- [x] Redis als Service starten: `sudo systemctl enable redis-server`
-- [x] Python Redis Client installieren: `pip install redis`
-- [x] Node.js Redis Client installieren: `npm install redis`
-- [x] Redis-Server für Remote-Zugriff konfigurieren (Port 6379 öffnen)
+### Gateway-Verwaltung
+- [ ] Tabelle/Collection für Gateways anlegen
+  - Gateway UUID als Primärschlüssel
+  - Name und Beschreibung
+  - Status (online, offline, wartung)
+  - Template-Zuordnung
+  - API-Ziel-Endpunkt 
+  - API-Credentials (verschlüsselt)
+  - Letzter Kontakt
+- [ ] CRUD-API-Endpunkte für Gateway-Verwaltung
+- [ ] Automatisierte Status-Aktualisierung
 
-### Message Processor Anpassung ✅
-- [x] Message Queue System in `message_processor.py` implementieren
-- [x] Eingehende Nachrichten in Redis-Queue legen statt direkter Verarbeitung
-- [x] Worker-System für Queue-Verarbeitung implementieren
-- [x] Fehlertolerante Verarbeitung mit Retry-Mechanismus
-- [x] Health-Check-Endpunkt zur Überwachung des Queue-Status
+### Geräte-Verwaltung
+- [ ] Tabelle/Collection für Geräte anlegen
+  - Interne ID als Primärschlüssel
+  - Gateway-Zuordnung (Foreign Key)
+  - Geräte-ID des Herstellers
+  - Typ (Sensor, Kontakt, etc.)
+  - Name und Beschreibung
+  - Status
+  - Letzter Status-Update
+- [ ] Automatische Geräteerkennung bei Gateway-Kommunikation
+- [ ] Gerätestatus-Verlauf speichern
 
-### API-Server Anpassung ✅
-- [x] Schnittstelle für Queue-Statistiken hinzufügen
-- [x] Endpunkt für manuelle Wiederverarbeitung fehlgeschlagener Nachrichten
+### Template-Verwaltung
+- [ ] Erweiterte Template-Struktur
+  - Mandantenfähigkeit (Multi-Tenant)
+  - Versionierung
+  - Validierungssystem
 
-## 2. Logging-System für die UI
+## 2. Backend-Erweiterung
 
-### Backend-Logging
-- [ ] Zentrales Logging-System in der API implementieren
-- [ ] Log-Levels definieren (INFO, WARNING, ERROR, DEBUG)
-- [ ] Log-Rotation und Speicherung in Dateien und/oder Datenbank
-- [ ] API-Endpunkte für Log-Zugriff erstellen
+### Routing-System
+- [ ] Dynamisches Routing basierend auf Gateway-UUID implementieren
+- [ ] Template-Zuweisung pro Gateway
+- [ ] Authentifizierungssystem für externe APIs
+- [ ] Retry-Mechanismus bei Übertragungsfehlern
+- [ ] Backup-Storage für nicht zustellbare Nachrichten
 
-### Frontend-Logging-UI
-- [ ] Log-Viewer-Komponente in React erstellen
-- [ ] Filterung nach Log-Level, Zeitraum, Service
-- [ ] Echtzeit-Aktualisierung der Logs
-- [ ] Download-Funktion für Logs
-- [ ] Detailansicht für einzelne Log-Einträge
+### Monitoring & Alarmierung
+- [ ] Gateway-Statusüberwachung
+- [ ] Automatische Benachrichtigung bei Offline-Status
+- [ ] Protokollierung aller Aktivitäten
+- [ ] Fehlerbehandlung und -reporting
 
-### Integration in das Dashboard
-- [ ] Log-Tab im Hauptnavigationsmenü hinzufügen
-- [ ] Status-Widget für kritische Fehler auf dem Dashboard
-- [ ] Benachrichtigungssystem für kritische Fehler
+## 3. Frontend-Erweiterung
 
-## 3. Load-Testing und Optimierung
+### Gateway-Management-UI
+- [ ] Dashboard-Übersicht aller Gateways mit Status
+- [ ] Gateway-Detailseite
+  - Template-Zuweisung
+  - API-Konfiguration
+  - Credential-Management
+  - Geräteübersicht
+- [ ] Gateway-Hinzufügen/Bearbeiten-Dialog
 
-- [ ] Lasttests mit simulierten Gateway-Nachrichten durchführen
-- [ ] Leistungsgrenzen und Engpässe identifizieren
-- [ ] Optimierung der Message-Verarbeitung
+### Geräte-Management-UI
+- [ ] Geräteliste mit Filterung und Suche
+- [ ] Gruppierung nach Gateway
+- [ ] Statusanzeige und Verlaufsdiagramme
+- [ ] Gerätedetailseite mit Ereignisverlauf
+
+### Template-Management-UI
+- [ ] Erweiterter Template-Editor
+- [ ] Vorschaufunktion mit Testdaten
+- [ ] Versionsverwaltung und Rollback-Möglichkeit
+
+## 4. Benutzerverwaltung & Sicherheit
+
+- [ ] Benutzerrollen für verschiedene Zugriffsebenen
+  - Administrator (voller Zugriff)
+  - Operator (Überwachung und Konfiguration)
+  - Betrachter (nur Lesezugriff)
+- [ ] API-Schlüsselverwaltung für externe Systeme
+- [ ] Audit-Logging für Sicherheitsrelevante Aktionen
+- [ ] Datenverschlüsselung für sensible Informationen
 
 ## Implementierungsplan
 
-### Phase 1: Redis-Integration (Priorität: Hoch)
-- [x] Redis installieren und konfigurieren
-- [x] Message Processor umstellen
-- [x] Worker-System implementieren
-- [x] Grundlegendes Monitoring einrichten
+### Phase 1: Datenbankmodell & Grundfunktionen (Priorität: Hoch)
+- [ ] Datenbankschema implementieren
+- [ ] Backend-API für Gateway-Management
+- [ ] Grundlegende UI-Komponenten
 
-### Phase 2: Logging-System (Priorität: Mittel)
-- [ ] Backend-Logging implementieren
-- [ ] API-Endpunkte für Logs erstellen
-- [ ] Frontend-Log-Viewer entwickeln
-- [ ] Dashboard-Integration
+### Phase 2: Geräteverwaltung & Routing (Priorität: Hoch)
+- [ ] Gerätemanagement-System
+- [ ] Dynamisches Nachrichtenrouting
+- [ ] Erweiterte UI-Funktionen
 
-### Phase 3: Tests & Optimierung (Priorität: Niedrig)
-- [ ] Lasttests durchführen
-- [ ] Optimierungen basierend auf Testergebnissen
-- [ ] Dokumentation aktualisieren 
+### Phase 3: Template-System & Benutzerverwaltung (Priorität: Mittel)
+- [ ] Erweitertes Template-System
+- [ ] Benutzerverwaltung & Berechtigungen
+- [ ] UI-Verfeinerung
+
+### Phase 4: Monitoring & Optimierung (Priorität: Niedrig)
+- [ ] Umfassendes Monitoring
+- [ ] Leistungsoptimierung
+- [ ] Erweiterte Reporting-Funktionen 
