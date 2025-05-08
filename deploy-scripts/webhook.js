@@ -1,6 +1,6 @@
 /**
  * GitHub Webhook Server für automatisches Deployment
- * Robuste Version mit verbesserter Fehlerbehandlung
+ * Robuste Version mit verbesserter Fehlerbehandlung und Infrastrukturprüfungen
  */
 
 const express = require('express');
@@ -43,30 +43,74 @@ app.post('/deploy', (req, res) => {
   setTimeout(() => {
     console.log(`${new Date().toISOString()} - Starte Deployment-Prozess in /var/www/iot-gateway`);
     
-    // Verbessertes Deployment-Skript
+    // Verbessertes Deployment-Skript mit Infrastrukturprüfungen
     const deploymentScript = `
+      echo "[$(date)] Deployment-Prozess gestartet" >> /var/log/webhook-deploy.log &&
+      
+      # MongoDB prüfen und starten
+      if ! systemctl is-active mongodb > /dev/null; then
+        echo "[$(date)] MongoDB ist nicht aktiv, starte den Dienst..." >> /var/log/webhook-deploy.log
+        systemctl start mongodb
+        systemctl enable mongodb
+        sleep 2 # Warte, bis der Dienst gestartet ist
+      else
+        echo "[$(date)] MongoDB läuft bereits" >> /var/log/webhook-deploy.log
+      fi &&
+      
+      # Redis prüfen und starten
+      if ! systemctl is-active redis-server > /dev/null; then
+        echo "[$(date)] Redis ist nicht aktiv, starte den Dienst..." >> /var/log/webhook-deploy.log
+        systemctl start redis-server
+        systemctl enable redis-server
+        sleep 2 # Warte, bis der Dienst gestartet ist
+      else
+        echo "[$(date)] Redis läuft bereits" >> /var/log/webhook-deploy.log
+      fi &&
+      
       cd /var/www/iot-gateway && 
       
       # Git-Berechtigungen korrigieren
+      echo "[$(date)] Korrigiere Git-Berechtigungen" >> /var/log/webhook-deploy.log &&
       git config --global --add safe.directory /var/www/iot-gateway &&
       
       # Repository aktualisieren
+      echo "[$(date)] Aktualisiere Git-Repository" >> /var/log/webhook-deploy.log &&
       git stash &&
       git reset --hard origin/main &&
       git pull &&
       
       # Virtuelle Umgebung aktualisieren
+      echo "[$(date)] Aktualisiere virtuelle Python-Umgebung" >> /var/log/webhook-deploy.log &&
       source venv/bin/activate &&
       pip install --upgrade pip &&
       pip install -r api/requirements.txt &&
       
+      # Prüfen, ob alle Abhängigkeiten korrekt installiert wurden
+      echo "[$(date)] Prüfe Python-Abhängigkeiten" >> /var/log/webhook-deploy.log &&
+      if ! pip freeze | grep -q "flask=="; then
+        echo "[$(date)] FEHLER: Flask nicht korrekt installiert!" >> /var/log/webhook-deploy.log
+        exit 1
+      fi &&
+      
+      if ! pip freeze | grep -q "pymongo=="; then
+        echo "[$(date)] FEHLER: PyMongo nicht korrekt installiert!" >> /var/log/webhook-deploy.log
+        exit 1
+      fi &&
+      
+      if ! pip freeze | grep -q "redis=="; then
+        echo "[$(date)] FEHLER: Redis-Python nicht korrekt installiert!" >> /var/log/webhook-deploy.log
+        exit 1
+      fi &&
+      
       # Frontend bauen
+      echo "[$(date)] Baue Frontend" >> /var/log/webhook-deploy.log &&
       cd frontend &&
       npm install &&
       npm run build &&
       cd .. &&
       
       # PM2-Konfiguration erstellen und starten
+      echo "[$(date)] Erstelle und starte PM2-Konfiguration" >> /var/log/webhook-deploy.log &&
       cat > ecosystem.config.js << 'EOF'
 module.exports = {
   apps: [
@@ -86,7 +130,7 @@ module.exports = {
       }
     },
     {
-      name: 'iot-processor',
+      name: 'message-processor',
       script: 'api/message_processor.py',
       interpreter: '/var/www/iot-gateway/venv/bin/python3',
       cwd: '/var/www/iot-gateway',
@@ -101,7 +145,7 @@ module.exports = {
       }
     },
     {
-      name: 'iot-auth',
+      name: 'auth-service',
       script: 'api/auth_service.py',
       interpreter: '/var/www/iot-gateway/venv/bin/python3',
       cwd: '/var/www/iot-gateway',
@@ -114,6 +158,14 @@ module.exports = {
         'MONGODB_URI': 'mongodb://localhost:27017/',
         'MONGODB_DB': 'evalarm_gateway'
       }
+    },
+    {
+      name: 'webhook',
+      script: 'deploy-scripts/webhook.js',
+      cwd: '/var/www/iot-gateway',
+      env: {
+        'NODE_ENV': 'production'
+      }
     }
   ]
 };
@@ -121,9 +173,41 @@ EOF
       &&
       
       # Alle Dienste neustarten
+      echo "[$(date)] Starte PM2-Dienste neu" >> /var/log/webhook-deploy.log &&
       pm2 delete all || true &&
       pm2 start ecosystem.config.js &&
-      pm2 save
+      pm2 save &&
+      
+      # Nginx neu starten
+      echo "[$(date)] Starte Nginx neu" >> /var/log/webhook-deploy.log &&
+      systemctl restart nginx &&
+      
+      # Prüfen, ob alle Dienste laufen
+      echo "[$(date)] Prüfe, ob alle Dienste laufen" >> /var/log/webhook-deploy.log &&
+      sleep 5 &&
+      
+      # Überprüfe, ob alle Ports aktiv sind
+      if ! netstat -tulpn | grep -q ":8080"; then
+        echo "[$(date)] WARNUNG: API-Server auf Port 8080 nicht gefunden!" >> /var/log/webhook-deploy.log
+      fi &&
+      
+      if ! netstat -tulpn | grep -q ":8081"; then
+        echo "[$(date)] WARNUNG: Message-Processor auf Port 8081 nicht gefunden!" >> /var/log/webhook-deploy.log
+      fi &&
+      
+      if ! netstat -tulpn | grep -q ":8082"; then
+        echo "[$(date)] WARNUNG: Auth-Service auf Port 8082 nicht gefunden!" >> /var/log/webhook-deploy.log
+      fi &&
+      
+      # Teste die Dienste direkt
+      echo "[$(date)] Teste Dienste" >> /var/log/webhook-deploy.log &&
+      if curl -s http://localhost:8082/api/auth/users > /dev/null; then
+        echo "[$(date)] Auth-Service läuft und antwortet" >> /var/log/webhook-deploy.log
+      else
+        echo "[$(date)] WARNUNG: Auth-Service antwortet nicht!" >> /var/log/webhook-deploy.log
+      fi &&
+      
+      echo "[$(date)] Deployment abgeschlossen" >> /var/log/webhook-deploy.log
     `;
     
     // Führe das Deployment asynchron aus
@@ -136,11 +220,17 @@ EOF
         if (error) {
           console.error(`${new Date().toISOString()} - Fehler beim Deployment: ${error}`);
           console.error(`${new Date().toISOString()} - Stderr: ${stderr}`);
+          
+          // Speichere Fehlerdetails in Datei
+          exec(`echo "${new Date().toISOString()} - DEPLOYMENT FEHLER: ${error}" >> /var/log/webhook-deploy-errors.log`);
           return;
         }
         console.log(`${new Date().toISOString()} - Deployment erfolgreich abgeschlossen`);
         console.log(`${new Date().toISOString()} - Stdout: ${stdout}`);
         if (stderr) console.log(`${new Date().toISOString()} - Stderr: ${stderr}`);
+        
+        // Speichere Erfolg in Datei
+        exec(`echo "${new Date().toISOString()} - DEPLOYMENT ERFOLGREICH" >> /var/log/webhook-deploy.log`);
       }
     );
   }, 100);
