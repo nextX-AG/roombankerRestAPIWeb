@@ -129,22 +129,33 @@ const Messages = () => {
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'Unbekannt';
     try {
+      console.log("Timestamp vor Formatierung:", timestamp, typeof timestamp);
+      
       // Prüfen, ob der Timestamp in Sekunden ist (Unix-Timestamp) 
       // und nicht in Millisekunden (wie von JavaScript erwartet)
-      const isUnixTimestamp = timestamp < 10000000000; // Unix-Timestamp in Sekunden hat weniger Stellen
+      const isUnixTimestamp = Number(timestamp) < 10000000000; // Unix-Timestamp in Sekunden hat weniger Stellen
       
       // Bei Unix-Timestamps in Sekunden mit 1000 multiplizieren, um auf Millisekunden zu kommen
-      const timestampMs = isUnixTimestamp ? timestamp * 1000 : timestamp;
+      const timestampMs = isUnixTimestamp ? Number(timestamp) * 1000 : Number(timestamp);
+      
+      console.log("Umgerechneter Timestamp:", timestampMs);
       
       const date = new Date(timestampMs);
       
+      console.log("Erzeugtes Datum:", date);
+      
       // Prüfen, ob das Datum gültig ist
       if (isNaN(date.getTime())) {
+        console.log("Ungültiges Datum erkannt");
         return timestamp.toString();
       }
       
-      return date.toLocaleString('de-DE');
+      const formattedDate = date.toLocaleString('de-DE');
+      console.log("Formatiertes Datum:", formattedDate);
+      
+      return formattedDate;
     } catch (e) {
+      console.error("Fehler bei der Zeitstempel-Formatierung:", e);
       return timestamp.toString();
     }
   };
