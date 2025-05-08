@@ -31,6 +31,10 @@
 - [x] CRUD-API-Endpunkte für Gateway-Verwaltung
 - [x] Automatisierte Status-Aktualisierung
 - [ ] Monitoring-System für Gateway-Status
+- [ ] Erkennung und Anzeige nicht zugeordneter Gateways
+  - [ ] Erkennung von Gateway-IDs aus empfangenen Nachrichten
+  - [ ] Abgleich mit registrierten Gateways
+  - [ ] Speicherung unregistrierter Gateway-IDs in separater Collection oder Cache
 
 ### Geräte-Verwaltung
 - [x] Tabelle/Collection für Geräte anlegen
@@ -120,6 +124,11 @@
   - Geräteübersicht
 - [x] Gateway-Hinzufügen/Bearbeiten-Dialog
 - [x] Monitoring-Widgets für Gateway-Status
+- [ ] Verbesserter Gateway-Registrierungsprozess
+  - [ ] API-Endpunkt für unregistrierte Gateways implementieren (`/api/gateways/unassigned`)
+  - [ ] Dropdown-Liste nicht zugeordneter Gateways im Hinzufügen/Bearbeiten-Dialog
+  - [ ] Automatisches Befüllen des UUID-Felds bei Auswahl
+  - [ ] Anzeige zusätzlicher Informationen (erster Kontakt, Nachrichtenanzahl)
 
 ### Geräte-Management-UI
 - [x] Automatisch erkannte Geräte anzeigen
@@ -159,6 +168,9 @@
 - [x] Automatische Geräteerkennung aus Nachrichten
 - [x] Gateway-Statusüberwachung
 - [x] Gerätemanagement-UI
+- [ ] Verbesserter Gateway-Onboarding-Prozess (Priorität: Mittel)
+  - [ ] Erkennung und Anzeige unregistrierter Gateways
+  - [ ] Vereinfachte Registrierung über Dropdown-Liste
 
 ### Phase 3: Transformationen & Routing (Priorität: Hoch)
 - [ ] JavaScript-Transformation mit Upload
