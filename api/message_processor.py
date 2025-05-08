@@ -82,7 +82,7 @@ def process_message():
             gateway_uuid = message['gateway']['uuid']
         else:
             # Versuche, Gateway-ID aus anderen Feldern zu extrahieren
-            gateway_uuid = message.get('id') or message.get('uuid') or message.get('gatewayId')
+            gateway_uuid = message.get('id') or message.get('uuid') or message.get('gateway_id') or message.get('gatewayId')
         
         if gateway_uuid:
             # Gateway in der Datenbank aktualisieren oder erstellen

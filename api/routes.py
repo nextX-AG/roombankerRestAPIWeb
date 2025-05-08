@@ -256,10 +256,10 @@ def process_message():
     """Verarbeitet eingehende Nachrichten und registriert/aktualisiert Geräte"""
     data = request.json
     
-    if not data or 'gateway_uuid' not in data:
-        return jsonify({"error": "gateway_uuid ist erforderlich"}), 400
+    if not data or ('gateway_uuid' not in data and 'gateway_id' not in data):
+        return jsonify({"error": "gateway_uuid oder gateway_id ist erforderlich"}), 400
     
-    gateway_uuid = data['gateway_uuid']
+    gateway_uuid = data.get('gateway_uuid') or data.get('gateway_id')
     
     # Gateway aktualisieren
     gateway = Gateway.find_by_uuid(gateway_uuid)
