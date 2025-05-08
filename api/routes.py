@@ -91,6 +91,18 @@ def get_gateways():
     
     return jsonify([gateway.to_dict() for gateway in gateways])
 
+@api_bp.route('/gateways/unassigned', methods=['GET'])
+def get_unassigned_gateways():
+    """Gibt alle Gateways ohne Kundenzuordnung zurück"""
+    print("DEBUG: /gateways/unassigned endpoint called")
+    try:
+        gateways = Gateway.find_unassigned()
+        print(f"DEBUG: Found {len(gateways)} unassigned gateways")
+        return jsonify([gateway.to_dict() for gateway in gateways])
+    except Exception as e:
+        print(f"DEBUG: Error in /gateways/unassigned: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 @api_bp.route('/gateways/<uuid>', methods=['GET'])
 def get_gateway(uuid):
     """Gibt ein Gateway anhand seiner UUID zurück"""
@@ -156,18 +168,6 @@ def update_gateway_status(uuid):
     status = data.get('status', 'online')
     gateway.update_status(status)
     return jsonify(gateway.to_dict())
-
-@api_bp.route('/gateways/unassigned', methods=['GET'])
-def get_unassigned_gateways():
-    """Gibt alle Gateways ohne Kundenzuordnung zurück"""
-    print("DEBUG: /gateways/unassigned endpoint called")
-    try:
-        gateways = Gateway.find_unassigned()
-        print(f"DEBUG: Found {len(gateways)} unassigned gateways")
-        return jsonify([gateway.to_dict() for gateway in gateways])
-    except Exception as e:
-        print(f"DEBUG: Error in /gateways/unassigned: {str(e)}")
-        return jsonify({"error": str(e)}), 500
 
 # ----- Geräte-Endpunkte -----
 
