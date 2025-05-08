@@ -80,25 +80,33 @@ def process_message():
         gateway_uuid = None
         if isinstance(message, dict) and 'gateway' in message and 'uuid' in message['gateway']:
             gateway_uuid = message['gateway']['uuid']
+            print(f"DEBUG-MP: Found gateway UUID in message['gateway']['uuid']: {gateway_uuid}")
         else:
             # Versuche, Gateway-ID aus anderen Feldern zu extrahieren
             gateway_uuid = message.get('id') or message.get('uuid') or message.get('gateway_id') or message.get('gatewayId')
+            print(f"DEBUG-MP: Extracted gateway UUID from alternative fields: {gateway_uuid}, message keys: {list(message.keys()) if isinstance(message, dict) else 'not a dict'}")
         
         if gateway_uuid:
             # Gateway in der Datenbank aktualisieren oder erstellen
             gateway = Gateway.find_by_uuid(gateway_uuid)
+            print(f"DEBUG-MP: Looked up gateway {gateway_uuid} in DB, result: {'found' if gateway else 'not found'}")
             if gateway:
                 gateway.update_status('online')
+                print(f"DEBUG-MP: Updated existing gateway {gateway_uuid} status to 'online'")
             else:
                 # Wenn Gateway nicht existiert, erstellen wir ein temporäres Gateway ohne Kundenzuordnung
                 # Dieses kann später über die UI einem Kunden zugeordnet werden
                 Gateway.create(uuid=gateway_uuid, customer_id=None)
+                print(f"DEBUG-MP: Created new gateway {gateway_uuid} with no customer assignment")
             
             # Geräte aus subdevicelist registrieren/aktualisieren
             if isinstance(message, dict) and 'subdevicelist' in message:
                 subdevices = message.get('subdevicelist', [])
+                print(f"DEBUG-MP: Found {len(subdevices)} devices in subdevicelist")
                 for device_data in subdevices:
                     register_device_from_message(gateway_uuid, device_data)
+        else:
+            print(f"DEBUG-MP: No gateway UUID found in message. Message data: {message}")
         
         # Füge die Nachricht in die Queue ein (asynchrone Verarbeitung)
         message_id = queue.enqueue_message(message, template_name, endpoint_name)
