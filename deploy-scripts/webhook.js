@@ -41,6 +41,8 @@ app.post('/deploy', (req, res) => {
   
   // Verzögerung bevor der Prozess beginnt
   setTimeout(() => {
+    console.log(`${new Date().toISOString()} - Starte Deployment-Prozess in /var/www/iot-gateway`);
+    
     // Führe das Deployment asynchron aus
     exec('/bin/bash -c "cd /var/www/iot-gateway && git pull && . venv/bin/activate && pip install -r api/requirements.txt && cd frontend && npm install && npm run build && cd .. && pm2 reload all"', 
       {
@@ -49,12 +51,13 @@ app.post('/deploy', (req, res) => {
       },
       (error, stdout, stderr) => {
         if (error) {
-          console.error(`Fehler beim Deployment: ${error}`);
-          console.error(stderr);
+          console.error(`${new Date().toISOString()} - Fehler beim Deployment: ${error}`);
+          console.error(`${new Date().toISOString()} - Stderr: ${stderr}`);
           return;
         }
-        console.log(`Deployment erfolgreich: ${stdout}`);
-        if (stderr) console.log(`Deployment-Ausgabe: ${stderr}`);
+        console.log(`${new Date().toISOString()} - Deployment erfolgreich abgeschlossen`);
+        console.log(`${new Date().toISOString()} - Stdout: ${stdout}`);
+        if (stderr) console.log(`${new Date().toISOString()} - Stderr: ${stderr}`);
       }
     );
   }, 100);
