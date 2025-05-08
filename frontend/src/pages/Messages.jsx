@@ -129,43 +129,48 @@ const Messages = () => {
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'Unbekannt';
     try {
-      console.log("Timestamp vor Formatierung:", timestamp, typeof timestamp);
+      // DIREKTE LÖSUNG: Wenn der Timestamp ein Unix-Zeitstempel ist (etwa < 10^10),
+      // dann multipliziere mit 1000, um Millisekunden zu erhalten
+      if (typeof timestamp === 'number' || !isNaN(Number(timestamp))) {
+        const numericTimestamp = Number(timestamp);
+        if (numericTimestamp < 10000000000) {
+          const date = new Date(numericTimestamp * 1000);
+          return date.toLocaleString('de-DE');
+        } else {
+          const date = new Date(numericTimestamp);
+          return date.toLocaleString('de-DE');
+        }
+      }
       
-      // Ist der Timestamp bereits ein ISO-String?
+      // ISO-String Format verarbeiten
       if (typeof timestamp === 'string' && timestamp.includes('T')) {
-        // ISO-8601 String direkt parsen
         const date = new Date(timestamp);
-        console.log("ISO-String erkannt, Date-Objekt:", date);
         return date.toLocaleString('de-DE');
       }
       
-      // Prüfen, ob der Timestamp in Sekunden ist (Unix-Timestamp) 
-      // und nicht in Millisekunden (wie von JavaScript erwartet)
-      const isUnixTimestamp = Number(timestamp) < 10000000000; // Unix-Timestamp in Sekunden hat weniger Stellen
-      
-      // Bei Unix-Timestamps in Sekunden mit 1000 multiplizieren, um auf Millisekunden zu kommen
-      const timestampMs = isUnixTimestamp ? Number(timestamp) * 1000 : Number(timestamp);
-      
-      console.log("Umgerechneter Timestamp:", timestampMs);
-      
-      const date = new Date(timestampMs);
-      
-      console.log("Erzeugtes Datum:", date);
-      
-      // Prüfen, ob das Datum gültig ist
-      if (isNaN(date.getTime())) {
-        console.log("Ungültiges Datum erkannt");
-        return timestamp.toString();
-      }
-      
-      const formattedDate = date.toLocaleString('de-DE');
-      console.log("Formatiertes Datum:", formattedDate);
-      
-      return formattedDate;
+      // Fallback
+      const date = new Date(timestamp);
+      return date.toLocaleString('de-DE');
     } catch (e) {
-      console.error("Fehler bei der Zeitstempel-Formatierung:", e);
-      return timestamp.toString();
+      console.error("Fehler beim Formatieren des Zeitstempels:", e, timestamp);
+      return String(timestamp);
     }
+  };
+
+  // Hilfsfunktion zum Extrahieren des korrekten empfangenen Datums
+  const getCorrectDate = (message) => {
+    // Direkt received_at aus dem Nachrichtenobjekt verwenden, wenn vorhanden
+    if (message.received_at) {
+      return formatTimestamp(message.received_at);
+    }
+    
+    // Wenn message.data und received_at vorhanden, dieses verwenden
+    if (message.data && message.data.received_at) {
+      return formatTimestamp(message.data.received_at);
+    }
+    
+    // Fallback auf Timestamp
+    return formatTimestamp(message.timestamp);
   };
 
   // Bestimme die Typ-Farbe für visuelle Unterscheidung
@@ -277,7 +282,7 @@ const Messages = () => {
                                               onClick={() => handleMessageSelect(message)}
                                               style={{ cursor: 'pointer' }}
                                             >
-                                              <td>{formatTimestamp(message.received_at || message.timestamp)}</td>
+                                              <td>{getCorrectDate(message)}</td>
                                               <td>
                                                 <Badge bg={getTypeColor(message.type || deviceType)}>
                                                   {message.type || deviceType}
@@ -324,7 +329,7 @@ const Messages = () => {
                             </tr>
                             <tr>
                               <th>Empfangen</th>
-                              <td>{formatTimestamp(selectedMessage.received_at || selectedMessage.timestamp)}</td>
+                              <td>{getCorrectDate(selectedMessage)}</td>
                             </tr>
                             <tr>
                               <th>Timestamp</th>
@@ -381,7 +386,7 @@ const Messages = () => {
                         onClick={() => handleMessageSelect(message)}
                               style={{ cursor: 'pointer' }}
                       >
-                              <td>{formatTimestamp(message.received_at || message.timestamp)}</td>
+                              <td>{getCorrectDate(message)}</td>
                               <td>{shortenId(message.id)}</td>
                         <td>
                                 <Badge bg={getTypeColor(getDeviceType(message))}>
@@ -432,7 +437,7 @@ const Messages = () => {
                       </tr>
                       <tr>
                         <th>Empfangen</th>
-                              <td>{formatTimestamp(selectedMessage.received_at || selectedMessage.timestamp)}</td>
+                              <td>{getCorrectDate(selectedMessage)}</td>
                       </tr>
                       <tr>
                         <th>Timestamp</th>
