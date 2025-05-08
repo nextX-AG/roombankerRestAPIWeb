@@ -30,11 +30,11 @@
   - Letzter Kontakt
 - [x] CRUD-API-Endpunkte für Gateway-Verwaltung
 - [x] Automatisierte Status-Aktualisierung
-- [ ] Monitoring-System für Gateway-Status
-- [ ] Erkennung und Anzeige nicht zugeordneter Gateways
-  - [ ] Erkennung von Gateway-IDs aus empfangenen Nachrichten
-  - [ ] Abgleich mit registrierten Gateways
-  - [ ] Speicherung unregistrierter Gateway-IDs in separater Collection oder Cache
+- [x] Monitoring-System für Gateway-Status
+- [x] Erkennung und Anzeige nicht zugeordneter Gateways
+  - [x] Erkennung von Gateway-IDs aus empfangenen Nachrichten
+  - [x] Abgleich mit registrierten Gateways
+  - [x] Speicherung unregistrierter Gateway-IDs in separater Collection oder Cache
 
 ### Geräte-Verwaltung
 - [x] Tabelle/Collection für Geräte anlegen
@@ -168,9 +168,9 @@
 - [x] Automatische Geräteerkennung aus Nachrichten
 - [x] Gateway-Statusüberwachung
 - [x] Gerätemanagement-UI
-- [ ] Verbesserter Gateway-Onboarding-Prozess (Priorität: Mittel)
-  - [ ] Erkennung und Anzeige unregistrierter Gateways
-  - [ ] Vereinfachte Registrierung über Dropdown-Liste
+- [x] Verbesserter Gateway-Onboarding-Prozess (Priorität: Mittel)
+  - [x] Erkennung und Anzeige unregistrierter Gateways
+  - [x] Vereinfachte Registrierung über Dropdown-Liste
 
 ### Phase 3: Transformationen & Routing (Priorität: Hoch)
 - [ ] JavaScript-Transformation mit Upload

@@ -37,19 +37,43 @@ const Gateways = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [gatewaysResponse, customersResponse, unassignedResponse] = await Promise.all([
-        axios.get(`${API_URL}/gateways`),
-        axios.get(`${API_URL}/customers`),
-        axios.get(`${API_URL}/gateways/unassigned`)
-      ]);
+      console.log('Fetching data from API endpoints...');
       
-      setGateways(gatewaysResponse.data);
-      setCustomers(customersResponse.data);
-      setUnassignedGateways(unassignedResponse.data);
-      setError(null);
+      try {
+        const gatewaysResponse = await axios.get(`${API_URL}/gateways`);
+        console.log('Gateways response:', gatewaysResponse.data);
+        setGateways(gatewaysResponse.data);
+      } catch (err) {
+        console.error('Error fetching gateways:', err);
+        setError(`Fehler beim Laden der Gateways: ${err.message}`);
+      }
+      
+      try {
+        const customersResponse = await axios.get(`${API_URL}/customers`);
+        console.log('Customers response:', customersResponse.data);
+        setCustomers(customersResponse.data);
+      } catch (err) {
+        console.error('Error fetching customers:', err);
+        setError(`Fehler beim Laden der Kunden: ${err.message}`);
+      }
+      
+      try {
+        console.log('Fetching unassigned gateways from:', `${API_URL}/gateways/unassigned`);
+        const unassignedResponse = await axios.get(`${API_URL}/gateways/unassigned`);
+        console.log('Unassigned gateways response:', unassignedResponse.data);
+        setUnassignedGateways(unassignedResponse.data);
+      } catch (err) {
+        console.error('Error fetching unassigned gateways:', err);
+        console.error('Error details:', {
+          message: err.message,
+          status: err.response?.status,
+          data: err.response?.data
+        });
+        setError(`Fehler beim Laden der unregistrierten Gateways: ${err.message}`);
+      }
     } catch (err) {
-      console.error('Fehler beim Laden der Daten:', err);
-      setError('Daten konnten nicht geladen werden. Bitte versuchen Sie es später erneut.');
+      console.error('General error in fetchData:', err);
+      setError(`Allgemeiner Fehler beim Laden der Daten: ${err.message}`);
     } finally {
       setLoading(false);
     }
