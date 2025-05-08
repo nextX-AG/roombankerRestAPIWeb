@@ -15,21 +15,65 @@ Das `mqtt-sniffer-relay.sh` Skript überwacht den Netzwerkverkehr auf Port 1883 
 - Sendet die Daten an den konfigurierten API-Endpunkt
 
 #### Installation auf dem Gateway:
+Per SSH mit Router verbinden: 
+ssh -oHostKeyAlgorithms=+ssh-rsa -oPubkeyAcceptedKeyTypes=+ssh-rsa root@"routerIP"
+TestROuter: XmXj8pEM
+
+opkg update
 
 ```bash
-# Kopiere das Skript
-sudo cp mqtt-sniffer-relay.sh /usr/bin/
-sudo chmod +x /usr/bin/mqtt-sniffer-relay.sh
+#Erstelle das Skript
+cat > /usr/bin/mqtt-sniffer-relay.sh << 'EOF'
+#!/bin/sh
+
+# Konfiguration
+INTERFACE="eth0"
+SERVER_URL="http://157.180.37.234/api/test"
+TMP_FILE="/tmp/mqtt-sniff-last.json"
+UUID_FILE="/etc/gateway-uuid"
+
+# UUID erzeugen falls nicht vorhanden
+[ -f "$UUID_FILE" ] || echo "gw-$(cat /proc/sys/kernel/random/uuid)" > "$UUID_FILE"
+UUID=$(cat "$UUID_FILE")
+
+echo "[*] MQTT Sniffer-Relay gestartet..."
+echo "[*] Gateway-ID: $UUID"
+echo "[*] Sende erkannte JSON-Daten an: $SERVER_URL"
+echo
+
+tcpdump -A -l -i "$INTERFACE" port 1883 2>/dev/null | while read line; do
+    echo "$line" | grep -Eo '\{.*\}' | while read json; do
+        [ "$(echo "$json" | wc -c)" -lt 10 ] && continue
+        if [ -f "$TMP_FILE" ]; then
+            LAST=$(cat "$TMP_FILE")
+            [ "$json" = "$LAST" ] && continue
+        fi
+        echo "[+] Neue JSON erkannt:"
+        echo "$json"
+        echo "$json" > "$TMP_FILE"
+
+        # JSON mit Gateway-ID erweitern
+        payload=$(echo "$json" | sed 's/^{/{ "gateway_id": "'"$UUID"'", /')
+
+        curl -s -X POST "$SERVER_URL" -H "Content-Type: application/json" -d "$payload"
+        echo
+    done
+done
+EOF
+
+# Skript ausführbar machen
+chmod +x /usr/bin/mqtt-sniffer-relay.sh
 
 # Konfiguriere das Interface/URL falls nötig
-sudo nano /usr/bin/mqtt-sniffer-relay.sh
+nano /usr/bin/mqtt-sniffer-relay.sh
 
 # Stelle sicher, dass tcpdump installiert ist
 sudo apt update
-sudo apt install -y tcpdump curl
+opkg install tcpdump
+opkg apt install curl
 
 # Starte das Skript manuell zum Testen
-sudo /usr/bin/mqtt-sniffer-relay.sh
+/usr/bin/mqtt-sniffer-relay.sh
 ```
 
 ### 2. Automatischer Start beim Hochfahren
