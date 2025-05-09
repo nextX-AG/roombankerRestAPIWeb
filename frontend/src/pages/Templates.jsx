@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, ListGroup, Tab, Tabs, Alert } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSave, faPlus, faTrash, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
+import { faSave, faPlus, faTrash, faInfoCircle, faFileAlt } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
@@ -291,8 +291,13 @@ const Templates = () => {
   };
 
   return (
-    <Container fluid className="py-4">
-      <h1 className="mb-4">Templates</h1>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">
+          <FontAwesomeIcon icon={faFileAlt} className="icon" />
+          Templates
+        </h1>
+      </div>
       
       {error && <Alert variant="danger">{error}</Alert>}
       {success && <Alert variant="success">{success}</Alert>}
@@ -300,9 +305,9 @@ const Templates = () => {
       <Row>
         <Col md={6}>
           <Card className="mb-4">
-            <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
+            <Card.Header className="d-flex justify-content-between align-items-center">
               <span>Template-Liste</span>
-              <Button variant="light" size="sm" onClick={handleCreateTemplate}>
+              <Button variant="primary" size="sm" onClick={handleCreateTemplate}>
                 <FontAwesomeIcon icon={faPlus} className="me-1" /> Neu
               </Button>
             </Card.Header>
@@ -358,7 +363,7 @@ const Templates = () => {
           </Card>
           
           <Card>
-            <Card.Header className="bg-primary text-white">
+            <Card.Header>
               Template {isEditing ? 'bearbeiten' : 'Details'}
             </Card.Header>
             <Card.Body>
@@ -454,7 +459,7 @@ const Templates = () => {
         
         <Col md={6}>
           <Card className="mb-4">
-            <Card.Header className="bg-primary text-white">
+            <Card.Header>
               Test-Transformation
             </Card.Header>
             <Card.Body>
@@ -498,7 +503,7 @@ const Templates = () => {
           </Card>
           
           <Card>
-            <Card.Header className="bg-primary text-white">
+            <Card.Header>
               Transformationsergebnis
             </Card.Header>
             <Card.Body>
@@ -517,7 +522,7 @@ const Templates = () => {
       <Row className="mt-4">
         <Col>
           <Card>
-            <Card.Header className="bg-primary text-white">
+            <Card.Header>
               Template-Richtlinien
             </Card.Header>
             <Card.Body>
@@ -583,7 +588,7 @@ const Templates = () => {
           </Card>
         </Col>
       </Row>
-    </Container>
+    </div>
   );
 };
 

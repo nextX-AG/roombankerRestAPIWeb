@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faServer, faExchangeAlt, faCheckCircle, faExclamationTriangle, faBell } from '@fortawesome/free-solid-svg-icons';
+import { faServer, faExchangeAlt, faCheckCircle, faExclamationTriangle, faBell, faTachometerAlt } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
@@ -109,15 +109,20 @@ const Dashboard = () => {
   };
 
   return (
-    <Container>
-      <h1 className="mb-4">Dashboard</h1>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">
+          <FontAwesomeIcon icon={faTachometerAlt} className="icon" />
+          Dashboard
+        </h1>
+      </div>
       
       {error && <Alert variant="danger">{error}</Alert>}
       
       <Row className="mb-4">
         <Col md={4}>
           <Card className="h-100">
-            <Card.Header className="bg-primary text-white">
+            <Card.Header>
               <FontAwesomeIcon icon={faServer} className="me-2" />
               API-Server Status
             </Card.Header>
@@ -147,7 +152,7 @@ const Dashboard = () => {
         
         <Col md={4}>
           <Card className="h-100">
-            <Card.Header className="bg-primary text-white">
+            <Card.Header>
               <FontAwesomeIcon icon={faExchangeAlt} className="me-2" />
               Message Processor Status
             </Card.Header>
@@ -177,7 +182,7 @@ const Dashboard = () => {
         
         <Col md={4}>
           <Card className="h-100">
-            <Card.Header className="bg-primary text-white">
+            <Card.Header>
               <FontAwesomeIcon icon={faBell} className="me-2" />
               Testnachricht senden
             </Card.Header>
@@ -201,7 +206,7 @@ const Dashboard = () => {
       <Row className="mb-4">
         <Col md={6}>
           <Card>
-            <Card.Header className="bg-primary text-white">
+            <Card.Header>
               Verfügbare Templates ({templates.length})
             </Card.Header>
             <Card.Body>
@@ -225,7 +230,7 @@ const Dashboard = () => {
         
         <Col md={6}>
           <Card>
-            <Card.Header className="bg-primary text-white">
+            <Card.Header>
               Verfügbare Endpunkte ({endpoints.length})
             </Card.Header>
             <Card.Body>
@@ -251,7 +256,7 @@ const Dashboard = () => {
       <Row>
         <Col>
           <Card>
-            <Card.Header className="bg-primary text-white">
+            <Card.Header>
               Letzte Nachrichten ({latestMessages.length})
             </Card.Header>
             <Card.Body>
@@ -278,7 +283,7 @@ const Dashboard = () => {
           </Card>
         </Col>
       </Row>
-    </Container>
+    </div>
   );
 };
 
