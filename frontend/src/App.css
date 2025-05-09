@@ -1,89 +1,9 @@
-/* Allgemeine Stile */
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-.App {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-/* Hauptinhalt mit Abstand für Footer */
-.app-main-content {
-  flex: 1;
-  padding-top: 0; /* Entferne das Top-Padding, um Abschneidungen zu vermeiden */
-  padding-bottom: 60px; /* Platz für den Footer */
-  width: 100%;
-  overflow-x: hidden;
-}
-
-/* Container-Stile für konsistentes Layout */
-.container-fluid {
-  width: 100%;
-  padding-left: 15px;
-  padding-right: 15px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* Responsive Anpassungen */
-@media (max-width: 768px) {
-  .app-main-content {
-    padding-bottom: 80px; /* Mehr Platz für den Footer auf mobilen Geräten */
-  }
-}
+/* 
+ * App-spezifische Stile, die nicht in der globalen CSS-Datei enthalten sind
+ */
 
 /* Status-Icons für Gateways */
 .gateway-status-icons {
   display: flex;
   align-items: center;
-}
-
-/* Überschreibe die root-Styles, aber vermeide Layout-Konflikte */
-#root {
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-/* Behalte die restlichen Styles, aber stelle sicher, dass sie nicht mit dem Layout in Konflikt stehen */
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-/* Stelle sicher, dass alle Karten einheitlich formatiert sind */
-.card {
-  margin-bottom: 1rem;
-}
-
-.read-the-docs {
-  color: #888;
-}
+} 
