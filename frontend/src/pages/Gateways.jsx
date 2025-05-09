@@ -310,6 +310,8 @@ const Gateways = () => {
                         <td>{renderStatusBadge(gateway.status)}</td>
                         <td>
                           {gatewayLatestData[gateway.uuid] && 
+                           gatewayLatestData[gateway.uuid].data && 
+                           GatewayStatusIcons({ gatewayData: gatewayLatestData[gateway.uuid].data }) &&
                            GatewayStatusIcons({ gatewayData: gatewayLatestData[gateway.uuid].data }).primary}
                         </td>
                         <td>{formatDateTime(gateway.last_contact)}</td>
