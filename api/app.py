@@ -61,19 +61,33 @@ def receive_message():
         # Parse JSON-Body
         try:
             data = json.loads(body)
+            logger.info(f"Empfangene Nachricht: {json.dumps(data, indent=2)[:200]}...")  # Zeige die ersten 200 Zeichen
         except json.JSONDecodeError:
             logger.error("Ungültiges JSON empfangen")
             return jsonify({"status": "error", "message": "Invalid JSON"}), 400
         
         # Gateway-ID extrahieren und in Datenbank speichern
         gateway_uuid = None
+        logger.info(f"Suche nach Gateway-ID in Nachricht mit Keys: {list(data.keys() if isinstance(data, dict) else [])}")
+        
         if isinstance(data, dict):
-            if 'gateway' in data and 'uuid' in data['gateway']:
-                gateway_uuid = data['gateway']['uuid']
-                logger.info(f"Gateway UUID aus gateway.uuid extrahiert: {gateway_uuid}")
-            elif 'gateway_id' in data:
+            # Direkte Felder prüfen
+            if 'gateway_id' in data:
                 gateway_uuid = data['gateway_id']
                 logger.info(f"Gateway UUID aus gateway_id extrahiert: {gateway_uuid}")
+            elif 'gateway' in data and isinstance(data['gateway'], dict):
+                if 'uuid' in data['gateway']:
+                    gateway_uuid = data['gateway']['uuid']
+                    logger.info(f"Gateway UUID aus gateway.uuid extrahiert: {gateway_uuid}")
+                elif 'id' in data['gateway']:
+                    gateway_uuid = data['gateway']['id']
+                    logger.info(f"Gateway UUID aus gateway.id extrahiert: {gateway_uuid}")
+            
+            # Bei Code 2030 könnte die Gateway-ID in der data.gateway_id sein
+            if not gateway_uuid and 'data' in data and isinstance(data['data'], dict):
+                if 'gateway_id' in data['data']:
+                    gateway_uuid = data['data']['gateway_id']
+                    logger.info(f"Gateway UUID aus data.gateway_id extrahiert: {gateway_uuid}")
             
             # Weitere Versuche, Gateway-ID zu finden
             if not gateway_uuid:
@@ -87,15 +101,28 @@ def receive_message():
         # Gateway in der Datenbank registrieren, wenn eine ID gefunden wurde
         if gateway_uuid and Gateway is not None:
             try:
+                current_time = datetime.now()
+                # Entferne mögliche Whitespaces oder Newlines
+                gateway_uuid = gateway_uuid.strip() if isinstance(gateway_uuid, str) else gateway_uuid
+                logger.info(f"Suche Gateway mit UUID: '{gateway_uuid}'")
+                
                 gateway = Gateway.find_by_uuid(gateway_uuid)
                 if gateway:
-                    gateway.update_status('online')
-                    logger.info(f"Gateway {gateway_uuid} Status auf 'online' aktualisiert")
+                    logger.info(f"Gateway {gateway_uuid} gefunden, aktualisiere Status")
+                    # Aktualisiere den Status UND den last_contact-Zeitstempel
+                    gateway.update(status='online', last_contact=current_time)
+                    logger.info(f"Gateway {gateway_uuid} Status auf 'online' aktualisiert, last_contact={current_time}")
                 else:
-                    Gateway.create(uuid=gateway_uuid, customer_id=None)
-                    logger.info(f"Neues Gateway {gateway_uuid} ohne Kundenzuordnung erstellt")
+                    logger.info(f"Gateway {gateway_uuid} nicht gefunden, erstelle neuen Eintrag")
+                    Gateway.create(uuid=gateway_uuid, customer_id=None, status='online', last_contact=current_time)
+                    logger.info(f"Neues Gateway {gateway_uuid} ohne Kundenzuordnung erstellt, last_contact={current_time}")
             except Exception as e:
                 logger.error(f"Fehler beim Verarbeiten des Gateways {gateway_uuid}: {str(e)}")
+                logger.error(f"Exception Typ: {type(e).__name__}")
+                import traceback
+                logger.error(f"Stacktrace: {traceback.format_exc()}")
+        else:
+            logger.warning(f"Keine Gateway-ID in der Nachricht gefunden oder Gateway-Modell nicht verfügbar. Daten: {data}")
         
         # Erstelle Nachrichtenobjekt mit Metadaten
         message = {
@@ -126,6 +153,8 @@ def receive_message():
     
     except Exception as e:
         logger.error(f"Fehler beim Verarbeiten der Nachricht: {str(e)}")
+        import traceback
+        logger.error(f"Stacktrace: {traceback.format_exc()}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/messages', methods=['GET'])
