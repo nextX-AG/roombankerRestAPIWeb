@@ -22,6 +22,9 @@ const Messages = () => {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [groupBy, setGroupBy] = useState('time'); // 'time', 'gateway', 'type'
+  const [forwardingStatus, setForwardingStatus] = useState([]);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [queueStatus, setQueueStatus] = useState({});
 
   const fetchMessages = async () => {
     try {
@@ -37,12 +40,32 @@ const Messages = () => {
     }
   };
 
+  const fetchForwardingStatus = async () => {
+    try {
+      setLoadingStatus(true);
+      const [statusResponse, queueResponse] = await Promise.all([
+        axios.get(`${config.apiBaseUrl}/messages/status`),
+        axios.get(`${config.apiBaseUrl}/messages/queue/status`)
+      ]);
+      setForwardingStatus(statusResponse.data);
+      setQueueStatus(queueResponse.data);
+      setError(null);
+      setLoadingStatus(false);
+    } catch (error) {
+      console.error('Fehler beim Abrufen des Weiterleitungsstatus:', error);
+      setError('Fehler beim Abrufen des Weiterleitungsstatus.');
+      setLoadingStatus(false);
+    }
+  };
+
   useEffect(() => {
     fetchMessages();
+    fetchForwardingStatus();
     
     // Alle 10 Sekunden aktualisieren
     const interval = setInterval(() => {
       fetchMessages();
+      fetchForwardingStatus();
     }, 10000);
     
     return () => clearInterval(interval);
@@ -207,6 +230,41 @@ const Messages = () => {
     return id;
   };
 
+  // Status einer Nachricht formatieren
+  const formatForwardingStatus = (status) => {
+    switch(status) {
+      case 'completed':
+        return <Badge bg="success">Erfolgreich</Badge>;
+      case 'failed':
+        return <Badge bg="danger">Fehlgeschlagen</Badge>;
+      case 'processing':
+        return <Badge bg="warning">In Bearbeitung</Badge>;
+      case 'pending':
+        return <Badge bg="info">Ausstehend</Badge>;
+      default:
+        return <Badge bg="secondary">Unbekannt</Badge>;
+    }
+  };
+
+  // Ziel der Weiterleitung formatieren
+  const formatEndpoint = (endpoint) => {
+    if (endpoint.startsWith('customer_')) {
+      return `Kunde: ${endpoint.replace('customer_', '')}`;
+    }
+    return endpoint === 'evalarm_default' ? 'evAlarm (Standard)' : endpoint;
+  };
+
+  // Nachricht erneut versuchen
+  const handleRetryMessage = async (messageId) => {
+    try {
+      await axios.post(`${config.apiBaseUrl}/messages/retry/${messageId}`);
+      fetchForwardingStatus();
+    } catch (error) {
+      console.error('Fehler beim erneuten Versuch:', error);
+      setError('Nachricht konnte nicht erneut versucht werden.');
+    }
+  };
+
   return (
     <>
       {/* 1. Seiten-Titel */}
@@ -243,6 +301,9 @@ const Messages = () => {
           </Nav.Item>
           <Nav.Item>
             <Nav.Link eventKey="chronologicalView">Chronologisch</Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link eventKey="forwardingView">Weiterleitung</Nav.Link>
           </Nav.Item>
         </Nav>
 
@@ -481,6 +542,192 @@ const Messages = () => {
                         <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                           <JsonView data={selectedMessage.content || selectedMessage} />
                         </div>
+                      </>
+                    ) : (
+                      <p className="text-center">Wählen Sie eine Nachricht aus, um die Details anzuzeigen</p>
+                    )}
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+          </Tab.Pane>
+          
+          <Tab.Pane eventKey="forwardingView">
+            <Row>
+              <Col md={12} lg={6}>
+                <Card className="mb-4">
+                  <Card.Header>Weiterleitungs-Status</Card.Header>
+                  <Card.Body>
+                    <Row className="mb-3">
+                      <Col xs={6} md={3}>
+                        <div className="d-flex align-items-center">
+                          <div className="bg-info p-3 rounded me-2">
+                            <FontAwesomeIcon icon={faSync} className="text-white" />
+                          </div>
+                          <div>
+                            <div className="small text-muted">Ausstehend</div>
+                            <h4 className="mb-0">{queueStatus.pending_count || 0}</h4>
+                          </div>
+                        </div>
+                      </Col>
+                      <Col xs={6} md={3}>
+                        <div className="d-flex align-items-center">
+                          <div className="bg-warning p-3 rounded me-2">
+                            <FontAwesomeIcon icon={faSync} className="text-white fa-spin" />
+                          </div>
+                          <div>
+                            <div className="small text-muted">In Bearbeitung</div>
+                            <h4 className="mb-0">{queueStatus.processing_count || 0}</h4>
+                          </div>
+                        </div>
+                      </Col>
+                      <Col xs={6} md={3}>
+                        <div className="d-flex align-items-center">
+                          <div className="bg-success p-3 rounded me-2">
+                            <FontAwesomeIcon icon={faInfoCircle} className="text-white" />
+                          </div>
+                          <div>
+                            <div className="small text-muted">Erfolgreich</div>
+                            <h4 className="mb-0">{queueStatus.stats?.total_processed || 0}</h4>
+                          </div>
+                        </div>
+                      </Col>
+                      <Col xs={6} md={3}>
+                        <div className="d-flex align-items-center">
+                          <div className="bg-danger p-3 rounded me-2">
+                            <FontAwesomeIcon icon={faExclamationTriangle} className="text-white" />
+                          </div>
+                          <div>
+                            <div className="small text-muted">Fehlgeschlagen</div>
+                            <h4 className="mb-0">{queueStatus.failed_count || 0}</h4>
+                          </div>
+                        </div>
+                      </Col>
+                    </Row>
+                    <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                      <Table hover>
+                        <thead>
+                          <tr>
+                            <th>Zeit</th>
+                            <th>Template</th>
+                            <th>Ziel</th>
+                            <th>Status</th>
+                            <th>Aktionen</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {loadingStatus ? (
+                            <tr>
+                              <td colSpan="5" className="text-center">Lade Weiterleitungsdaten...</td>
+                            </tr>
+                          ) : forwardingStatus.length === 0 ? (
+                            <tr>
+                              <td colSpan="5" className="text-center">Keine Weiterleitungsdaten vorhanden</td>
+                            </tr>
+                          ) : (
+                            forwardingStatus.map((status) => (
+                              <tr 
+                                key={status.id}
+                                className={selectedMessage?.id === status.id ? 'table-primary' : ''}
+                                onClick={() => handleMessageSelect(status.message)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                <td>{formatTimestamp(status.completed_at || status.failed_at || status.created_at)}</td>
+                                <td>{status.template}</td>
+                                <td>{formatEndpoint(status.endpoint)}</td>
+                                <td>{formatForwardingStatus(status.status)}</td>
+                                <td>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline-primary"
+                                    className="me-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleMessageSelect(status.message);
+                                    }}
+                                  >
+                                    Details
+                                  </Button>
+                                  {status.status === 'failed' && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline-warning"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRetryMessage(status.id);
+                                      }}
+                                    >
+                                      Wiederholen
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </Table>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+              
+              <Col md={12} lg={6}>
+                <Card className="message-detail-card">
+                  <Card.Header>
+                    Nachrichtendetails
+                  </Card.Header>
+                  <Card.Body>
+                    {selectedMessage ? (
+                      <>
+                        <h5>Metadaten</h5>
+                        <Table bordered size="sm" className="mb-3">
+                          <tbody>
+                            <tr>
+                              <th>ID</th>
+                              <td>{selectedMessage.id}</td>
+                            </tr>
+                            <tr>
+                              <th>Empfangen</th>
+                              <td>{getCorrectDate(selectedMessage)}</td>
+                            </tr>
+                            <tr>
+                              <th>Gateway</th>
+                              <td>{getGatewayId(selectedMessage)}</td>
+                            </tr>
+                            {selectedMessage.result && (
+                              <tr>
+                                <th>API-Antwort</th>
+                                <td>
+                                  {selectedMessage.result.response_status === 200 ? (
+                                    <Badge bg="success">Erfolgreich ({selectedMessage.result.response_status})</Badge>
+                                  ) : (
+                                    <Badge bg="danger">Fehler ({selectedMessage.result.response_status})</Badge>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                            {selectedMessage.error && (
+                              <tr>
+                                <th>Fehler</th>
+                                <td><span className="text-danger">{selectedMessage.error}</span></td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </Table>
+
+                        <h5>Nachrichteninhalt</h5>
+                        <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                          <JsonView data={selectedMessage.message || selectedMessage.content || selectedMessage} />
+                        </div>
+
+                        {selectedMessage.result && selectedMessage.result.transformed_message && (
+                          <>
+                            <h5 className="mt-3">Transformierte Nachricht</h5>
+                            <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                              <JsonView data={selectedMessage.result.transformed_message} />
+                            </div>
+                          </>
+                        )}
                       </>
                     ) : (
                       <p className="text-center">Wählen Sie eine Nachricht aus, um die Details anzuzeigen</p>

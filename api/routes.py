@@ -429,4 +429,96 @@ def process_message():
     return jsonify({
         "message": f"{len(registered_devices)} Geräte registriert/aktualisiert",
         "devices": registered_devices
-    }) 
+    })
+
+# ----- Nachrichten-Endpunkte -----
+
+@api_bp.route('/messages', methods=['GET'])
+def get_messages():
+    """Gibt alle empfangenen Nachrichten zurück"""
+    # Pfad zu gespeicherten Nachrichten
+    messages_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+    
+    # Alle JSON-Dateien im Verzeichnis
+    json_files = glob.glob(os.path.join(messages_dir, '*.json'))
+    
+    if not json_files:
+        return jsonify([])
+    
+    # Sortiere die Dateien nach Änderungszeitstempel (neueste zuerst)
+    json_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+    
+    # Sammle alle Nachrichten
+    messages = []
+    for file_path in json_files[:100]:  # Begrenze auf die neuesten 100 Nachrichten
+        try:
+            with open(file_path, 'r') as f:
+                message = json.load(f)
+                
+            # Füge ID und Dateiinformationen hinzu
+            timestamp = os.path.getmtime(file_path)
+            message_id = os.path.basename(file_path).split('.')[0]
+            
+            # Falls nur der Nachrichteninhalt gespeichert wurde, umhülle ihn
+            if 'id' not in message and 'content' not in message:
+                message = {
+                    'id': message_id,
+                    'content': message,
+                    'received_at': timestamp,
+                    'timestamp': timestamp
+                }
+            else:
+                message['id'] = message.get('id', message_id)
+                message['timestamp'] = message.get('timestamp', timestamp)
+            
+            messages.append(message)
+                
+        except Exception as e:
+            print(f"Fehler beim Lesen der Datei {file_path}: {str(e)}")
+    
+    return jsonify(messages)
+
+@api_bp.route('/messages/status', methods=['GET'])
+def get_message_status():
+    """Gibt den Status aller verarbeiteten Nachrichten zurück"""
+    from api.message_queue import get_message_queue
+    
+    queue = get_message_queue()
+    
+    # Hole die letzten Ergebnisse
+    results_json = queue.redis_client.lrange(queue.results_list, 0, 99)
+    results = [json.loads(result) for result in results_json]
+    
+    # Hole fehlgeschlagene Nachrichten
+    failed_messages = queue.get_failed_messages()
+    
+    # Kombiniere alle Statusnachrichten
+    all_statuses = results + failed_messages
+    
+    # Sortiere nach Zeit (neueste zuerst)
+    all_statuses.sort(key=lambda x: x.get('completed_at', 0) or x.get('failed_at', 0) or 0, reverse=True)
+    
+    return jsonify(all_statuses)
+
+@api_bp.route('/messages/queue/status', methods=['GET'])
+def get_queue_status():
+    """Gibt den Status der Nachrichtenqueue zurück"""
+    from api.message_queue import get_message_queue
+    
+    queue = get_message_queue()
+    status = queue.get_queue_status()
+    
+    return jsonify(status)
+
+@api_bp.route('/messages/retry/<message_id>', methods=['POST'])
+def retry_message(message_id):
+    """Versucht eine fehlgeschlagene Nachricht erneut"""
+    from api.message_queue import get_message_queue
+    
+    queue = get_message_queue()
+    success = queue.retry_failed_message(message_id)
+    
+    if success:
+        return jsonify({"message": "Nachricht wurde für einen erneuten Versuch in die Queue verschoben"})
+    else:
+        return jsonify({"error": "Nachricht konnte nicht gefunden werden"}), 404 
