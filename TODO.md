@@ -51,7 +51,7 @@
 - [ ] Gerätestatus-Verlauf speichern
 
 ### Template-Verwaltung
-- [ ] System für JavaScript-Transformationen implementieren
+- [ ] System für JavaScript-Transformationen implementieren (NIEDRIGE PRIORITÄT)
   - Upload-Funktionalität für JS-Dateien
   - Sichere Sandbox-Ausführung mit VM2
   - Versionierung der Transformationsskripte
@@ -87,9 +87,12 @@
 ## 2. Backend-Erweiterung
 
 ### Routing-System
-- [ ] Dynamisches Routing basierend auf Kundenstruktur implementieren
+- [ ] Dynamisches Routing basierend auf Kundenstruktur implementieren (HÖCHSTE PRIORITÄT)
   - Gateway → Kunde → evAlarm-API
-- [ ] JavaScript-basierte Transformationen pro Gateway/Kunde
+  - Für unseren Anwendungsfall: Ausschließliche Verwendung des evAlarm-Formats
+- [ ] Bestehende Templates mit Kundendaten verknüpfen
+  - Verwendung der Kunden-Credentials für API-Authentifizierung
+  - Einfügen des korrekten Namespace aus Kundendaten
 - [ ] Dual-Mode-Weiterleitung implementieren
   - Sofortige Übermittlung (Echtzeit) für Alarme
   - Optional: Gepuffertes Senden (z.B. alle 5 Minuten) für Status-Updates
@@ -173,9 +176,10 @@
   - [x] Vereinfachte Registrierung über Dropdown-Liste
 
 ### Phase 3: Transformationen & Routing (Priorität: Hoch)
-- [ ] JavaScript-Transformation mit Upload
+- [ ] Dynamisches Routing zur evAlarm-API (HÖCHSTE PRIORITÄT)
 - [ ] Sofortige Weiterleitung an evAlarm-API
 - [ ] Konfigurierbare Routing-Regeln
+- [ ] JavaScript-Transformation mit Upload (NIEDRIGE PRIORITÄT)
 
 ### Phase 4: Monitoring & Optimierung (Priorität: Mittel)
 - [ ] Umfassendes Monitoring

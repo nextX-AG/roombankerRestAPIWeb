@@ -97,20 +97,64 @@ class TemplateEngine:
         
         try:
             # Extrahiere Daten aus der Nachricht
-            data = message.get('data', {})
+            data = message if isinstance(message, dict) else {}
+            
+            # Gateway-ID aus verschiedenen möglichen Quellen extrahieren
+            gateway_id = None
+            for key in ['gateway_uuid', 'gateway_id', 'gateway']:
+                if key in data:
+                    if isinstance(data[key], str):
+                        gateway_id = data[key]
+                        break
+                    elif isinstance(data[key], dict) and 'id' in data[key]:
+                        gateway_id = data[key]['id']
+                        break
+            
+            if not gateway_id and 'data' in data and isinstance(data['data'], dict):
+                data_inner = data['data']
+                for key in ['gateway_uuid', 'gateway_id', 'gateway']:
+                    if key in data_inner:
+                        if isinstance(data_inner[key], str):
+                            gateway_id = data_inner[key]
+                            break
+                        elif isinstance(data_inner[key], dict) and 'id' in data_inner[key]:
+                            gateway_id = data_inner[key]['id']
+                            break
+            
+            # Extrahiere Alarm-Status und Alarm-Typ
+            alarm_status = "unknown"
+            alarm_type = "unknown"
+            
+            # Aus Gateway-Status
+            if 'gateway' in data and isinstance(data['gateway'], dict):
+                if 'alarmstatus' in data['gateway']:
+                    alarm_status = data['gateway']['alarmstatus']
+                if 'alarmtype' in data['gateway']:
+                    alarm_type = data['gateway']['alarmtype']
+            
+            # Aus Subdevicelist (Priorität über Gateway-Status)
+            if 'subdevicelist' in data and isinstance(data['subdevicelist'], list) and len(data['subdevicelist']) > 0:
+                for device in data['subdevicelist']:
+                    if isinstance(device, dict):
+                        if 'value' in device and isinstance(device['value'], dict):
+                            values = device['value']
+                            if 'alarmstatus' in values:
+                                alarm_status = values['alarmstatus']
+                            if 'alarmtype' in values:
+                                alarm_type = values['alarmtype']
             
             # Erstelle Kontext für Template-Rendering
             context = {
-                'message': message,
-                'data': data,
+                'message': data,
                 'ts': data.get('ts', int(datetime.now().timestamp())),
-                'gateway_id': self._extract_gateway_id(data),
+                'gateway_id': gateway_id or "unknown_gateway",
                 'device_id': self._extract_device_id(data),
-                'alarm_type': self._extract_alarm_type(data),
-                'alarm_status': self._extract_alarm_status(data),
+                'alarm_type': alarm_type,
+                'alarm_status': alarm_status,
                 'uuid': str(uuid.uuid4()),
                 'timestamp': int(datetime.now().timestamp()),
-                'iso_timestamp': datetime.now().isoformat()
+                'iso_timestamp': datetime.now().isoformat(),
+                'namespace': 'eva.herford'  # Standardwert, wird vom MessageForwarder überschrieben
             }
             
             # Rendere Template
@@ -176,14 +220,21 @@ class MessageForwarder:
         Initialisiert den Message Forwarder
         """
         self.endpoints = {}
+        # MongoDB-Import muss hier durchgeführt werden, um zirkuläre Importe zu vermeiden
+        import sys
+        import os
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from api.models import Customer, Gateway
+        self.Customer = Customer
+        self.Gateway = Gateway
         self.load_endpoints()
     
     def load_endpoints(self):
         """
         Lädt die konfigurierten Endpunkte
         """
-        # Beispiel-Endpunkt für Evalarm
-        self.endpoints['evalarm'] = {
+        # Standardendpunkt für evAlarm als Fallback
+        self.endpoints['evalarm_default'] = {
             'url': 'https://tas.dev.evalarm.de/api/v1/espa',
             'auth': ('eva.herford', 'GW8OoLZE'),
             'headers': {
@@ -191,23 +242,94 @@ class MessageForwarder:
                 'X-EVALARM-API-VERSION': '2.1.5'
             }
         }
+        
+        # Kunden mit evAlarm-Konfiguration aus der Datenbank laden
+        try:
+            customers = self.Customer.find_all()
+            for customer in customers:
+                if customer.evalarm_username and customer.evalarm_password:
+                    customer_id = str(customer._id)
+                    self.endpoints[f'customer_{customer_id}'] = {
+                        'url': 'https://tas.dev.evalarm.de/api/v1/espa',  # URL ist für alle Kunden gleich
+                        'auth': (customer.evalarm_username, customer.evalarm_password),
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'X-EVALARM-API-VERSION': '2.1.5'
+                        },
+                        'customer': customer
+                    }
+            logger.info(f"Endpunkte für {len(self.endpoints) - 1} Kunden geladen")
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Kundenendpunkte: {str(e)}")
     
-    def forward_message(self, message, endpoint_name):
+    def get_customer_by_gateway(self, gateway_uuid):
+        """
+        Findet den Kunden für ein Gateway
+        
+        Args:
+            gateway_uuid: UUID des Gateways
+            
+        Returns:
+            Kunden-Objekt oder None
+        """
+        try:
+            gateway = self.Gateway.find_by_uuid(gateway_uuid)
+            if gateway and gateway.customer_id:
+                return self.Customer.find_by_id(gateway.customer_id)
+        except Exception as e:
+            logger.error(f"Fehler beim Finden des Kunden für Gateway {gateway_uuid}: {str(e)}")
+        return None
+    
+    def get_endpoint_for_gateway(self, gateway_uuid):
+        """
+        Findet den Endpunkt für ein Gateway
+        
+        Args:
+            gateway_uuid: UUID des Gateways
+            
+        Returns:
+            Name des Endpunkts oder 'evalarm_default'
+        """
+        customer = self.get_customer_by_gateway(gateway_uuid)
+        if customer:
+            customer_id = str(customer._id)
+            endpoint_name = f'customer_{customer_id}'
+            if endpoint_name in self.endpoints:
+                return endpoint_name
+        return 'evalarm_default'
+    
+    def forward_message(self, message, endpoint_name, gateway_uuid=None):
         """
         Leitet eine transformierte Nachricht an einen externen Endpunkt weiter
         
         Args:
             message: Die weiterzuleitende Nachricht
-            endpoint_name: Name des Endpunkts
+            endpoint_name: Name des Endpunkts oder 'auto' für automatische Auswahl basierend auf gateway_uuid
+            gateway_uuid: UUID des Gateways (optional, nur für endpoint_name='auto')
             
         Returns:
             Response-Objekt oder None bei Fehler
         """
+        # Bei 'auto' den Endpunkt basierend auf dem Gateway-UUID ermitteln
+        if endpoint_name == 'auto' and gateway_uuid:
+            endpoint_name = self.get_endpoint_for_gateway(gateway_uuid)
+            logger.info(f"Automatisch Endpunkt '{endpoint_name}' für Gateway {gateway_uuid} ermittelt")
+        
         if endpoint_name not in self.endpoints:
             logger.error(f"Endpunkt '{endpoint_name}' nicht gefunden")
             return None
         
         endpoint = self.endpoints[endpoint_name]
+        
+        # Anpassen der Nachricht mit Kundendaten, falls vorhanden
+        if 'customer' in endpoint and isinstance(message, dict):
+            customer = endpoint['customer']
+            
+            # Namespace anpassen, falls die Nachricht ein events-Array enthält
+            if 'events' in message and isinstance(message['events'], list):
+                for event in message['events']:
+                    if isinstance(event, dict) and 'namespace' in event:
+                        event['namespace'] = customer.evalarm_namespace or event['namespace']
         
         try:
             response = requests.post(
@@ -224,40 +346,3 @@ class MessageForwarder:
         except Exception as e:
             logger.error(f"Fehler bei der Weiterleitung an '{endpoint_name}': {str(e)}")
             return None
-    
-    def add_endpoint(self, name, url, auth=None, headers=None):
-        """
-        Fügt einen neuen Endpunkt hinzu
-        
-        Args:
-            name: Name des Endpunkts
-            url: URL des Endpunkts
-            auth: Authentifizierungsdaten (optional)
-            headers: HTTP-Header (optional)
-        """
-        self.endpoints[name] = {
-            'url': url,
-            'auth': auth,
-            'headers': headers or {}
-        }
-        logger.info(f"Endpunkt '{name}' hinzugefügt")
-    
-    def remove_endpoint(self, name):
-        """
-        Entfernt einen Endpunkt
-        
-        Args:
-            name: Name des Endpunkts
-        """
-        if name in self.endpoints:
-            del self.endpoints[name]
-            logger.info(f"Endpunkt '{name}' entfernt")
-    
-    def get_endpoint_names(self):
-        """
-        Gibt die Namen aller verfügbaren Endpunkte zurück
-        
-        Returns:
-            Liste der Endpunkt-Namen
-        """
-        return list(self.endpoints.keys())

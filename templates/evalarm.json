@@ -1,9 +1,9 @@
 {
   "events": [
     {
-      "message": "Alarm Knopf",
+      "message": "{% if alarm_status == 'alarm' %}ALARM{% else %}Status{% endif %}: {{ device_id }} - {{ gateway_id }}",
       "address": "0",
-      "namespace": "eva.herford",
+      "namespace": "{{ namespace }}",
       "id": "{{ uuid }}",
       "device_id": "{{ device_id }}"
     }

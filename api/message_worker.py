@@ -97,6 +97,19 @@ class MessageWorker:
             template_name = job['template']
             endpoint_name = job['endpoint']
             
+            # Gateway-UUID aus der Nachricht extrahieren
+            gateway_uuid = None
+            if isinstance(message, dict):
+                # Verschiedene mögliche Bezeichnungen für die Gateway-ID prüfen
+                for key in ['gateway_uuid', 'gateway_id', 'gateway']:
+                    if key in message:
+                        if isinstance(message[key], str):
+                            gateway_uuid = message[key]
+                            break
+                        elif isinstance(message[key], dict) and 'id' in message[key]:
+                            gateway_uuid = message[key]['id']
+                            break
+            
             # Transformiere Nachricht
             transformed_message = self.template_engine.transform_message(message, template_name)
             
@@ -105,8 +118,15 @@ class MessageWorker:
                 self.queue.mark_as_failed(job['id'], error_msg)
                 return
             
+            # Auto-Endpoint verwenden, wenn ein Gateway-UUID verfügbar ist
+            actual_endpoint = 'auto' if gateway_uuid and endpoint_name == 'evalarm' else endpoint_name
+            
             # Leite transformierte Nachricht weiter
-            response = self.message_forwarder.forward_message(transformed_message, endpoint_name)
+            response = self.message_forwarder.forward_message(
+                transformed_message, 
+                actual_endpoint, 
+                gateway_uuid=gateway_uuid
+            )
             
             if not response:
                 error_msg = f'Fehler bei der Weiterleitung an Endpunkt "{endpoint_name}"'
@@ -118,6 +138,7 @@ class MessageWorker:
                 'original_message': message,
                 'transformed_message': transformed_message,
                 'endpoint': endpoint_name,
+                'gateway_uuid': gateway_uuid,
                 'response_status': response.status_code,
                 'response_text': response.text
             }
