@@ -180,4 +180,56 @@
 ### Phase 4: Monitoring & Optimierung (Priorität: Mittel)
 - [ ] Umfassendes Monitoring
 - [ ] Benachrichtigungssystem
-- [ ] Erweiterte Reporting-Funktionen 
+- [ ] Erweiterte Reporting-Funktionen
+
+## 5. UI-Optimierung und Vereinheitlichung (Priorität: Hoch, AKTUELLER TASK)
+
+### Systematischer Ansatz für einheitliches UI-System
+- [x] **CSS-Bereinigung**
+  - [x] Reduzieren auf drei CSS-Dateien:
+    - `global.css` - Allgemeine Stile und Bootstrap-Erweiterungen
+    - `App.css` - Minimale anwendungsspezifische Stile
+    - `index.css` - Nur grundlegende Browser-Resets
+  - [x] Alle anderen komponentenspezifischen CSS-Dateien entfernen
+  - [x] Konsequente Verwendung von Bootstrap-Klassen für Layouts
+
+- [ ] **Einheitliches Seitenlayout**
+  - [x] Jede Seite nach `PageTemplate.jsx` anpassen mit:
+    - Konsistenter Seitentitel mit Icon
+    - Konsistente Card-Struktur für Inhalte
+    - Einheitliche Abstände (mb-4, etc.)
+
+- [ ] **Komponenten-Standardisierung**
+  - [x] Navbar & Footer: Einheitlich und global gestylt
+  - [ ] GatewayStatusIcons: Als wiederverwendbare Komponente überall identisch einsetzen
+  - [ ] Formulare: Überall Bootstrap-Formularklassen verwenden
+
+- [ ] **Entwicklungsprozess**
+  - [x] Erst eine Beispielseite vollständig umsetzen (z.B. Dashboard)
+  - [ ] Dann systematisch alle anderen Seiten nach diesem Muster anpassen
+  - [ ] Gemeinsame Komponenten extrahieren wo sinnvoll
+
+- [ ] **Qualitätssicherung**
+  - [ ] Desktop- und Mobile-Ansicht für jede Seite prüfen
+  - [ ] Konsistenz zwischen allen Seiten sicherstellen
+  - [ ] Unnötige CSS-Regeln entfernen
+
+### Phase 1: Grundlagen (Priorität: Hoch)
+- [x] PageTemplate.jsx als verbindliche Referenz etablieren
+- [x] Global.css optimieren und alle redundanten Stile entfernen
+
+### Phase 2: Systematische Umsetzung (Priorität: Hoch)
+- [x] Dashboard nach einheitlichem Muster umsetzen
+- [x] Gateways-Seite anpassen
+- [x] GatewayDetail-Seite anpassen
+- [x] Alle weiteren Seiten systematisch vereinheitlichen
+  - [x] Messages-Seite anpassen
+  - [x] Customers-Seite anpassen
+  - [x] Templates-Seite anpassen
+  - [x] Devices-Seite anpassen
+  - [x] Settings-Seite anpassen
+
+### Phase 3: Abschluss und Tests (Priorität: Mittel)
+- [ ] Cross-Browser-Tests
+- [ ] Responsive Design-Überprüfung
+- [ ] Finale Optimierung und Cleanup 

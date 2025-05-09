@@ -41,7 +41,7 @@ function AppContent() {
   const { isAuthenticated } = useAuth();
   
   return (
-    <div className="App">
+    <div className="App d-flex flex-column min-vh-100">
       <AppNavbar />
       <main className="app-main-content">
         <Routes>

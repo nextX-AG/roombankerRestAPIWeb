@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Table, Button, Form, Alert, InputGroup, Badge, Nav, Tab, Accordion } from 'react-bootstrap';
+import { Row, Col, Card, Table, Button, Form, Alert, InputGroup, Badge, Nav, Tab, Accordion } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSync, faSearch, faInfoCircle, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
+import { faSync, faSearch, faInfoCircle, faExclamationTriangle, faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import config from '../config';
 
+/**
+ * Nachrichten-Verwaltungskomponente
+ * 
+ * Struktur folgt dem PageTemplate:
+ * 1. Seiten-Titel mit Icon (h1.page-title)
+ * 2. Fehler/Erfolgs-Anzeigen (Alert)
+ * 3. Inhalt in Karten mit konsistenten Headers
+ */
 const Messages = () => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -200,23 +208,34 @@ const Messages = () => {
   };
 
   return (
-    <Container fluid className="py-4">
-      <h1 className="mb-4">Nachrichten</h1>
+    <>
+      {/* 1. Seiten-Titel */}
+      <h1 className="page-title mb-4">
+        <FontAwesomeIcon icon={faEnvelope} className="icon" />
+        Nachrichten
+      </h1>
       
-      {error && <Alert variant="danger">{error}</Alert>}
+      {/* 2. Fehler/Erfolgs-Anzeigen */}
+      {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
       
-      <InputGroup className="mb-3">
+      {/* 3. Suchleiste und Aktualisieren-Button */}
+      <Card className="mb-4">
+        <Card.Body>
+          <InputGroup>
             <Form.Control
               placeholder="Suche in Nachrichten..."
-          value={searchQuery}
-          onChange={handleSearch}
+              value={searchQuery}
+              onChange={handleSearch}
             />
-        <Button variant="primary" onClick={handleRefresh}>
-            <FontAwesomeIcon icon={faSync} className="me-2" />
-            Aktualisieren
-          </Button>
-      </InputGroup>
+            <Button variant="primary" onClick={handleRefresh}>
+              <FontAwesomeIcon icon={faSync} className="me-2" />
+              Aktualisieren
+            </Button>
+          </InputGroup>
+        </Card.Body>
+      </Card>
 
+      {/* 4. Tabs für verschiedene Nachrichtenansichten */}
       <Tab.Container id="message-view-tabs" defaultActiveKey="groupedView">
         <Nav variant="tabs" className="mb-3">
           <Nav.Item>
@@ -232,7 +251,7 @@ const Messages = () => {
             <Row>
               <Col md={6}>
                 <Card className="message-list-card mb-4">
-                  <Card.Header className="bg-primary text-white">
+                  <Card.Header>
                     Gateways und Geräte ({Object.keys(groupedByGatewayAndType).length})
                   </Card.Header>
                   <Card.Body style={{ maxHeight: '700px', overflowY: 'auto' }}>
@@ -314,7 +333,7 @@ const Messages = () => {
 
               <Col md={6}>
                 <Card className="message-detail-card">
-                  <Card.Header className="bg-primary text-white">
+                  <Card.Header>
                     Nachrichtendetails
                   </Card.Header>
                   <Card.Body>
@@ -356,56 +375,56 @@ const Messages = () => {
                     )}
                   </Card.Body>
                 </Card>
-        </Col>
-      </Row>
+              </Col>
+            </Row>
           </Tab.Pane>
       
           <Tab.Pane eventKey="chronologicalView">
-      <Row>
-        <Col md={6}>
+            <Row>
+              <Col md={6}>
                 <Card className="message-list-card mb-4">
-            <Card.Header className="bg-primary text-white">
-              Nachrichtenliste ({filteredMessages.length})
-            </Card.Header>
+                  <Card.Header>
+                    Nachrichtenliste ({filteredMessages.length})
+                  </Card.Header>
                   <Card.Body style={{ maxHeight: '700px', overflowY: 'auto' }}>
-                <Table hover>
-                  <thead>
-                    <tr>
-                      <th>Zeitstempel</th>
-                      <th>ID</th>
-                      <th>Typ</th>
-                      <th>Aktionen</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                    <Table hover>
+                      <thead>
+                        <tr>
+                          <th>Zeitstempel</th>
+                          <th>ID</th>
+                          <th>Typ</th>
+                          <th>Aktionen</th>
+                        </tr>
+                      </thead>
+                      <tbody>
                         {filteredMessages.length > 0 ? (
                           filteredMessages.map((message) => (
-                      <tr 
+                            <tr 
                               key={message.id}
                               className={selectedMessage?.id === message.id ? 'table-primary' : ''}
-                        onClick={() => handleMessageSelect(message)}
+                              onClick={() => handleMessageSelect(message)}
                               style={{ cursor: 'pointer' }}
-                      >
+                            >
                               <td>{getCorrectDate(message)}</td>
                               <td>{shortenId(message.id)}</td>
-                        <td>
+                              <td>
                                 <Badge bg={getTypeColor(getDeviceType(message))}>
                                   {getDeviceType(message)}
                                 </Badge>
-                        </td>
-                        <td>
-                          <Button 
-                            size="sm" 
-                            variant="outline-primary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMessageSelect(message);
-                            }}
-                          >
+                              </td>
+                              <td>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline-primary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMessageSelect(message);
+                                  }}
+                                >
                                   Details
-                          </Button>
-                        </td>
-                      </tr>
+                                </Button>
+                              </td>
+                            </tr>
                           ))
                         ) : (
                           <tr>
@@ -414,66 +433,66 @@ const Messages = () => {
                             </td>
                           </tr>
                         )}
-                  </tbody>
-                </Table>
-            </Card.Body>
-          </Card>
-        </Col>
+                      </tbody>
+                    </Table>
+                  </Card.Body>
+                </Card>
+              </Col>
         
-        <Col md={6}>
+              <Col md={6}>
                 <Card className="message-detail-card">
-            <Card.Header className="bg-primary text-white">
-              Nachrichtendetails
-            </Card.Header>
+                  <Card.Header>
+                    Nachrichtendetails
+                  </Card.Header>
                   <Card.Body>
-              {selectedMessage ? (
+                    {selectedMessage ? (
                       <>
-                  <h5>Metadaten</h5>
+                        <h5>Metadaten</h5>
                         <Table bordered size="sm" className="mb-3">
-                    <tbody>
-                      <tr>
-                        <th>ID</th>
-                        <td>{selectedMessage.id}</td>
-                      </tr>
-                      <tr>
-                        <th>Empfangen</th>
+                          <tbody>
+                            <tr>
+                              <th>ID</th>
+                              <td>{selectedMessage.id}</td>
+                            </tr>
+                            <tr>
+                              <th>Empfangen</th>
                               <td>{getCorrectDate(selectedMessage)}</td>
-                      </tr>
-                      <tr>
-                        <th>Timestamp</th>
-                        <td>{selectedMessage.timestamp}</td>
-                      </tr>
-                      <tr>
-                        <th>Typ</th>
-                        <td>
+                            </tr>
+                            <tr>
+                              <th>Timestamp</th>
+                              <td>{selectedMessage.timestamp}</td>
+                            </tr>
+                            <tr>
+                              <th>Typ</th>
+                              <td>
                                 <Badge bg={getTypeColor(getDeviceType(selectedMessage))}>
                                   {getDeviceType(selectedMessage)}
                                 </Badge>
-                        </td>
-                      </tr>
+                              </td>
+                            </tr>
                             <tr>
                               <th>Gateway</th>
                               <td>{getGatewayId(selectedMessage)}</td>
                             </tr>
-                    </tbody>
-                  </Table>
+                          </tbody>
+                        </Table>
                   
-                  <h5>Nachrichteninhalt</h5>
+                        <h5>Nachrichteninhalt</h5>
                         <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                           <JsonView data={selectedMessage.content || selectedMessage} />
-                  </div>
+                        </div>
                       </>
                     ) : (
                       <p className="text-center">Wählen Sie eine Nachricht aus, um die Details anzuzeigen</p>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+                    )}
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
           </Tab.Pane>
         </Tab.Content>
       </Tab.Container>
-    </Container>
+    </>
   );
 };
 

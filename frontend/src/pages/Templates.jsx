@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Form, Button, ListGroup, Tab, Tabs, Alert } from 'react-bootstrap';
+import { Row, Col, Card, Form, Button, ListGroup, Tab, Tabs, Alert } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSave, faPlus, faTrash, faInfoCircle, faFileAlt } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
@@ -8,6 +8,14 @@ import 'react-json-view-lite/dist/index.css';
 import SimpleCodeEditor from '../components/CodeEditor';
 import config from '../config';
 
+/**
+ * Template-Verwaltungskomponente
+ * 
+ * Struktur folgt dem PageTemplate:
+ * 1. Seiten-Titel mit Icon (h1.page-title)
+ * 2. Fehler/Erfolgs-Anzeigen (Alert)
+ * 3. Inhalt in Karten mit konsistenten Headers
+ */
 const Templates = () => {
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -291,17 +299,18 @@ const Templates = () => {
   };
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1 className="page-title">
-          <FontAwesomeIcon icon={faFileAlt} className="icon" />
-          Templates
-        </h1>
-      </div>
+    <>
+      {/* 1. Seiten-Titel */}
+      <h1 className="page-title mb-4">
+        <FontAwesomeIcon icon={faFileAlt} className="icon" />
+        Templates
+      </h1>
       
-      {error && <Alert variant="danger">{error}</Alert>}
-      {success && <Alert variant="success">{success}</Alert>}
+      {/* 2. Fehler/Erfolgs-Anzeigen */}
+      {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
+      {success && <Alert variant="success" className="mb-4">{success}</Alert>}
       
+      {/* 3. Inhalt in Karten */}
       <Row>
         <Col md={6}>
           <Card className="mb-4">
@@ -588,7 +597,7 @@ const Templates = () => {
           </Card>
         </Col>
       </Row>
-    </div>
+    </>
   );
 };
 

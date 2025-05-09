@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Table, Button, Form, Modal, Alert, Badge, InputGroup } from 'react-bootstrap';
+import { Row, Col, Card, Table, Button, Form, Modal, Alert, Badge, InputGroup } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSync, faSearch, faInfoCircle, faEdit, faNetworkWired, faServer, faDesktop, faMicrochip } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
@@ -8,6 +8,14 @@ import 'react-json-pretty/themes/monikai.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
+/**
+ * Geräteverwaltungs-Komponente
+ * 
+ * Struktur folgt dem PageTemplate:
+ * 1. Seiten-Titel mit Icon (h1.page-title)
+ * 2. Fehler/Erfolgs-Anzeigen (Alert)
+ * 3. Inhalt in Karten mit konsistenten Headers
+ */
 const Devices = () => {
   const [devices, setDevices] = useState([]);
   const [gateways, setGateways] = useState([]);
@@ -124,101 +132,96 @@ const Devices = () => {
   });
 
   return (
-    <Container fluid>
-      <Row className="mb-4">
-        <Col>
-          <h1 className="h3">
-            <FontAwesomeIcon icon={faDesktop} className="me-2" />
-            Geräteverwaltung
-          </h1>
-        </Col>
-      </Row>
+    <>
+      {/* 1. Seiten-Titel */}
+      <h1 className="page-title mb-4">
+        <FontAwesomeIcon icon={faDesktop} className="icon" />
+        Geräteverwaltung
+      </h1>
 
-      {error && (
-        <Row className="mb-4">
-          <Col>
-            <Alert variant="danger">{error}</Alert>
-          </Col>
-        </Row>
-      )}
+      {/* 2. Fehler/Erfolgs-Anzeigen */}
+      {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
 
-      <Row className="mb-4">
-        <Col md={6}>
-          <InputGroup>
-            <InputGroup.Text>
-              <FontAwesomeIcon icon={faSearch} />
-            </InputGroup.Text>
-            <Form.Control
-              placeholder="Suche nach Name, Geräte-ID, Typ oder Gateway..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </InputGroup>
-        </Col>
-        <Col md={6} className="d-flex justify-content-end">
-          <Button 
-            variant="secondary" 
-            onClick={fetchData}
-          >
-            <FontAwesomeIcon icon={faSync} className="me-1" /> Aktualisieren
-          </Button>
-        </Col>
-      </Row>
+      {/* 3. Suchleiste und Aktions-Buttons */}
+      <Card className="mb-4">
+        <Card.Body>
+          <Row>
+            <Col md={6}>
+              <InputGroup>
+                <InputGroup.Text>
+                  <FontAwesomeIcon icon={faSearch} />
+                </InputGroup.Text>
+                <Form.Control
+                  placeholder="Suche nach Name, Geräte-ID, Typ oder Gateway..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </InputGroup>
+            </Col>
+            <Col md={6} className="d-flex justify-content-end">
+              <Button 
+                variant="secondary" 
+                onClick={fetchData}
+              >
+                <FontAwesomeIcon icon={faSync} className="me-1" /> Aktualisieren
+              </Button>
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
 
-      <Row>
-        <Col>
-          <Card>
-            <Card.Body>
-              {loading ? (
-                <div className="text-center p-5">Lade Gerätedaten...</div>
-              ) : devices.length === 0 ? (
-                <div className="text-center p-5">Keine Geräte vorhanden.</div>
-              ) : (
-                <Table responsive hover>
-                  <thead>
-                    <tr>
-                      <th>Geräte-ID</th>
-                      <th>Name</th>
-                      <th>Typ</th>
-                      <th>Gateway</th>
-                      <th>Letztes Update</th>
-                      <th>Aktionen</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredDevices.map((device) => (
-                      <tr key={`${device.gateway_uuid}-${device.device_id}`}>
-                        <td>{device.device_id}</td>
-                        <td>{device.name}</td>
-                        <td>{formatDeviceType(device.device_type)}</td>
-                        <td>{getGatewayName(device.gateway_uuid)}</td>
-                        <td>{formatDateTime(device.last_update)}</td>
-                        <td>
-                          <Button 
-                            variant="outline-info" 
-                            size="sm" 
-                            className="me-1"
-                            onClick={() => openDetailsModal(device)}
-                          >
-                            <FontAwesomeIcon icon={faInfoCircle} />
-                          </Button>
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm"
-                            onClick={() => openEditModal(device)}
-                          >
-                            <FontAwesomeIcon icon={faEdit} />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+      {/* 4. Tabelle mit Geräten */}
+      <Card>
+        <Card.Header>Geräteliste</Card.Header>
+        <Card.Body>
+          {loading ? (
+            <div className="text-center p-5">Lade Gerätedaten...</div>
+          ) : devices.length === 0 ? (
+            <div className="text-center p-5">Keine Geräte vorhanden.</div>
+          ) : (
+            <Table responsive hover>
+              <thead>
+                <tr>
+                  <th>Geräte-ID</th>
+                  <th>Name</th>
+                  <th>Typ</th>
+                  <th>Gateway</th>
+                  <th>Letztes Update</th>
+                  <th>Aktionen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDevices.map((device) => (
+                  <tr key={`${device.gateway_uuid}-${device.device_id}`}>
+                    <td>{device.device_id}</td>
+                    <td>{device.name}</td>
+                    <td>{formatDeviceType(device.device_type)}</td>
+                    <td>{getGatewayName(device.gateway_uuid)}</td>
+                    <td>{formatDateTime(device.last_update)}</td>
+                    <td>
+                      <Button 
+                        variant="outline-info" 
+                        size="sm" 
+                        className="me-1"
+                        onClick={() => openDetailsModal(device)}
+                      >
+                        <FontAwesomeIcon icon={faInfoCircle} />
+                      </Button>
+                      <Button 
+                        variant="outline-primary" 
+                        size="sm"
+                        onClick={() => openEditModal(device)}
+                      >
+                        <FontAwesomeIcon icon={faEdit} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card.Body>
+      </Card>
 
       {/* Modal: Gerät bearbeiten */}
       <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
@@ -357,7 +360,7 @@ const Devices = () => {
           </Button>
         </Modal.Footer>
       </Modal>
-    </Container>
+    </>
   );
 };
 

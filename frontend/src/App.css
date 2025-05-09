@@ -1,9 +1,14 @@
 /* 
- * App-spezifische Stile, die nicht in der globalen CSS-Datei enthalten sind
+ * App-spezifische Stile, nur für Elemente, die nicht von Bootstrap abgedeckt werden
  */
 
 /* Status-Icons für Gateways */
 .gateway-status-icons {
   display: flex;
   align-items: center;
+}
+
+/* Icons mit Tooltips */
+.icon-with-tooltip {
+  cursor: help;
 } 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Table, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
+import { Row, Col, Card, Table, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faEdit, faTrash, faSync, faUsers, faEye, faNetworkWired, faServer, faDesktop, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
@@ -8,6 +8,14 @@ import GatewayStatusIcons from '../components/GatewayStatusIcons';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
+/**
+ * Gateways-Verwaltungskomponente
+ * 
+ * Struktur folgt dem PageTemplate:
+ * 1. Seiten-Titel mit Icon (h1.page-title)
+ * 2. Fehler/Erfolgs-Anzeigen (Alert)
+ * 3. Inhalt in Karten mit konsistenten Headers
+ */
 const Gateways = () => {
   const [gateways, setGateways] = useState([]);
   const [unassignedGateways, setUnassignedGateways] = useState([]);
@@ -244,24 +252,19 @@ const Gateways = () => {
   };
 
   return (
-    <Container fluid>
-      <Row className="mb-4">
-        <Col>
-          <h1 className="h3">
-            <FontAwesomeIcon icon={faNetworkWired} className="me-2" />
-            Gateway-Verwaltung
-          </h1>
-        </Col>
-      </Row>
+    <>
+      {/* 1. Seiten-Titel */}
+      <h1 className="page-title mb-4">
+        <FontAwesomeIcon icon={faNetworkWired} className="icon" />
+        Gateway-Verwaltung
+      </h1>
 
+      {/* 2. Fehler/Erfolgs-Anzeigen */}
       {error && (
-        <Row className="mb-4">
-          <Col>
-            <Alert variant="danger">{error}</Alert>
-          </Col>
-        </Row>
+        <Alert variant="danger" className="mb-4">{error}</Alert>
       )}
 
+      {/* 3. Inhalt in Karten */}
       <Row className="mb-4">
         <Col xs={12} className="d-flex justify-content-end">
           <Button 
@@ -283,6 +286,7 @@ const Gateways = () => {
       <Row>
         <Col>
           <Card>
+            <Card.Header>Gateways</Card.Header>
             <Card.Body>
               {loading ? (
                 <div className="text-center p-5">Lade Gateway-Daten...</div>
@@ -630,7 +634,7 @@ const Gateways = () => {
           </Button>
         </Modal.Footer>
       </Modal>
-    </Container>
+    </>
   );
 };
 

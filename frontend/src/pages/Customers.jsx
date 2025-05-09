@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Table, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
+import { Row, Col, Card, Table, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faEdit, faTrash, faSync, faUsers, faEye, faBuilding } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
+/**
+ * Kundenverwaltungs-Komponente
+ * 
+ * Struktur folgt dem PageTemplate:
+ * 1. Seiten-Titel mit Icon (h1.page-title)
+ * 2. Fehler/Erfolgs-Anzeigen (Alert)
+ * 3. Inhalt in Karten mit konsistenten Headers
+ */
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -143,24 +151,17 @@ const Customers = () => {
   };
 
   return (
-    <Container fluid>
-      <Row className="mb-4">
-        <Col>
-          <h1 className="h3">
-            <FontAwesomeIcon icon={faBuilding} className="me-2" />
-            Kundenverwaltung
-          </h1>
-        </Col>
-      </Row>
+    <>
+      {/* 1. Seiten-Titel */}
+      <h1 className="page-title mb-4">
+        <FontAwesomeIcon icon={faBuilding} className="icon" />
+        Kundenverwaltung
+      </h1>
 
-      {error && (
-        <Row className="mb-4">
-          <Col>
-            <Alert variant="danger">{error}</Alert>
-          </Col>
-        </Row>
-      )}
+      {/* 2. Fehler/Erfolgs-Anzeigen */}
+      {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
 
+      {/* 3. Aktions-Buttons */}
       <Row className="mb-4">
         <Col xs={12} className="d-flex justify-content-end">
           <Button 
@@ -179,64 +180,62 @@ const Customers = () => {
         </Col>
       </Row>
 
-      <Row>
-        <Col>
-          <Card>
-            <Card.Body>
-              {loading ? (
-                <div className="text-center p-5">Lade Kundendaten...</div>
-              ) : customers.length === 0 ? (
-                <div className="text-center p-5">Keine Kunden vorhanden. Fügen Sie einen neuen Kunden hinzu.</div>
-              ) : (
-                <Table responsive hover>
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Kontaktperson</th>
-                      <th>E-Mail</th>
-                      <th>evAlarm-Namespace</th>
-                      <th>Status</th>
-                      <th>Weiterleitung</th>
-                      <th>Aktionen</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {customers.map((customer) => (
-                      <tr key={customer.id}>
-                        <td>{customer.name}</td>
-                        <td>{customer.contact_person || '-'}</td>
-                        <td>{customer.email || '-'}</td>
-                        <td>{customer.evalarm_namespace || '-'}</td>
-                        <td>{renderStatusBadge(customer.status)}</td>
-                        <td>
-                          {customer.immediate_forwarding !== false ? 'Sofort' : 'Intervall'}
-                        </td>
-                        <td>
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
-                            className="me-1"
-                            onClick={() => openEditModal(customer)}
-                          >
-                            <FontAwesomeIcon icon={faEdit} />
-                          </Button>
-                          <Button 
-                            variant="outline-danger" 
-                            size="sm"
-                            onClick={() => openDeleteConfirm(customer)}
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+      {/* 4. Inhalt in Karten */}
+      <Card>
+        <Card.Header>Kundenliste</Card.Header>
+        <Card.Body>
+          {loading ? (
+            <div className="text-center p-5">Lade Kundendaten...</div>
+          ) : customers.length === 0 ? (
+            <div className="text-center p-5">Keine Kunden vorhanden. Fügen Sie einen neuen Kunden hinzu.</div>
+          ) : (
+            <Table responsive hover>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Kontaktperson</th>
+                  <th>E-Mail</th>
+                  <th>evAlarm-Namespace</th>
+                  <th>Status</th>
+                  <th>Weiterleitung</th>
+                  <th>Aktionen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customers.map((customer) => (
+                  <tr key={customer.id}>
+                    <td>{customer.name}</td>
+                    <td>{customer.contact_person || '-'}</td>
+                    <td>{customer.email || '-'}</td>
+                    <td>{customer.evalarm_namespace || '-'}</td>
+                    <td>{renderStatusBadge(customer.status)}</td>
+                    <td>
+                      {customer.immediate_forwarding !== false ? 'Sofort' : 'Intervall'}
+                    </td>
+                    <td>
+                      <Button 
+                        variant="outline-primary" 
+                        size="sm" 
+                        className="me-1"
+                        onClick={() => openEditModal(customer)}
+                      >
+                        <FontAwesomeIcon icon={faEdit} />
+                      </Button>
+                      <Button 
+                        variant="outline-danger" 
+                        size="sm"
+                        onClick={() => openDeleteConfirm(customer)}
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card.Body>
+      </Card>
 
       {/* Modal: Kunde hinzufügen */}
       <Modal show={showAddModal} onHide={() => setShowAddModal(false)} size="lg">
@@ -531,7 +530,7 @@ const Customers = () => {
           </Button>
         </Modal.Footer>
       </Modal>
-    </Container>
+    </>
   );
 };
 

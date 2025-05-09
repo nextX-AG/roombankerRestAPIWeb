@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert, Table } from 'react-bootstrap';
+import { Row, Col, Card, Form, Button, Alert, Table } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSave, faPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faSave, faPlus, faTrash, faCog } from '@fortawesome/free-solid-svg-icons';
 
+/**
+ * Einstellungs-Komponente
+ * 
+ * Struktur folgt dem PageTemplate:
+ * 1. Seiten-Titel mit Icon (h1.page-title)
+ * 2. Fehler/Erfolgs-Anzeigen (Alert)
+ * 3. Inhalt in Karten mit konsistenten Headers
+ */
 const Settings = () => {
   const [endpoints, setEndpoints] = useState([
     { name: 'evalarm', url: 'https://tas.dev.evalarm.de/api/v1/espa', username: 'eva.herford', password: 'GW8OoLZE' }
@@ -54,16 +62,20 @@ const Settings = () => {
   };
 
   return (
-    <Container>
-      <h1 className="mb-4">Einstellungen</h1>
+    <>
+      {/* 1. Seiten-Titel */}
+      <h1 className="page-title mb-4">
+        <FontAwesomeIcon icon={faCog} className="icon" />
+        Einstellungen
+      </h1>
       
-      {error && <Alert variant="danger">{error}</Alert>}
-      {success && <Alert variant="success">{success}</Alert>}
+      {/* 2. Fehler/Erfolgs-Anzeigen */}
+      {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
+      {success && <Alert variant="success" className="mb-4">{success}</Alert>}
       
+      {/* 3. Inhalt in Karten */}
       <Card className="mb-4">
-        <Card.Header className="bg-primary text-white">
-          API-Endpunkte
-        </Card.Header>
+        <Card.Header>API-Endpunkte</Card.Header>
         <Card.Body>
           <Table striped bordered hover>
             <thead>
@@ -166,9 +178,7 @@ const Settings = () => {
       </Card>
       
       <Card>
-        <Card.Header className="bg-primary text-white">
-          Allgemeine Einstellungen
-        </Card.Header>
+        <Card.Header>Allgemeine Einstellungen</Card.Header>
         <Card.Body>
           <Row>
             <Col md={6}>
@@ -236,7 +246,7 @@ const Settings = () => {
           </div>
         </Card.Body>
       </Card>
-    </Container>
+    </>
   );
 };
 

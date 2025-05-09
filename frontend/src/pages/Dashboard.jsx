@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
+import { Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faServer, faExchangeAlt, faCheckCircle, faExclamationTriangle, faBell, faTachometerAlt } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
@@ -8,6 +8,14 @@ import 'react-json-view-lite/dist/index.css';
 import { Link } from 'react-router-dom';
 import config from '../config';
 
+/**
+ * Dashboard-Komponente
+ * 
+ * Struktur folgt dem PageTemplate:
+ * 1. Seiten-Titel mit Icon (h1.page-title)
+ * 2. Fehler/Erfolgs-Anzeigen (Alert)
+ * 3. Inhalt in Karten mit konsistenten Headers
+ */
 const Dashboard = () => {
   const [apiStatus, setApiStatus] = useState('checking');
   const [processorStatus, setProcessorStatus] = useState('checking');
@@ -109,16 +117,19 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1 className="page-title">
-          <FontAwesomeIcon icon={faTachometerAlt} className="icon" />
-          Dashboard
-        </h1>
-      </div>
+    <>
+      {/* 1. Seiten-Titel */}
+      <h1 className="page-title mb-4">
+        <FontAwesomeIcon icon={faTachometerAlt} className="icon" />
+        Dashboard
+      </h1>
       
-      {error && <Alert variant="danger">{error}</Alert>}
+      {/* 2. Fehler/Erfolgs-Anzeigen */}
+      {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
+      {creationSuccess && <Alert variant="success" className="mb-4">Testnachricht wurde erfolgreich erstellt!</Alert>}
+      {creationError && <Alert variant="danger" className="mb-4">Fehler beim Erstellen der Testnachricht.</Alert>}
       
+      {/* 3. Inhalt in Karten */}
       <Row className="mb-4">
         <Col md={4}>
           <Card className="h-100">
@@ -205,7 +216,7 @@ const Dashboard = () => {
       
       <Row className="mb-4">
         <Col md={6}>
-          <Card>
+          <Card className="h-100">
             <Card.Header>
               Verfügbare Templates ({templates.length})
             </Card.Header>
@@ -229,9 +240,9 @@ const Dashboard = () => {
         </Col>
         
         <Col md={6}>
-          <Card>
+          <Card className="h-100">
             <Card.Header>
-              Verfügbare Endpunkte ({endpoints.length})
+              Verfügbare Endpunkte ({endpointCount})
             </Card.Header>
             <Card.Body>
               {endpoints.length > 0 ? (
@@ -283,7 +294,7 @@ const Dashboard = () => {
           </Card>
         </Col>
       </Row>
-    </div>
+    </>
   );
 };
 
