@@ -274,4 +274,69 @@ def register_device_from_message(gateway_uuid, device_data):
             device_type=device_type,
             status=values
         )
-        return new_device 
+        return new_device
+
+def update_all_devices_for_gateway(gateway_uuid):
+    """Aktualisiert den Zeitstempel aller Geräte eines Gateways"""
+    now = datetime.datetime.now()
+    devices = Device.find_by_gateway(gateway_uuid)
+    
+    for device in devices:
+        # Aktualisiere nur den Zeitstempel, ohne die Status-Werte zu ändern
+        device.update(last_update=now)
+    
+    return len(devices)
+
+# Gateway Online-Status-Prüfung
+def is_gateway_offline(last_contact, timeout_minutes=15):
+    """
+    Prüft, ob ein Gateway als offline betrachtet werden sollte
+    basierend auf dem Zeitpunkt des letzten Kontakts.
+    
+    Args:
+        last_contact: Zeitpunkt des letzten Kontakts
+        timeout_minutes: Zeit in Minuten, nach der ein Gateway als offline gilt
+        
+    Returns:
+        True, wenn das Gateway als offline betrachtet werden sollte, sonst False
+    """
+    if not last_contact:
+        return True
+    
+    now = datetime.datetime.now()
+    timeout = datetime.timedelta(minutes=timeout_minutes)
+    
+    return (now - last_contact) > timeout
+
+# Erweitere die Gateway-Klasse um eine check_online_status-Methode
+def inject_check_online_status_to_gateway():
+    """
+    Fügt der Gateway-Klasse eine check_online_status-Methode hinzu.
+    Diese wird am Ende der Modulinitialisierung aufgerufen.
+    """
+    def check_online_status(self, timeout_minutes=15):
+        """
+        Prüft und aktualisiert den Online-Status des Gateways.
+        
+        Args:
+            timeout_minutes: Zeit in Minuten, nach der ein Gateway als offline gilt
+            
+        Returns:
+            True, wenn das Gateway online ist, sonst False
+        """
+        is_offline = is_gateway_offline(self.last_contact, timeout_minutes)
+        
+        if is_offline and self.status != 'offline':
+            self.update(status='offline')
+            return False
+        elif not is_offline and self.status != 'online':
+            self.update(status='online')
+            return True
+        
+        return not is_offline
+    
+    # Hänge die Methode an die Gateway-Klasse an
+    Gateway.check_online_status = check_online_status
+
+# Methode aufrufen, um die check_online_status Methode zur Gateway-Klasse hinzuzufügen
+inject_check_online_status_to_gateway() 

@@ -15,21 +15,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger('iot-gateway-api')
 
-# Flexibler Import für Gateway-Modell
+# Flexibler Import für Gateway-Modell und Geräteaktualisierungsfunktion
 try:
     # Versuche zuerst den lokalen Import
-    from models import Gateway
+    from models import Gateway, update_all_devices_for_gateway
     logger.info("Gateway-Modell über lokalen Import geladen")
 except ImportError:
     try:
         # Versuche dann den absoluten Import
-        from api.models import Gateway
+        from api.models import Gateway, update_all_devices_for_gateway
         logger.info("Gateway-Modell über absoluten Import geladen")
     except ImportError:
         # Fallback in case of deployment differences
         import sys
         logger.error(f"Konnte Gateway-Modell nicht importieren. Python-Pfad: {sys.path}")
         Gateway = None
+        update_all_devices_for_gateway = None
 
 # Erstelle Flask-App
 app = Flask(__name__)
@@ -116,6 +117,14 @@ def receive_message():
                     logger.info(f"Gateway {gateway_uuid} nicht gefunden, erstelle neuen Eintrag")
                     Gateway.create(uuid=gateway_uuid, customer_id=None, status='online', last_contact=current_time)
                     logger.info(f"Neues Gateway {gateway_uuid} ohne Kundenzuordnung erstellt, last_contact={current_time}")
+                
+                # Zusätzlich alle Geräte des Gateways aktualisieren
+                if update_all_devices_for_gateway:
+                    num_updated = update_all_devices_for_gateway(gateway_uuid)
+                    logger.info(f"Zeitstempel für {num_updated} Geräte von Gateway {gateway_uuid} aktualisiert")
+                else:
+                    logger.warning("Geräteaktualisierungsfunktion nicht verfügbar")
+                    
             except Exception as e:
                 logger.error(f"Fehler beim Verarbeiten des Gateways {gateway_uuid}: {str(e)}")
                 logger.error(f"Exception Typ: {type(e).__name__}")
