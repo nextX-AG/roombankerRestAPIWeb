@@ -14,7 +14,7 @@ import {
   faLockOpen,
   faSignalPerfect,
   faSignalWeak,
-  faSignalBars,
+  faSignal,
   faCircle
 } from '@fortawesome/free-solid-svg-icons';
 
@@ -76,7 +76,7 @@ const GatewayStatusIcons = ({ gatewayData }) => {
         break;
 
       case 'wanstatus':
-        icon = faSignalBars;
+        icon = faSignal;
         color = gateway[key] === 'connected' ? 'green' : 'red';
         tooltip = gateway[key] === 'connected' ? 'WAN verbunden' : 'WAN nicht verbunden';
         break;
