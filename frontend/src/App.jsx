@@ -5,6 +5,7 @@ import './App.css';
 
 // Components
 import AppNavbar from './components/Navbar';
+import Footer from './components/Footer';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -41,7 +42,7 @@ function AppContent() {
   return (
     <div className="App">
       <AppNavbar />
-      <main className="py-4">
+      <main className="app-main-content">
         <Routes>
           <Route path="/login" element={isAuthenticated() ? <Navigate to="/" /> : <Login />} />
           <Route path="/" element={
@@ -86,6 +87,7 @@ function AppContent() {
           } />
         </Routes>
       </main>
+      <Footer />
     </div>
   );
 }

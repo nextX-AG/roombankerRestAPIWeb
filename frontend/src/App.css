@@ -1,3 +1,46 @@
+/* Allgemeine Stile */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.App {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Hauptinhalt mit Abstand für Footer */
+.app-main-content {
+  flex: 1;
+  padding-top: 1.5rem;
+  padding-bottom: 60px; /* Platz für den Footer */
+  max-width: 100%;
+  overflow-x: hidden;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Container-Stile für konsistentes Layout */
+.container-fluid {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Responsive Anpassungen */
+@media (max-width: 768px) {
+  .app-main-content {
+    padding-bottom: 80px; /* Mehr Platz für den Footer auf mobilen Geräten */
+  }
+}
+
+/* Status-Icons für Gateways */
+.gateway-status-icons {
+  display: flex;
+  align-items: center;
+}
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
