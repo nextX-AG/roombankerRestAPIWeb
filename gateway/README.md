@@ -73,7 +73,7 @@ opkg install tcpdump
 opkg apt install curl
 
 # Starte das Skript manuell zum Testen
-/usr/bin/mqtt-sniffer-relay.sh
+ /usr/bin/mqtt-sniffer-relay.sh
 ```
 
 ### 2. Automatischer Start beim Hochfahren
