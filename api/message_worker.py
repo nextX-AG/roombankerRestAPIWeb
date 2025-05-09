@@ -109,12 +109,39 @@ class MessageWorker:
                         elif isinstance(message[key], dict) and 'id' in message[key]:
                             gateway_uuid = message[key]['id']
                             break
+                
+                # Aus data.gateway_id extrahieren, falls vorhanden
+                if not gateway_uuid and 'data' in message and isinstance(message['data'], dict):
+                    data = message['data']
+                    if 'gateway_id' in data:
+                        gateway_uuid = data['gateway_id']
+                    elif 'gateway' in data and isinstance(data['gateway'], dict) and 'id' in data['gateway']:
+                        gateway_uuid = data['gateway']['id']
+            
+            # Wenn template_name "auto" ist oder leer, versuche das Template aus dem Gateway zu laden
+            if template_name == "auto" or not template_name:
+                if gateway_uuid:
+                    # Importiere hier, um zirkuläre Imports zu vermeiden
+                    from api.models import Gateway
+                    gateway = Gateway.find_by_uuid(gateway_uuid)
+                    if gateway and gateway.template_id:
+                        logger.info(f"Verwende Template '{gateway.template_id}' aus Gateway-Konfiguration für {gateway_uuid}")
+                        template_name = gateway.template_id
+                    else:
+                        # Standardmäßig evalarm-Template verwenden
+                        logger.info(f"Kein Template für Gateway {gateway_uuid} konfiguriert, verwende 'evalarm'")
+                        template_name = "evalarm"
+                else:
+                    # Standardmäßig evalarm-Template verwenden
+                    logger.info("Kein Gateway gefunden, verwende 'evalarm' Template")
+                    template_name = "evalarm"
             
             # Transformiere Nachricht
             transformed_message = self.template_engine.transform_message(message, template_name)
             
             if not transformed_message:
                 error_msg = f'Fehler bei der Transformation mit Template "{template_name}"'
+                logger.error(error_msg)
                 self.queue.mark_as_failed(job['id'], error_msg)
                 return
             
@@ -130,6 +157,7 @@ class MessageWorker:
             
             if not response:
                 error_msg = f'Fehler bei der Weiterleitung an Endpunkt "{endpoint_name}"'
+                logger.error(error_msg)
                 self.queue.mark_as_failed(job['id'], error_msg)
                 return
             
@@ -140,11 +168,13 @@ class MessageWorker:
                 'endpoint': endpoint_name,
                 'gateway_uuid': gateway_uuid,
                 'response_status': response.status_code,
-                'response_text': response.text
+                'response_text': response.text,
+                'template_used': template_name
             }
             
             # Markiere als erfolgreich
             self.queue.mark_as_completed(job['id'], result)
+            logger.info(f"Nachricht erfolgreich verarbeitet und weitergeleitet: {job['id']}")
             
         except Exception as e:
             logger.error(f"Fehler bei der Verarbeitung von Nachricht {job['id']}: {str(e)}")

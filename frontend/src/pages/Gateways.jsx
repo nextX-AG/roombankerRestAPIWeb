@@ -7,6 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import GatewayStatusIcons from '../components/GatewayStatusIcons';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const PROCESSOR_URL = import.meta.env.VITE_PROCESSOR_URL || 'http://localhost:8081/api';
 
 /**
  * Gateways-Verwaltungskomponente
@@ -20,6 +21,7 @@ const Gateways = () => {
   const [gateways, setGateways] = useState([]);
   const [unassignedGateways, setUnassignedGateways] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [availableTemplates, setAvailableTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -40,9 +42,10 @@ const Gateways = () => {
     status: 'online'
   });
 
-  // Lade Daten beim Seitenaufruf
+  // Lade initialisierungsdaten: Gateways, Kunden, Templates
   useEffect(() => {
     fetchData();
+    fetchTemplates();
   }, []);
 
   // Hole alle Daten
@@ -102,6 +105,17 @@ const Gateways = () => {
       setError(`Allgemeiner Fehler beim Laden der Daten: ${err.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Lade alle verfügbaren Templates
+  const fetchTemplates = async () => {
+    try {
+      const response = await axios.get(`${PROCESSOR_URL}/templates`);
+      setAvailableTemplates(response.data);
+    } catch (err) {
+      console.error('Fehler beim Laden der Templates:', err);
+      setError('Templates konnten nicht geladen werden.');
     }
   };
 
@@ -458,6 +472,28 @@ const Gateways = () => {
             <Row>
               <Col>
                 <Form.Group className="mb-3">
+                  <Form.Label>Template zur Transformation</Form.Label>
+                  <Form.Select
+                    name="template_id"
+                    value={formData.template_id}
+                    onChange={handleChange}
+                  >
+                    <option value="">Bitte auswählen</option>
+                    {availableTemplates.map((template) => (
+                      <option key={template} value={template}>
+                        {template}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Text className="text-muted">
+                    Wählen Sie ein Template für die Nachrichten-Transformation. Dies ist notwendig für die Weiterleitung an evAlarm.
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col>
+                <Form.Group className="mb-3">
                   <Form.Label>Beschreibung</Form.Label>
                   <Form.Control
                     as="textarea"
@@ -543,6 +579,28 @@ const Gateways = () => {
                     <option value="maintenance">Wartung</option>
                     <option value="unknown">Unbekannt</option>
                   </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col>
+                <Form.Group className="mb-3">
+                  <Form.Label>Template zur Transformation</Form.Label>
+                  <Form.Select
+                    name="template_id"
+                    value={formData.template_id}
+                    onChange={handleChange}
+                  >
+                    <option value="">Bitte auswählen</option>
+                    {availableTemplates.map((template) => (
+                      <option key={template} value={template}>
+                        {template}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Text className="text-muted">
+                    Wählen Sie ein Template für die Nachrichten-Transformation. Dies ist notwendig für die Weiterleitung an evAlarm.
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>
