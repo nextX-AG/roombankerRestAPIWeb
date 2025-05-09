@@ -254,7 +254,7 @@ class MessageForwarder:
                 if customer.evalarm_username and customer.evalarm_password:
                     customer_id = str(customer._id)
                     self.endpoints[f'customer_{customer_id}'] = {
-                        'url': 'https://tas.dev.evalarm.de/api/v1/espa',  # URL ist für alle Kunden gleich
+                        'url': customer.evalarm_url,  # Kundenspezifische URL verwenden
                         'auth': (customer.evalarm_username, customer.evalarm_password),
                         'headers': {
                             'Content-Type': 'application/json',

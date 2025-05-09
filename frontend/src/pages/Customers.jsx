@@ -30,6 +30,7 @@ const Customers = () => {
     evalarm_username: '',
     evalarm_password: '',
     evalarm_namespace: '',
+    evalarm_url: '',
     status: 'active',
     immediate_forwarding: true
   });
@@ -113,6 +114,7 @@ const Customers = () => {
       evalarm_username: '',
       evalarm_password: '',
       evalarm_namespace: '',
+      evalarm_url: '',
       status: 'active',
       immediate_forwarding: true
     });
@@ -129,6 +131,7 @@ const Customers = () => {
       evalarm_username: customer.evalarm_username || '',
       evalarm_password: customer.evalarm_password || '',
       evalarm_namespace: customer.evalarm_namespace || '',
+      evalarm_url: customer.evalarm_url || '',
       status: customer.status || 'active',
       immediate_forwarding: customer.immediate_forwarding !== false
     });
@@ -350,6 +353,23 @@ const Customers = () => {
             <Row>
               <Col>
                 <Form.Group className="mb-3">
+                  <Form.Label>evAlarm API URL</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="evalarm_url"
+                    value={formData.evalarm_url}
+                    onChange={handleChange}
+                    placeholder="https://tas.dev.evalarm.de/api/v1/espa"
+                  />
+                  <Form.Text className="text-muted">
+                    Standard: https://tas.dev.evalarm.de/api/v1/espa
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col>
+                <Form.Group className="mb-3">
                   <Form.Check
                     type="checkbox"
                     name="immediate_forwarding"
@@ -483,6 +503,23 @@ const Customers = () => {
                     <option value="active">Aktiv</option>
                     <option value="inactive">Inaktiv</option>
                   </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col>
+                <Form.Group className="mb-3">
+                  <Form.Label>evAlarm API URL</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="evalarm_url"
+                    value={formData.evalarm_url}
+                    onChange={handleChange}
+                    placeholder="https://tas.dev.evalarm.de/api/v1/espa"
+                  />
+                  <Form.Text className="text-muted">
+                    Standard: https://tas.dev.evalarm.de/api/v1/espa
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>

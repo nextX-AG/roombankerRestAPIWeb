@@ -29,7 +29,7 @@ class Customer:
     
     def __init__(self, name, contact_person=None, email=None, phone=None, 
                  evalarm_username=None, evalarm_password=None, evalarm_namespace=None,
-                 status="active", immediate_forwarding=True, _id=None,
+                 evalarm_url=None, status="active", immediate_forwarding=True, _id=None,
                  created_at=None, updated_at=None):
         self._id = _id or ObjectId()
         self.name = name
@@ -39,6 +39,7 @@ class Customer:
         self.evalarm_username = evalarm_username
         self.evalarm_password = evalarm_password
         self.evalarm_namespace = evalarm_namespace
+        self.evalarm_url = evalarm_url or "https://tas.dev.evalarm.de/api/v1/espa"  # Standardwert als Fallback
         self.status = status  # active, inactive
         self.immediate_forwarding = immediate_forwarding
         self.created_at = created_at or datetime.datetime.now()
