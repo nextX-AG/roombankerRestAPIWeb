@@ -14,6 +14,7 @@ import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Customers from './pages/Customers';
 import Gateways from './pages/Gateways';
+import GatewayDetail from './pages/GatewayDetail';
 import Devices from './pages/Devices';
 
 // Auth Context
@@ -56,6 +57,11 @@ function AppContent() {
           <Route path="/gateways" element={
             <ProtectedRoute>
               <Gateways />
+            </ProtectedRoute>
+          } />
+          <Route path="/gateways/:uuid" element={
+            <ProtectedRoute>
+              <GatewayDetail />
             </ProtectedRoute>
           } />
           <Route path="/devices" element={

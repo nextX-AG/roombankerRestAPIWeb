@@ -5,6 +5,10 @@ API-Routen für das evAlarm-IoT Gateway Management System
 from flask import Blueprint, request, jsonify
 from bson.objectid import ObjectId
 from models import Customer, Gateway, Device, initialize_db, register_device_from_message
+import os
+import json
+import glob
+from datetime import datetime
 
 # Blueprint für alle API-Routen
 api_bp = Blueprint('api', __name__)
@@ -20,6 +24,90 @@ def validate_object_id(id_string):
         return ObjectId(id_string)
     except:
         return None
+
+# Hilfsfunktion zum Laden der neuesten Nachricht eines Gateways
+def get_latest_gateway_message(gateway_uuid):
+    # Pfad zu gespeicherten Nachrichten
+    messages_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+    
+    # Alle JSON-Dateien im Verzeichnis
+    json_files = glob.glob(os.path.join(messages_dir, '*.json'))
+    
+    if not json_files:
+        return None
+    
+    # Sortiere die Dateien nach Änderungszeitstempel (neueste zuerst)
+    json_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+    
+    # Suche nach der neuesten Nachricht für das angegebene Gateway
+    for file_path in json_files:
+        try:
+            with open(file_path, 'r') as f:
+                message = json.load(f)
+                
+            # Prüfe, ob die Nachricht vom gesuchten Gateway stammt
+            gateway_id_in_message = None
+            
+            if message.get('data') and isinstance(message['data'], dict):
+                if 'gateway_id' in message['data']:
+                    gateway_id_in_message = message['data']['gateway_id']
+                elif 'gateway' in message['data'] and isinstance(message['data']['gateway'], dict):
+                    if 'uuid' in message['data']['gateway']:
+                        gateway_id_in_message = message['data']['gateway']['uuid']
+                    elif 'id' in message['data']['gateway']:
+                        gateway_id_in_message = message['data']['gateway']['id']
+            
+            if gateway_id_in_message == gateway_uuid:
+                return message
+                
+        except Exception as e:
+            print(f"Fehler beim Lesen der Datei {file_path}: {str(e)}")
+    
+    return None
+
+# Hilfsfunktion zum Laden aller Nachrichten eines Gateways
+def get_gateway_messages(gateway_uuid, limit=10):
+    # Pfad zu gespeicherten Nachrichten
+    messages_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+    
+    # Alle JSON-Dateien im Verzeichnis
+    json_files = glob.glob(os.path.join(messages_dir, '*.json'))
+    
+    if not json_files:
+        return []
+    
+    # Sortiere die Dateien nach Änderungszeitstempel (neueste zuerst)
+    json_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+    
+    # Sammle alle Nachrichten für das angegebene Gateway
+    messages = []
+    for file_path in json_files:
+        if len(messages) >= limit:
+            break
+            
+        try:
+            with open(file_path, 'r') as f:
+                message = json.load(f)
+                
+            # Prüfe, ob die Nachricht vom gesuchten Gateway stammt
+            gateway_id_in_message = None
+            
+            if message.get('data') and isinstance(message['data'], dict):
+                if 'gateway_id' in message['data']:
+                    gateway_id_in_message = message['data']['gateway_id']
+                elif 'gateway' in message['data'] and isinstance(message['data']['gateway'], dict):
+                    if 'uuid' in message['data']['gateway']:
+                        gateway_id_in_message = message['data']['gateway']['uuid']
+                    elif 'id' in message['data']['gateway']:
+                        gateway_id_in_message = message['data']['gateway']['id']
+            
+            if gateway_id_in_message == gateway_uuid:
+                messages.append(message)
+                
+        except Exception as e:
+            print(f"Fehler beim Lesen der Datei {file_path}: {str(e)}")
+    
+    return messages
 
 # ----- Kunden-Endpunkte -----
 
@@ -168,6 +256,65 @@ def update_gateway_status(uuid):
     status = data.get('status', 'online')
     gateway.update_status(status)
     return jsonify(gateway.to_dict())
+
+# Neuer Endpoint für die neuesten Telemetriedaten eines Gateways
+@api_bp.route('/gateways/<uuid>/latest', methods=['GET'])
+def get_gateway_latest(uuid):
+    """Gibt die neuesten Telemetriedaten eines Gateways zurück"""
+    gateway = Gateway.find_by_uuid(uuid)
+    if not gateway:
+        return jsonify({"error": "Gateway nicht gefunden"}), 404
+    
+    # Neueste Nachricht für das Gateway abrufen
+    message = get_latest_gateway_message(uuid)
+    if not message:
+        return jsonify({"error": "Keine Telemetriedaten verfügbar"}), 404
+    
+    return jsonify(message)
+
+# Neuer Endpoint für den Verlauf der Telemetriedaten eines Gateways
+@api_bp.route('/gateways/<uuid>/history', methods=['GET'])
+def get_gateway_history(uuid):
+    """Gibt den Verlauf der Telemetriedaten eines Gateways zurück"""
+    gateway = Gateway.find_by_uuid(uuid)
+    if not gateway:
+        return jsonify({"error": "Gateway nicht gefunden"}), 404
+    
+    # Anzahl der zurückzugebenden Nachrichten (Optional)
+    limit = request.args.get('limit', default=10, type=int)
+    
+    # Gateway-Nachrichten abrufen
+    messages = get_gateway_messages(uuid, limit)
+    
+    # Für die Frontend-Anzeige in ein einfacheres Format umwandeln
+    history = []
+    for msg in messages:
+        entry = {
+            "timestamp": msg.get("received_at") or datetime.fromtimestamp(msg.get("timestamp", 0)).isoformat(),
+            "status": "online",  # Standard-Status für alle Nachrichten
+            "event": "Nachricht empfangen"
+        }
+        
+        # Wenn das Gateway Alarmdaten enthält, im Ereignis vermerken
+        if msg.get("data") and isinstance(msg["data"], dict):
+            if msg["data"].get("gateway") and isinstance(msg["data"]["gateway"], dict):
+                gateway_data = msg["data"]["gateway"]
+                if gateway_data.get("alarmstatus") == "alarm":
+                    entry["event"] = "Alarm ausgelöst"
+                    entry["status"] = "alarm"
+                elif gateway_data.get("batterystatus") == "low":
+                    entry["event"] = "Batteriewarnung"
+                    entry["status"] = "warning"
+                elif gateway_data.get("lidstatus") == "open":
+                    entry["event"] = "Gehäuse geöffnet"
+                    entry["status"] = "warning"
+                elif gateway_data.get("powerstatus") != "connected":
+                    entry["event"] = "Stromversorgung unterbrochen"
+                    entry["status"] = "warning"
+        
+        history.append(entry)
+    
+    return jsonify(history)
 
 # ----- Geräte-Endpunkte -----
 

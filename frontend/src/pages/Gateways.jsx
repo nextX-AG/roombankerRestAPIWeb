@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Table, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faEdit, faTrash, faSync, faUsers, faEye, faNetworkWired, faServer, faDesktop } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faEdit, faTrash, faSync, faUsers, faEye, faNetworkWired, faServer, faDesktop, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
+import { Link, useNavigate } from 'react-router-dom';
+import GatewayStatusIcons from '../components/GatewayStatusIcons';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
@@ -19,6 +21,8 @@ const Gateways = () => {
   const [showDevicesList, setShowDevicesList] = useState(false);
   const [currentDevices, setCurrentDevices] = useState([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
+  const [gatewayLatestData, setGatewayLatestData] = useState({});
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     uuid: '',
     customer_id: '',
@@ -43,6 +47,20 @@ const Gateways = () => {
         const gatewaysResponse = await axios.get(`${API_URL}/gateways`);
         console.log('Gateways response:', gatewaysResponse.data);
         setGateways(gatewaysResponse.data);
+        
+        // Lade die neuesten Telemetriedaten für alle Gateways
+        const latestDataMap = {};
+        await Promise.all(
+          gatewaysResponse.data.map(async (gateway) => {
+            try {
+              const response = await axios.get(`${API_URL}/gateways/${gateway.uuid}/latest`);
+              latestDataMap[gateway.uuid] = response.data;
+            } catch (err) {
+              console.warn(`Keine aktuellen Telemetriedaten für Gateway ${gateway.uuid}`, err);
+            }
+          })
+        );
+        setGatewayLatestData(latestDataMap);
       } catch (err) {
         console.error('Error fetching gateways:', err);
         setError(`Fehler beim Laden der Gateways: ${err.message}`);
@@ -220,6 +238,11 @@ const Gateways = () => {
     return date.toLocaleString('de-DE');
   };
 
+  // Gateway-Detailseite öffnen
+  const navigateToDetail = (gateway) => {
+    navigate(`/gateways/${gateway.uuid}`);
+  };
+
   return (
     <Container fluid>
       <Row className="mb-4">
@@ -273,6 +296,7 @@ const Gateways = () => {
                       <th>Name</th>
                       <th>Kunde</th>
                       <th>Status</th>
+                      <th>Status-Icons</th>
                       <th>Letzter Kontakt</th>
                       <th>Aktionen</th>
                     </tr>
@@ -284,13 +308,27 @@ const Gateways = () => {
                         <td>{gateway.name}</td>
                         <td>{getCustomerName(gateway.customer_id)}</td>
                         <td>{renderStatusBadge(gateway.status)}</td>
+                        <td>
+                          {gatewayLatestData[gateway.uuid] && 
+                           GatewayStatusIcons({ gatewayData: gatewayLatestData[gateway.uuid].data }).primary}
+                        </td>
                         <td>{formatDateTime(gateway.last_contact)}</td>
                         <td>
                           <Button 
                             variant="outline-info" 
                             size="sm" 
                             className="me-1"
+                            onClick={() => navigateToDetail(gateway)}
+                            title="Details anzeigen"
+                          >
+                            <FontAwesomeIcon icon={faInfoCircle} />
+                          </Button>
+                          <Button 
+                            variant="outline-secondary" 
+                            size="sm" 
+                            className="me-1"
                             onClick={() => fetchDevices(gateway)}
+                            title="Geräte anzeigen"
                           >
                             <FontAwesomeIcon icon={faEye} />
                           </Button>
@@ -299,6 +337,7 @@ const Gateways = () => {
                             size="sm" 
                             className="me-1"
                             onClick={() => openEditModal(gateway)}
+                            title="Bearbeiten"
                           >
                             <FontAwesomeIcon icon={faEdit} />
                           </Button>
@@ -306,6 +345,7 @@ const Gateways = () => {
                             variant="outline-danger" 
                             size="sm"
                             onClick={() => openDeleteConfirm(gateway)}
+                            title="Löschen"
                           >
                             <FontAwesomeIcon icon={faTrash} />
                           </Button>
