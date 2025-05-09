@@ -31,6 +31,10 @@ class TemplateEngine:
             loader=jinja2.FileSystemLoader(templates_dir),
             autoescape=jinja2.select_autoescape(['html', 'xml'])
         )
+        
+        # Filter zum sicheren JSON-Serialisieren hinzufügen
+        self.jinja_env.filters['tojson'] = lambda obj, **kwargs: json.dumps(obj, **kwargs)
+        
         self.templates = {}
         self.load_templates()
     

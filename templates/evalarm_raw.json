@@ -1,0 +1,11 @@
+{
+  "events": [
+    {
+      "message": "Gateway: {{ gateway_id }} | Payload: {{ message | tojson(indent=None) }}",
+      "address": "0",
+      "namespace": "{{ namespace }}",
+      "id": "{{ uuid }}",
+      "device_id": "{{ gateway_id }}"
+    }
+  ]
+} 

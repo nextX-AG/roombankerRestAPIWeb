@@ -1,0 +1,11 @@
+{
+  "events": [
+    {
+      "message": "{% if alarm_status == 'alarm' %}ALARM{% else %}Status{% endif %} | Gateway: {{ gateway_id }} | Geräte: {% if message.subdevicelist %}{% for device in message.subdevicelist %}ID:{{ device.id }} {% if device.value %}[{% for key, value in device.value.items() %}{{ key }}:{{ value }} {% endfor %}]{% endif %}{% endfor %}{% else %}Keine Geräte{% endif %}",
+      "address": "0",
+      "namespace": "{{ namespace }}",
+      "id": "{{ uuid }}",
+      "device_id": "{{ gateway_id }}"
+    }
+  ]
+} 
