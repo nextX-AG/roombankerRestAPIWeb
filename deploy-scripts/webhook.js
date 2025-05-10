@@ -203,6 +203,20 @@ module.exports = {
       }
     },
     {
+      name: 'message-worker',
+      script: 'api/message_worker.py',
+      interpreter: '/var/www/iot-gateway/venv/bin/python3',
+      cwd: '/var/www/iot-gateway',
+      env: {
+        'FLASK_ENV': 'production',
+        'REDIS_HOST': 'localhost',
+        'REDIS_PORT': '6379',
+        'REDIS_PASSWORD': '78WDQEuz',
+        'MONGODB_URI': 'mongodb://localhost:27017/',
+        'MONGODB_DB': 'evalarm_gateway'
+      }
+    },
+    {
       name: 'auth-service',
       script: 'api/auth_service.py',
       interpreter: '/var/www/iot-gateway/venv/bin/python3',
