@@ -94,7 +94,7 @@ module.exports = {
         'PORT': '8080',
         'REDIS_HOST': 'localhost',
         'REDIS_PORT': '6379',
-        'REDIS_PASSWORD': 'OW!p3x?',
+        'REDIS_PASSWORD': '78WDQEuz',
         'MONGODB_URI': 'mongodb://localhost:27017/',
         'MONGODB_DB': 'evalarm_gateway'
       }
@@ -109,7 +109,7 @@ module.exports = {
         'PORT': '8081',
         'REDIS_HOST': 'localhost',
         'REDIS_PORT': '6379',
-        'REDIS_PASSWORD': 'OW!p3x?',
+        'REDIS_PASSWORD': '78WDQEuz',
         'MONGODB_URI': 'mongodb://localhost:27017/',
         'MONGODB_DB': 'evalarm_gateway'
       }
@@ -124,7 +124,7 @@ module.exports = {
         'PORT': '8082',
         'REDIS_HOST': 'localhost',
         'REDIS_PORT': '6379',
-        'REDIS_PASSWORD': 'OW!p3x?',
+        'REDIS_PASSWORD': '78WDQEuz',
         'MONGODB_URI': 'mongodb://localhost:27017/',
         'MONGODB_DB': 'evalarm_gateway'
       }

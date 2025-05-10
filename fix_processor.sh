@@ -41,7 +41,7 @@ echo "Starte Message Processor direkt zur Fehlersuche..."
 cd /var/www/iot-gateway
 export REDIS_HOST=localhost
 export REDIS_PORT=6379
-export REDIS_PASSWORD="OW!p3x?"
+export REDIS_PASSWORD="78WDQEuz"
 export FLASK_ENV=production
 export PORT=8081
 

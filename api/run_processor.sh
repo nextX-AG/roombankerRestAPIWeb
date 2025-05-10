@@ -9,7 +9,7 @@ export WORKER_THREADS=2
 export WORKER_POLL_INTERVAL=0.5
 export REDIS_PORT=6379
 export REDIS_DB=0
-export REDIS_PASSWORD="OW!p3x?"
+export REDIS_PASSWORD="78WDQEuz"
 export REDIS_PREFIX=iot_gateway
 
 # Mögliche Redis-Hosts
