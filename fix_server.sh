@@ -125,7 +125,10 @@ module.exports = {
         'REDIS_PORT': '6379',
         'REDIS_PASSWORD': '78WDQEuz',
         'MONGODB_URI': 'mongodb://localhost:27017/',
-        'MONGODB_DB': 'evalarm_gateway'
+        'MONGODB_DB': 'evalarm_gateway',
+        'WORKER_THREADS': '2',
+        'WORKER_POLL_INTERVAL': '0.5',
+        'WORKER_API_PORT': '8083'
       }
     },
     {

@@ -5,6 +5,7 @@ import time
 import signal
 import logging
 import threading
+from flask import Flask, jsonify, request
 from typing import Dict, Any, List, Optional
 
 # Füge das Projektverzeichnis zum Python-Pfad hinzu
@@ -20,6 +21,12 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('message-worker')
+
+# Flask-App für API-Endpunkte
+app = Flask(__name__)
+
+# Globale Worker-Instanz
+worker_instance = None
 
 class MessageWorker:
     """
@@ -230,6 +237,103 @@ class MessageWorker:
             'queue_status': self.queue.get_queue_status()
         }
 
+# API-Endpunkte für den Status der Weiterleitung
+@app.route('/api/messages/status', methods=['GET'])
+def get_message_status():
+    """Gibt den Status aller verarbeiteten Nachrichten zurück"""
+    if worker_instance is None:
+        return jsonify({"error": "Worker ist nicht initialisiert"}), 500
+    
+    queue = worker_instance.queue
+    
+    try:
+        # Hole die letzten Ergebnisse
+        results_json = queue.redis_client.lrange(queue.results_list, 0, 99)
+        results = [json.loads(result) for result in results_json]
+        
+        # Hole fehlgeschlagene Nachrichten
+        failed_messages = queue.get_failed_messages()
+        
+        # Kombiniere alle Statusnachrichten
+        all_statuses = results + failed_messages
+        
+        # Sortiere nach Zeit (neueste zuerst)
+        all_statuses.sort(key=lambda x: x.get('completed_at', 0) or x.get('failed_at', 0) or 0, reverse=True)
+        
+        return jsonify(all_statuses), 200
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen des Nachrichtenstatus: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/messages/queue/status', methods=['GET'])
+def get_queue_status():
+    """Gibt den Status der Nachrichtenqueue zurück"""
+    if worker_instance is None:
+        return jsonify({"error": "Worker ist nicht initialisiert"}), 500
+    
+    try:
+        queue = worker_instance.queue
+        status = queue.get_queue_status()
+        
+        return jsonify(status), 200
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen des Queue-Status: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/messages/forwarding', methods=['GET'])
+def get_forwarding_status():
+    """Gibt den Status der Nachrichtenweiterleitung zurück"""
+    if worker_instance is None:
+        return jsonify({"error": "Worker ist nicht initialisiert"}), 500
+    
+    try:
+        queue = worker_instance.queue
+        
+        # Hole die letzten Ergebnisse
+        results_json = queue.redis_client.lrange(queue.results_list, 0, 99)
+        results = [json.loads(result) for result in results_json]
+        
+        # Hole fehlgeschlagene Nachrichten
+        failed_messages = queue.get_failed_messages()
+        
+        # Hole aktuelle Verarbeitungsqueue
+        processing_ids = queue.redis_client.hkeys(queue.processing_queue)
+        processing_messages = []
+        for job_id in processing_ids:
+            job_json = queue.redis_client.hget(queue.processing_queue, job_id)
+            if job_json:
+                processing_messages.append(json.loads(job_json))
+        
+        # Zähle nach Status
+        forwarding_status = {
+            "pending": queue.redis_client.llen(queue.main_queue),
+            "processing": len(processing_messages),
+            "completed": len([msg for msg in results if msg.get('status') == 'completed']),
+            "failed": len(failed_messages),
+            "details": {
+                "pending": [],
+                "processing": processing_messages,
+                "completed": [msg for msg in results if msg.get('status') == 'completed'],
+                "failed": failed_messages
+            }
+        }
+        
+        return jsonify(forwarding_status), 200
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen des Weiterleitungsstatus: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Gesundheitscheck für den Worker"""
+    if worker_instance is None:
+        return jsonify({"status": "error", "message": "Worker ist nicht initialisiert"}), 500
+    
+    status = worker_instance.get_status()
+    return jsonify({
+        "status": "healthy" if status['running'] else "unhealthy",
+        "worker_status": status
+    }), 200
 
 # Singleton-Instanz für die Anwendung
 worker_instance = None
@@ -269,6 +373,15 @@ if __name__ == '__main__':
     
     # Worker mit 2 Threads starten
     worker = init_worker(num_threads=2, poll_interval=0.5)
+    
+    # Starte Flask-App in einem separaten Thread
+    flask_port = int(os.environ.get('WORKER_API_PORT', 8083))
+    flask_thread = threading.Thread(
+        target=lambda: app.run(host='0.0.0.0', port=flask_port, debug=False, use_reloader=False)
+    )
+    flask_thread.daemon = True
+    flask_thread.start()
+    logger.info(f"Worker API gestartet auf Port {flask_port}")
     
     try:
         # Halte den Hauptthread am Leben, bis SIGINT oder SIGTERM empfangen wird

@@ -213,7 +213,10 @@ module.exports = {
         'REDIS_PORT': '6379',
         'REDIS_PASSWORD': '78WDQEuz',
         'MONGODB_URI': 'mongodb://localhost:27017/',
-        'MONGODB_DB': 'evalarm_gateway'
+        'MONGODB_DB': 'evalarm_gateway',
+        'WORKER_THREADS': '2',
+        'WORKER_POLL_INTERVAL': '0.5',
+        'WORKER_API_PORT': '8083'
       }
     },
     {
@@ -347,6 +350,30 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /api/messages/status {
+        proxy_pass http://localhost:8083/api/messages/status;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /api/messages/queue/status {
+        proxy_pass http://localhost:8083/api/messages/queue/status;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /api/messages/forwarding {
+        proxy_pass http://localhost:8083/api/messages/forwarding;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 }
 EOF
