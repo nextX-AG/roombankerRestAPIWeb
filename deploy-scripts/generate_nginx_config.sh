@@ -14,6 +14,7 @@ INSTALL_PATH="/etc/nginx/sites-available/evalarm-iot"
 ENABLE_PATH="/etc/nginx/sites-enabled/evalarm-iot"
 RESTART_NGINX=false
 DRY_RUN=false
+SITE_ONLY=true  # Standard: Nur Site-Konfiguration ohne globale Direktiven
 
 # Farbige Ausgabe
 RED='\033[0;31m'
@@ -35,6 +36,7 @@ function show_help {
     echo "  -i, --install <path>         Installationsort für die NGINX-Konfiguration (default: $INSTALL_PATH)"
     echo "  -r, --restart                NGINX nach Installation neu starten"
     echo "  -d, --dry-run                Konfiguration nur ausgeben, nicht installieren"
+    echo "  -f, --full                   Generiert eine vollständige NGINX-Konfiguration mit globalen Direktiven"
     echo ""
     echo "Beispiel:"
     echo "  $0 --server-name evalarm.example.com --restart"
@@ -69,6 +71,10 @@ while [[ $# -gt 0 ]]; do
             DRY_RUN=true
             shift
             ;;
+        -f|--full)
+            SITE_ONLY=false
+            shift
+            ;;
         *)
             echo -e "${RED}Unbekannte Option: $1${NC}"
             show_help
@@ -81,6 +87,7 @@ echo -e "${BLUE}evAlarm-IoT Gateway NGINX-Konfigurationsgenerator${NC}"
 echo -e "${YELLOW}Projektverzeichnis:${NC} $PROJECT_DIR"
 echo -e "${YELLOW}Servername:${NC} $SERVER_NAME"
 echo -e "${YELLOW}Ausgabedatei:${NC} $OUTPUT_FILE"
+echo -e "${YELLOW}Konfigurationstyp:${NC} $([ "$SITE_ONLY" == "true" ] && echo "Site-Konfiguration" || echo "Vollständige Konfiguration")"
 
 # Python-Umgebung prüfen und aktivieren
 VENV_DIR="$PROJECT_DIR/venv"
@@ -91,7 +98,8 @@ fi
 
 # Konfiguration generieren
 echo -e "${BLUE}Generiere NGINX-Konfiguration...${NC}"
-python "$PROJECT_DIR/utils/nginx_config_generator.py" --server-name "$SERVER_NAME" --output "$OUTPUT_FILE"
+SITE_ONLY_ARG=$([ "$SITE_ONLY" == "true" ] && echo "--site-only" || echo "")
+python "$PROJECT_DIR/utils/nginx_config_generator.py" --server-name "$SERVER_NAME" --output "$OUTPUT_FILE" $SITE_ONLY_ARG
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}Fehler beim Generieren der NGINX-Konfiguration!${NC}"

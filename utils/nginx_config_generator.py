@@ -26,8 +26,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger('nginx-config-generator')
 
-# Standard-NGINX-Konfiguration (Template)
-NGINX_TEMPLATE = """
+# Standard-NGINX-Konfiguration (Template) - Vollständige Konfiguration
+NGINX_FULL_TEMPLATE = """
 # Automatisch generierte NGINX-Konfiguration für evAlarm-IoT Gateway
 # Generiert am: {timestamp}
 
@@ -127,7 +127,7 @@ http {{
         }}
 
         # Statische Dateien
-        location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {{
+        location ~* \\.(jpg|jpeg|png|gif|ico|css|js)$ {{
             expires 7d;
             add_header Cache-Control "public, max-age=604800";
         }}
@@ -141,14 +141,94 @@ http {{
 }}
 """
 
+# NGINX Site-Konfiguration (nur Server-Block)
+NGINX_SITE_TEMPLATE = """
+# Automatisch generierte NGINX-Site-Konfiguration für evAlarm-IoT Gateway
+# Generiert am: {timestamp}
+
+# Upstream-Definitionen für die verschiedenen Services
+{upstream_blocks}
+
+# Server-Konfiguration
+server {{
+    listen 80;
+    server_name {server_name};
+
+    # Root-Verzeichnis für statische Dateien
+    root /var/www/iot-gateway/frontend/dist;
+    index index.html;
+
+    # Globale CORS-Header für alle Anfragen
+    add_header 'Access-Control-Allow-Origin' '*' always;
+    add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+    add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With' always;
+    
+    # Spezielle Behandlung von OPTIONS-Requests (Preflight)
+    if ($request_method = 'OPTIONS') {{
+        add_header 'Access-Control-Allow-Origin' '*';
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With';
+        add_header 'Access-Control-Max-Age' '1728000';
+        add_header 'Content-Type' 'text/plain charset=UTF-8';
+        add_header 'Content-Length' '0';
+        return 204;
+    }}
+
+    # API-Gateway als zentraler Einstiegspunkt für alle API-Anfragen
+    location /api/ {{
+        proxy_pass http://gateway_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        
+        # Timeout-Konfiguration
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Buffer-Größen
+        proxy_buffer_size 4k;
+        proxy_buffers 4 32k;
+        proxy_busy_buffers_size 64k;
+    }}
+
+    # Legacy-Routen zu den Mikroservices (falls benötigt)
+{location_blocks}
+
+    # Frontend-Routing für React-App (SPA)
+    location / {{
+        try_files $uri $uri/ /index.html;
+    }}
+
+    # Statische Dateien
+    location ~* \\.(jpg|jpeg|png|gif|ico|css|js)$ {{
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
+    }}
+
+    # Zusätzliche Sicherheitsheader
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+}}
+"""
+
 def generate_nginx_config(server_name: str = "evalarm-iot.example.com", 
-                          output_file: Optional[str] = None) -> str:
+                          output_file: Optional[str] = None,
+                          site_only: bool = False) -> str:
     """
     Generiert eine NGINX-Konfiguration basierend auf der API-Konfiguration.
     
     Args:
         server_name: Der Servername für die NGINX-Konfiguration
         output_file: Optionaler Dateipfad zum Speichern der Konfiguration
+        site_only: Wenn True, wird nur die Site-Konfiguration ohne globale Direktiven generiert
     
     Returns:
         Die generierte NGINX-Konfiguration als String
@@ -167,10 +247,10 @@ def generate_nginx_config(server_name: str = "evalarm-iot.example.com",
     
     for service_name, port in services.items():
         upstream = f"""
-    upstream {service_name}_backend {{
-        server 127.0.0.1:{port};
-        keepalive 64;
-    }}"""
+upstream {service_name}_backend {{
+    server 127.0.0.1:{port};
+    keepalive 64;
+}}"""
         upstream_blocks.append(upstream)
     
     # Kombinierter Upstream-Block
@@ -208,9 +288,9 @@ def generate_nginx_config(server_name: str = "evalarm-iot.example.com",
     
     # Kommentar für Legacy-Routen hinzufügen
     location_blocks.append("""
-        # Hinweis: Die folgenden Location-Blöcke sind Legacy-Routen, 
-        # die direkt zu den einzelnen Services führen.
-        # Für neue Entwicklungen sollte das API-Gateway unter /api/ verwendet werden.""")
+    # Hinweis: Die folgenden Location-Blöcke sind Legacy-Routen, 
+    # die direkt zu den einzelnen Services führen.
+    # Für neue Entwicklungen sollte das API-Gateway unter /api/ verwendet werden.""")
     
     # Allgemeine API-Routen basierend auf Kategorien
     for category, endpoints in ENDPOINTS.items():
@@ -221,50 +301,50 @@ def generate_nginx_config(server_name: str = "evalarm-iot.example.com",
             # system-Kategorie hat eine andere Struktur
             for endpoint_name, path in endpoints.items():
                 location = f"""
-        location {path} {{
-            proxy_pass http://{service}_backend;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_buffering off;
-        }}"""
+    location {path} {{
+        proxy_pass http://{service}_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+    }}"""
                 location_blocks.append(location)
         else:
             # Standard-Struktur für andere Kategorien
             if 'base' in endpoints:
                 location_path = endpoints["base"]
                 location = f"""
-        location {location_path} {{
-            proxy_pass http://{service}_backend;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_buffering off;
-        }}"""
+    location {location_path} {{
+        proxy_pass http://{service}_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+    }}"""
                 location_blocks.append(location)
     
     # Spezielles Routing für den Processor hinzufügen
     for route, backend in processor_routes:
         location = f"""
-        location {route} {{
-            proxy_pass http://{backend};
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_buffering off;
-        }}"""
+    location {route} {{
+        proxy_pass http://{backend};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+    }}"""
         location_blocks.append(location)
     
     # Kombinierte Location-Blöcke
@@ -274,7 +354,10 @@ def generate_nginx_config(server_name: str = "evalarm-iot.example.com",
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    nginx_config = NGINX_TEMPLATE.format(
+    # Wähle das entsprechende Template basierend auf site_only
+    template = NGINX_SITE_TEMPLATE if site_only else NGINX_FULL_TEMPLATE
+    
+    nginx_config = template.format(
         timestamp=timestamp,
         upstream_blocks=combined_upstream,
         location_blocks=combined_locations,
@@ -297,9 +380,11 @@ def main():
     parser.add_argument('--server-name', type=str, default="evalarm-iot.example.com", 
                         help="Servername für die NGINX-Konfiguration")
     parser.add_argument('--output', type=str, help="Dateipfad zum Speichern der Konfiguration")
+    parser.add_argument('--site-only', action='store_true', 
+                        help="Nur die Site-Konfiguration ohne globale Direktiven generieren")
     args = parser.parse_args()
     
-    config = generate_nginx_config(args.server_name, args.output)
+    config = generate_nginx_config(args.server_name, args.output, args.site_only)
     
     if not args.output:
         print(config)
