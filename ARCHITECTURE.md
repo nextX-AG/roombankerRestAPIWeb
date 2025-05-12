@@ -6,10 +6,10 @@ Das evAlarm-IoT Gateway System besteht aus mehreren Komponenten, die zusammenarb
 
 ### Hauptkomponenten
 
-- **Gateway**: Empfängt Nachrichten von IoT-Geräten und leitet sie an den Message Worker weiter
-- **Message Worker**: Verarbeitet Nachrichten, transformiert sie und leitet sie weiter
+- **API-Gateway**: Empfängt alle API-Anfragen und leitet sie an die zuständigen Services weiter
+- **API-Service**: Stellt REST-APIs für Frontend und externe Systeme bereit
 - **Auth Service**: Verwaltet Authentifizierung und Autorisierung
-- **API Service**: Stellt REST-APIs für Frontend und externe Systeme bereit
+- **Message Processor**: Verarbeitet Nachrichten, transformiert sie und leitet sie weiter
 - **Template Engine**: Transformiert Nachrichten zwischen verschiedenen Formaten
 - **Frontend**: Web-Interface zur Verwaltung des Systems
 
@@ -42,7 +42,12 @@ Alle API-Antworten verwenden ein konsistentes Format:
 
 ### Service-Endpunkte
 
-#### Message Worker (Port 8083)
+#### API-Gateway (Port 8000)
+- Zentraler Einstiegspunkt für alle API-Anfragen
+- Routing zu den entsprechenden Services
+- Status-Endpunkt: `/api/v1/gateway/status`
+
+#### Message Worker (Port 8082)
 - `/api/v1/messages/status` - Status aller Nachrichten
 - `/api/v1/messages/queue/status` - Status der Nachrichtenqueue
 - `/api/v1/messages/forwarding` - Status der Weiterleitungen
@@ -119,7 +124,7 @@ Diese Strategie gewährleistet eine zuverlässige Verbindung zur Message Queue u
 
 ## 5. Technologie-Stack
 
-- **Backend**: Python mit Flask/FastAPI
+- **Backend**: Python mit Flask
 - **Datenbanken**: MongoDB (persistente Daten), Redis (Caching, Message Queue)
 - **Frontend**: React mit Bootstrap
 - **Deployment**: PM2 für Prozessverwaltung, NGINX als Reverse-Proxy
@@ -182,24 +187,50 @@ Der Generator:
 
 Diese automatische Konfiguration vereinfacht Deployments und verhindert Inkonsistenzen zwischen den Services.
 
-## 7. Zukünftige Architektur (geplant)
+## 7. Deployment-Strategien
 
-Die zukünftige Architektur sieht folgende Verbesserungen vor:
+### Lokales Deployment
 
-### API-Gateway-Pattern
+Für Entwicklungs- und Testzwecke stehen folgende Optionen zur Verfügung:
 
-- Zentraler API-Gateway-Dienst, der alle Anfragen verarbeitet
-- Dynamische Route-Weiterleitung zu spezifischen Service-Funktionen
-- Einheitliche Fehlerbehandlung und Logging
+1. **Standard-Deployment mit direktem Zugriff**:
+   ```bash
+   ./start.sh
+   ```
+   - Jeder Service ist auf seinem eigenen Port erreichbar
+   - API-Gateway auf Port 8000 leitet Anfragen weiter
 
-### Migration zu FastAPI
+2. **Deployment mit NGINX**:
+   ```bash
+   USE_NGINX=1 ./start.sh
+   ```
+   - NGINX-Konfiguration wird generiert und aktiviert
+   - Alle Anfragen gehen über NGINX zum API-Gateway
 
-- Automatische Swagger/OpenAPI-Dokumentation
-- Typ-Validierung mit Pydantic
-- Asynchrone Verarbeitung für bessere Performance
+### Produktions-Deployment
 
-### Zentrale Konfigurationsverwaltung
+Für Produktionsumgebungen wird ein robustes Deployment mit NGINX empfohlen:
 
-- Umgebungsvariablen einheitlich verwalten
-- Konfigurationsdateien pro Umgebung (Entwicklung, Produktion)
-- Sichere Speicherung von Geheimnissen 
+1. **NGINX-Konfiguration generieren**:
+   ```bash
+   cd deploy-scripts
+   ./generate_nginx_config.sh --server-name your-domain.com --restart
+   ```
+
+2. **Systemdienste konfigurieren** (optional):
+   ```bash
+   # PM2 für Prozessverwaltung
+   pm2 start deploy-scripts/production.config.js
+   pm2 save
+   pm2 startup
+   ```
+
+Die Anwendung unterstützt auch automatisches Deployment via GitHub-Webhooks für kontinuierliche Integration.
+
+## 8. Sicherheitskonzept
+
+- JWT-basierte Authentifizierung für alle API-Zugriffe
+- CORS-Konfiguration über API-Gateway oder NGINX
+- Zentralisierte Fehlerbehandlung und -protokollierung
+- Redis-Verbindungssicherheit mit Passwort-Authentifizierung
+- Sichere HTTPS-Kommunikation in Produktionsumgebungen 

@@ -6,8 +6,8 @@ Das System besteht aus mehreren Komponenten:
 
 1. **API-Gateway** (Port 8000): Zentraler Einstiegspunkt für alle API-Anfragen
 2. **API-Server** (Port 8080): Hauptschnittstelle für das Frontend, verwaltet Kunde, Gateways und Geräte
-3. **Message Processor** (Port 8081): Verarbeitet eingehende Nachrichten und leitet sie weiter
-4. **Auth Service** (Port 8082): Verwaltet Benutzerauthentifizierung und -autorisierung
+3. **Auth Service** (Port 8081): Verwaltet Benutzerauthentifizierung und -autorisierung
+4. **Message Processor** (Port 8082): Verarbeitet eingehende Nachrichten und leitet sie weiter
 5. **Frontend**: React-basierte Benutzeroberfläche
 
 ## Datenbanken
@@ -26,9 +26,9 @@ Alle API-Anfragen werden über das API-Gateway geleitet, das als zentraler Einst
 | `/api/v1/gateway/status` | GET | Status des API-Gateways und aller verbundenen Services |
 
 Das API-Gateway leitet Anfragen basierend auf dem Pfad automatisch an den zuständigen Service weiter:
-- `/api/v1/auth/*` → Auth Service
-- `/api/v1/gateways/*`, `/api/v1/customers/*`, `/api/v1/devices/*` → API Service 
-- `/api/v1/messages/*`, `/api/v1/templates/*` → Worker Service
+- `/api/v1/auth/*` → Auth Service (Port 8081)
+- `/api/v1/gateways/*`, `/api/v1/customers/*`, `/api/v1/devices/*` → API Service (Port 8080)
+- `/api/v1/messages/*`, `/api/v1/templates/*` → Worker Service (Port 8082)
 
 ### Gateway-Nachrichteneingang
 
@@ -44,59 +44,59 @@ Eingehende Nachrichten von IoT-Gateways können über verschiedene Wege ins Syst
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
-| `/api/customers` | GET | Liste aller Kunden |
-| `/api/customers/<id>` | GET | Details zu einem Kunden |
-| `/api/customers` | POST | Neuen Kunden erstellen |
-| `/api/customers/<id>` | PUT | Kunden aktualisieren |
-| `/api/customers/<id>` | DELETE | Kunden löschen |
+| `/api/v1/customers` | GET | Liste aller Kunden |
+| `/api/v1/customers/<id>` | GET | Details zu einem Kunden |
+| `/api/v1/customers` | POST | Neuen Kunden erstellen |
+| `/api/v1/customers/<id>` | PUT | Kunden aktualisieren |
+| `/api/v1/customers/<id>` | DELETE | Kunden löschen |
 
 ### Gateway-API
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
-| `/api/gateways` | GET | Liste aller Gateways (mit optionalem Filter `customer_id`) |
-| `/api/gateways/unassigned` | GET | Liste aller nicht zugeordneten Gateways |
-| `/api/gateways/<uuid>` | GET | Details zu einem Gateway |
-| `/api/gateways` | POST | Neues Gateway erstellen |
-| `/api/gateways/<uuid>` | PUT | Gateway aktualisieren |
-| `/api/gateways/<uuid>` | DELETE | Gateway löschen |
-| `/api/gateways/<uuid>/status` | PUT | Gateway-Status aktualisieren |
+| `/api/v1/gateways` | GET | Liste aller Gateways (mit optionalem Filter `customer_id`) |
+| `/api/v1/gateways/unassigned` | GET | Liste aller nicht zugeordneten Gateways |
+| `/api/v1/gateways/<uuid>` | GET | Details zu einem Gateway |
+| `/api/v1/gateways` | POST | Neues Gateway erstellen |
+| `/api/v1/gateways/<uuid>` | PUT | Gateway aktualisieren |
+| `/api/v1/gateways/<uuid>` | DELETE | Gateway löschen |
+| `/api/v1/gateways/<uuid>/status` | PUT | Gateway-Status aktualisieren |
 
 ### Geräte-API
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
-| `/api/devices` | GET | Liste aller Geräte (mit optionalem Filter `gateway_uuid`) |
-| `/api/devices/<gateway_uuid>/<device_id>` | GET | Details zu einem Gerät |
-| `/api/devices` | POST | Neues Gerät erstellen |
-| `/api/devices/<gateway_uuid>/<device_id>` | PUT | Gerät aktualisieren |
-| `/api/devices/<gateway_uuid>/<device_id>/status` | PUT | Gerätestatus aktualisieren |
-| `/api/devices/<gateway_uuid>/<device_id>` | DELETE | Gerät löschen |
+| `/api/v1/devices` | GET | Liste aller Geräte (mit optionalem Filter `gateway_uuid`) |
+| `/api/v1/devices/<gateway_uuid>/<device_id>` | GET | Details zu einem Gerät |
+| `/api/v1/devices` | POST | Neues Gerät erstellen |
+| `/api/v1/devices/<gateway_uuid>/<device_id>` | PUT | Gerät aktualisieren |
+| `/api/v1/devices/<gateway_uuid>/<device_id>/status` | PUT | Gerätestatus aktualisieren |
+| `/api/v1/devices/<gateway_uuid>/<device_id>` | DELETE | Gerät löschen |
 
 ### Template-API
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
-| `/api/templates` | GET | Liste aller verfügbaren Templates |
-| `/api/reload-templates` | POST | Alle Templates neu laden |
-| `/api/test-transform` | POST | Transformation mit einem Template testen |
+| `/api/v1/templates` | GET | Liste aller verfügbaren Templates |
+| `/api/v1/templates/reload` | POST | Alle Templates neu laden |
+| `/api/v1/templates/test-transform` | POST | Transformation mit einem Template testen |
 
 ### Queue-API
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
-| `/api/queue/status` | GET | Status der Message Queue |
-| `/api/queue/failed` | GET | Liste fehlgeschlagener Nachrichten |
-| `/api/queue/retry/<message_id>` | POST | Fehlgeschlagene Nachricht erneut verarbeiten |
-| `/api/queue/clear` | POST | Alle Queues leeren (nur für Entwicklung) |
+| `/api/v1/messages/queue/status` | GET | Status der Message Queue |
+| `/api/v1/messages/failed` | GET | Liste fehlgeschlagener Nachrichten |
+| `/api/v1/messages/retry/<message_id>` | POST | Fehlgeschlagene Nachricht erneut verarbeiten |
+| `/api/v1/messages/clear` | POST | Alle Queues leeren (nur für Entwicklung) |
 
 ### Auth-API
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
-| `/api/auth/login` | POST | Benutzer anmelden |
-| `/api/auth/verify` | POST | Token verifizieren |
-| `/api/auth/users` | GET | Liste aller Benutzer |
+| `/api/v1/auth/login` | POST | Benutzer anmelden |
+| `/api/v1/auth/verify` | POST | Token verifizieren |
+| `/api/v1/auth/users` | GET | Liste aller Benutzer |
 
 ## Datenmodelle
 
@@ -189,20 +189,60 @@ Eingehende Nachrichten von IoT-Gateways können über verschiedene Wege ins Syst
 
 2. **Routenreihenfolge**: Bei Flask/Blueprint ist die Reihenfolge der Routen wichtig. Spezifische Routen (z.B. `/gateways/unassigned`) müssen VOR generischen Routen mit Platzhaltern (z.B. `/gateways/<uuid>`) definiert werden.
 
-3. **API-Server-Start**: Der Hauptserver wird mit `python3 api/app.py` gestartet und ist auf Port 8080 erreichbar.
+3. **API-Gateway**: Der zentrale Gateway-Service auf Port 8000 leitet alle Anfragen an die entsprechenden Dienste weiter und stellt eine einheitliche API-Schnittstelle bereit.
 
-4. **Message Processor**: Der Message Processor wird mit `python3 api/message_processor.py` gestartet und ist auf Port 8081 erreichbar.
-
-5. **Auth Service**: Der Auth Service wird mit `python3 api/auth_service.py` gestartet und ist auf Port 8082 erreichbar.
+4. **API-Service**: Die wichtigsten Dienste laufen auf verschiedenen Ports:
+   - API-Gateway: Port 8000 (zentraler Zugang)
+   - API-Server: Port 8080
+   - Auth Service: Port 8081
+   - Message Processor: Port 8082
 
 ## Deployment
 
-Das System wird über einen GitHub-Webhook automatisch auf dem Server aktualisiert. Die Konfiguration ist in `/var/www/webhook` zu finden.
+Das System kann über folgende Methoden bereitgestellt werden:
+
+1. **Standard-Deployment**:
+   ```bash
+   ./start.sh  # Startet alle Services direkt
+   ```
+
+2. **Mit Nginx-Proxy**:
+   ```bash
+   USE_NGINX=1 ./start.sh  # Nutzt Nginx als Proxy
+   ```
+
+3. **Manuelle Nginx-Konfiguration**:
+   ```bash
+   cd deploy-scripts && ./generate_nginx_config.sh --server-name your-domain.com --restart
+   ```
 
 ## Nginx-Konfiguration
 
-Die Nginx-Konfiguration (`/etc/nginx/sites-enabled/iot-gateway`) leitet verschiedene Anfragen an die entsprechenden Services weiter. Wichtig ist die Reihenfolge der Locations:
+Die empfohlene Nginx-Konfiguration leitet alle API-Anfragen an das API-Gateway weiter:
 
-1. Frontend-Dateien unter `/`
-2. Spezifische API-Routen zuerst
-3. Allgemeine API-Routen als Fallback 
+```nginx
+# Alle API-Anfragen zum API-Gateway
+location /api/ {
+    proxy_pass http://localhost:8000/api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+
+# Frontend-Dateien
+location / {
+    root /var/www/iot-gateway/frontend/dist;
+    try_files $uri $uri/ /index.html;
+}
+```
+
+Alternativ können einzelne Services auch direkt angesprochen werden:
+
+```nginx
+# Auth-Service direkt ansprechen
+location /api/v1/auth/ {
+    proxy_pass http://localhost:8081/api/v1/auth/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+}
+``` 
