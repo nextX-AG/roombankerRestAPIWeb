@@ -43,6 +43,12 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 ENV = os.environ.get('FLASK_ENV', 'development')
 SERVICE_HOSTS = HOSTS[ENV]
 
+# Debug-Ausgabe der Host-Konfiguration ins Log
+logger.info(f"Verwendete Umgebung: {ENV}")
+logger.info(f"SERVICE_HOSTS für {ENV}: {SERVICE_HOSTS}")
+for service, url in SERVICE_HOSTS.items():
+    logger.info(f"  - {service}: {url}")
+
 # API Gateway Port
 GATEWAY_PORT = int(os.environ.get('GATEWAY_PORT', 8000))
 
