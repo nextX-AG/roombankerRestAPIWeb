@@ -141,6 +141,13 @@ if [ "$DRY_RUN" = false ]; then
     # Sicherstellen, dass das Zielverzeichnis existiert
     mkdir -p "$(dirname "$INSTALL_PATH")"
     
+    # Alte Konfiguration sichern, falls vorhanden
+    if [ -f "$INSTALL_PATH" ]; then
+        BACKUP_FILE="${INSTALL_PATH}.bak.$(date +%Y%m%d%H%M%S)"
+        echo -e "${YELLOW}Erstelle Backup der alten Konfiguration: ${BACKUP_FILE}${NC}"
+        cp "$INSTALL_PATH" "$BACKUP_FILE"
+    fi
+    
     # Bereinige alle vorhandenen Gateway-Konfigurationen
     echo -e "${YELLOW}Bereinige vorhandene Gateway-Konfigurationen...${NC}"
     
@@ -160,29 +167,17 @@ if [ "$DRY_RUN" = false ]; then
     rm -f /etc/nginx/sites-available/iot-gateway*
     rm -f /etc/nginx/sites-available/evalarm-iot*
     
-    # Alte Konfiguration sichern, falls vorhanden
-    if [ -f "$INSTALL_PATH" ]; then
-        BACKUP_FILE="${INSTALL_PATH}.bak.$(date +%Y%m%d%H%M%S)"
-        echo -e "${YELLOW}Erstelle Backup der alten Konfiguration: ${BACKUP_FILE}${NC}"
-        cp "$INSTALL_PATH" "$BACKUP_FILE"
-    fi
-    
-    # Alten Symlink entfernen, falls vorhanden
-    if [ -L "$ENABLE_PATH" ]; then
-        echo -e "${YELLOW}Entferne alte Symlink: ${ENABLE_PATH}${NC}"
-        rm -f "$ENABLE_PATH"
-    fi
-    
     # Konfiguration kopieren
+    echo -e "${BLUE}Erstelle neue Nginx-Konfiguration...${NC}"
     cp "$OUTPUT_FILE" "$INSTALL_PATH"
-    
+
     if [ $? -ne 0 ]; then
         echo -e "${RED}Fehler beim Kopieren der Konfigurationsdatei!${NC}"
         exit 1
     fi
-    
+
     echo -e "${GREEN}NGINX-Konfiguration installiert: ${INSTALL_PATH}${NC}"
-    
+
     # Symlink erstellen
     ln -sf "$INSTALL_PATH" "$ENABLE_PATH"
     echo -e "${GREEN}NGINX-Konfiguration aktiviert: ${ENABLE_PATH}${NC}"
