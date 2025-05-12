@@ -144,9 +144,21 @@ if [ "$DRY_RUN" = false ]; then
     # Bereinige alle vorhandenen Gateway-Konfigurationen
     echo -e "${YELLOW}Bereinige vorhandene Gateway-Konfigurationen...${NC}"
     
-    # Entferne alle möglichen Symlinks für Gateway-Konfigurationen
-    rm -f /etc/nginx/sites-enabled/iot-gateway
-    rm -f /etc/nginx/sites-enabled/evalarm-iot
+    # Stoppe Nginx kurz, um Fehlern beim Entfernen von Dateien vorzubeugen
+    if systemctl is-active --quiet nginx; then
+        echo -e "${BLUE}Stoppe Nginx temporär...${NC}"
+        systemctl stop nginx
+        NGINX_WAS_RUNNING=true
+    else
+        NGINX_WAS_RUNNING=false
+    fi
+    
+    # Entferne ALLE möglichen Symlinks und Dateien für Gateway-Konfigurationen
+    echo -e "${YELLOW}Entferne alle Konfigurationen und Backups...${NC}"
+    rm -f /etc/nginx/sites-enabled/iot-gateway*
+    rm -f /etc/nginx/sites-enabled/evalarm-iot*
+    rm -f /etc/nginx/sites-available/iot-gateway*
+    rm -f /etc/nginx/sites-available/evalarm-iot*
     
     # Alte Konfiguration sichern, falls vorhanden
     if [ -f "$INSTALL_PATH" ]; then
@@ -229,6 +241,18 @@ if [ "$DRY_RUN" = false ]; then
             echo -e "${GREEN}Message Processor läuft korrekt auf Port 8082.${NC}"
         fi
     else
+        # Wenn RESTART_NGINX nicht gesetzt ist, aber Nginx lief zuvor, starte es wieder
+        if [ "$NGINX_WAS_RUNNING" = true ]; then
+            echo -e "${BLUE}Nginx lief vor der Konfiguration, starte es wieder...${NC}"
+            nginx -t && systemctl start nginx
+            
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}NGINX wurde erfolgreich gestartet.${NC}"
+            else
+                echo -e "${RED}Fehler beim Starten von NGINX!${NC}"
+            fi
+        fi
+    
         echo -e "${YELLOW}NGINX wurde nicht neu gestartet. Verwenden Sie --restart, um NGINX neu zu starten.${NC}"
         echo -e "${YELLOW}Oder führen Sie manuell aus: sudo nginx -t && sudo systemctl restart nginx${NC}"
     fi
