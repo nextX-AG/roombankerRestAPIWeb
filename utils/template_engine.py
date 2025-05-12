@@ -266,6 +266,15 @@ class MessageForwarder:
         except Exception as e:
             logger.error(f"Fehler beim Laden der Kundenendpunkte: {str(e)}")
     
+    def get_endpoint_names(self):
+        """
+        Gibt die Namen aller verfügbaren Endpunkte zurück
+        
+        Returns:
+            Liste der Endpunkt-Namen
+        """
+        return list(self.endpoints.keys())
+    
     def get_customer_by_gateway(self, gateway_uuid):
         """
         Findet den Kunden für ein Gateway

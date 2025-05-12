@@ -346,6 +346,8 @@ def get_endpoints():
         return jsonify(endpoints), 200
     except Exception as e:
         logger.error(f"Fehler beim Abrufen der Endpunkte: {str(e)}")
+        import traceback
+        logger.error(f"Stacktrace: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/templates', methods=['GET'])
@@ -402,8 +404,11 @@ if __name__ == '__main__':
     
     # Starte Flask-App in einem separaten Thread
     flask_port = int(os.environ.get('WORKER_API_PORT', 8083))
+    
+    # WICHTIG: Debug-Modus deaktivieren, da er Probleme mit Threads verursacht
+    app.debug = False
     flask_thread = threading.Thread(
-        target=lambda: app.run(host='0.0.0.0', port=flask_port, debug=False, use_reloader=False)
+        target=lambda: app.run(host='0.0.0.0', port=flask_port, debug=False, use_reloader=False, threaded=True)
     )
     flask_thread.daemon = True
     flask_thread.start()
