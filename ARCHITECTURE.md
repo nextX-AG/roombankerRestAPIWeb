@@ -150,6 +150,26 @@ Vorteile:
 - Konfigurierbare Basis-URLs für unterschiedliche Umgebungen
 - Typsichere API-Aufrufe durch Intellisense
 
+### Deployment-Integration
+
+Die Anwendung bietet einen automatischen NGINX-Konfigurationsgenerator, der auf Basis der zentralen API-Konfiguration die Routing-Regeln erstellt:
+
+```bash
+# Generieren einer NGINX-Konfiguration
+./deploy-scripts/generate_nginx_config.sh --server-name evaluapp.example.com --output /etc/nginx/sites-available/evaluapp
+
+# Im Dry-Run-Modus (ohne Installation)
+./deploy-scripts/generate_nginx_config.sh --server-name evaluapp.example.com --dry-run
+```
+
+Der Generator:
+- Erstellt Upstream-Definitionen für jeden Service
+- Generiert Location-Blöcke für alle API-Endpunkte
+- Leitet Requests automatisch an den jeweils zuständigen Service weiter
+- Fügt Best-Practice-Konfigurationen für Sicherheit und Performance hinzu
+
+Diese automatische Konfiguration vereinfacht Deployments und verhindert Inkonsistenzen zwischen den Services.
+
 ## 7. Zukünftige Architektur (geplant)
 
 Die zukünftige Architektur sieht folgende Verbesserungen vor:
