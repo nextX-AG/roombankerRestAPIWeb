@@ -335,6 +335,32 @@ def health_check():
         "worker_status": status
     }), 200
 
+@app.route('/api/endpoints', methods=['GET'])
+def get_endpoints():
+    """Gibt alle verfügbaren Endpunkte zurück"""
+    if worker_instance is None:
+        return jsonify({"error": "Worker ist nicht initialisiert"}), 500
+    
+    try:
+        endpoints = worker_instance.message_forwarder.get_endpoint_names()
+        return jsonify(endpoints), 200
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Endpunkte: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/templates', methods=['GET'])
+def get_templates():
+    """Gibt alle verfügbaren Templates zurück"""
+    if worker_instance is None:
+        return jsonify({"error": "Worker ist nicht initialisiert"}), 500
+    
+    try:
+        templates = worker_instance.template_engine.get_template_names()
+        return jsonify(templates), 200
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Templates: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 # Singleton-Instanz für die Anwendung
 worker_instance = None
 
