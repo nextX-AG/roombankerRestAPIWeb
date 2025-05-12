@@ -338,7 +338,9 @@
   - [x] Vereinheitlichung der API-Routen im Message Worker
   - [x] Zentrale API-Konfiguration implementiert (`utils/api_config.py`)
   - [x] Frontend-API-Client erstellt (`frontend/src/api.js`)
-  - [ ] Vereinheitlichung der API-Routen in anderen Services
+  - [x] Vereinheitlichung der API-Routen im Auth-Service
+  - [x] Vereinheitlichung der API-Routen im API-Service
+  - [ ] Vereinheitlichung der API-Routen im Processor-Service
   - [ ] NGINX-Konfigurationsgenerator implementieren
   - [ ] Erste Dienste in das neue Format umziehen
 
