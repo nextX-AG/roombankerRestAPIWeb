@@ -148,6 +148,17 @@
 - [ ] Versionsvergleich und Rollback-Möglichkeit
 - [ ] JSONata-Integration für vereinfachte Transformationen
 
+### Frontend-Verbesserungen
+
+- [x] **API-Client-Generator**
+  - [x] Zentrale API-Client Implementierung (`frontend/src/api.js`)
+  - [x] Einheitliches Error-Handling
+  - [x] Konsistente API-Aufrufe über alle Komponenten
+
+- [x] **Zentralisierte API-Konfiguration**
+  - [x] Konfigurierbare Basis-URL für verschiedene Umgebungen
+  - [x] Vereinheitlichung aller API-Aufrufe
+
 ## 4. Benutzerverwaltung & Sicherheit
 
 - [ ] Benutzerrollen für verschiedene Zugriffsebenen
@@ -236,4 +247,107 @@
 ### Phase 3: Abschluss und Tests (Priorität: Mittel)
 - [ ] Cross-Browser-Tests
 - [ ] Responsive Design-Überprüfung
-- [ ] Finale Optimierung und Cleanup 
+- [ ] Finale Optimierung und Cleanup
+
+## 6. Refactoring und Architektur-Verbesserungen
+
+### Zentralisierung der API-Struktur
+
+- [x] **Vereinheitlichung des API-Formats**
+  - [x] Einheitliches Format `/api/v1/resource/action` für alle Routen
+  - [x] Konsistentes Response-Format `{status, data, error}`
+  - [x] Message Worker API-Endpunkte angepasst
+
+- [ ] **API-Gateway-Pattern implementieren (HÖCHSTE PRIORITÄT)**
+  - [ ] Zentraler API-Gateway-Dienst, der alle Anfragen verarbeitet
+  - [ ] Dynamische Route-Weiterleitung zu spezifischen Service-Funktionen
+  - [ ] Einheitliche Fehlerbehandlung und Logging
+
+- [x] **Zentrale Konfigurationsverwaltung**
+  - [x] Zentrale API-Konfigurationsdatei (`utils/api_config.py`) erstellt
+  - [x] Einheitliche Endpunktverwaltung über alle Services hinweg
+  - [x] API-Versionsmanagement (aktuell v1)
+
+- [ ] **Service-Module reorganisieren**
+  - [ ] Aufteilung nach Funktionen statt nach Diensten
+  - [ ] Gemeinsame Schnittstellen zwischen Modulen
+  - [ ] Weniger Abhängigkeiten und zirkuläre Importe
+  ```
+  services/
+    __init__.py
+    health.py       # Gesundheitschecks
+    templates.py    # Template-Verwaltung
+    forwarder.py    # Nachrichtenweiterleitung
+    messages.py     # Nachrichtenverarbeitung 
+    queue.py        # Queue-Management
+  ```
+
+- [ ] **Automatisierte NGINX-Konfiguration**
+  - [ ] Generator für NGINX-Konfiguration aus Route-Definitionen
+  - [ ] Automatische Aktualisierung bei Deployment
+  - [ ] Vermeidung von manuellen Konfigurationsfehlern
+
+- [ ] **API-Framework evaluieren und implementieren**
+  - [ ] FastAPI als modernen Ersatz für Flask evaluieren
+    - Automatische Swagger/OpenAPI-Dokumentation
+    - Typ-Validierung mit Pydantic
+    - Asynchrone Verarbeitung für bessere Performance
+  - [ ] Flask-RestX für bestehende Flask-Anwendung prüfen
+    - API-Dokumentation und Validierung
+    - Strukturierte Route-Definition
+  - [ ] Evaluierungskriterien definieren:
+    - Kompatibilität mit bestehendem Code
+    - Dokumentationsfunktionen
+    - Validierungsmöglichkeiten
+    - Performance unter Last
+    - Wartbarkeit und Community-Support
+
+- [ ] **Zentrale Konfigurationsverwaltung**
+  - [ ] Umgebungsvariablen einheitlich verwalten
+  - [ ] Konfigurationsdateien pro Umgebung (Entwicklung, Produktion)
+  - [ ] Sichere Speicherung von Geheimnissen (z.B. mit python-dotenv)
+
+### Monolithische Architektur mit logischer Trennung
+
+- [ ] **Restrukturierung des Projekts**
+  ```
+  evAlarm-IoT-Gateway/
+    app.py              # Hauptanwendung, lädt alle Module
+    services/           # Dienste nach Funktion gegliedert
+    models/             # Datenmodelle
+    middleware/         # Middleware (Auth, Logging, etc.)
+    utils/              # Hilfsfunktionen
+    config/             # Konfigurationsdateien
+      routes.py         # Zentrale API-Routendefinition
+      nginx.py          # NGINX-Konfigurationsgenerator
+  ```
+
+- [ ] **Einheitliche Prozessverwaltung**
+  - [ ] Ein Hauptprozess statt mehrerer getrennter Dienste
+  - [ ] Worker- und Queue-Funktionalität als Threads/Prozesse
+  - [ ] Einfacheres Deployment und Monitoring
+
+### Implementierungsplan
+
+- [x] **Phase 1: Evaluation und Planung**
+  - [x] Erstellung der ARCHITECTURE.md-Datei zur Dokumentation des API-Designs
+  - [x] Analyse des bestehenden Codes auf Refactoring-Möglichkeiten
+  - [x] Detaillierter Migrationsplan mit Prioritäten
+
+- [ ] **Phase 2: Minimale Implementation**
+  - [x] Vereinheitlichung der API-Routen im Message Worker
+  - [x] Zentrale API-Konfiguration implementiert (`utils/api_config.py`)
+  - [x] Frontend-API-Client erstellt (`frontend/src/api.js`)
+  - [ ] Vereinheitlichung der API-Routen in anderen Services
+  - [ ] NGINX-Konfigurationsgenerator implementieren
+  - [ ] Erste Dienste in das neue Format umziehen
+
+- [ ] **Phase 3: Vollständige Umstellung**
+  - [ ] Alle Dienste migrieren
+  - [ ] Legacy-Code entfernen
+  - [ ] Vollständige Testabdeckung sicherstellen
+
+- [ ] **Phase 4: Optimierung**
+  - [ ] Performance-Benchmarking
+  - [ ] Code-Qualitätsmetriken erheben
+  - [ ] Sicherheitsüberprüfung 
