@@ -163,14 +163,20 @@ def determine_target_service(path):
         'gateways': 'api',
         'customers': 'api',
         'devices': 'api',
-        'messages': 'worker',
-        'templates': 'worker',
-        'health': 'worker',
-        'iot-status': 'worker',
-        'endpoints': 'worker'
+        'messages': 'processor',
+        'templates': 'processor',
+        'system': 'processor',
+        'health': 'processor',
+        'iot-status': 'processor',
+        'endpoints': 'processor'
     }
     
-    return service_mapping.get(category, 'api')  # Default: api-Service
+    service = service_mapping.get(category, 'api')  # Default: api-Service
+    
+    # Debug-Log hinzufügen
+    logger.info(f"Bestimme Service für Pfad: {path}, Kategorie: {category}, Service: {service}")
+    
+    return service
 
 def create_response_from_target(target_response):
     """
