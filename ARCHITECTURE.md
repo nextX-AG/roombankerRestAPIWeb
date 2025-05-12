@@ -65,6 +65,19 @@ Alle API-Antworten verwenden ein konsistentes Format:
 - `/api/v1/customers` - Kundenverwaltung
 - `/api/v1/devices` - Geräteverwaltung
 
+#### Processor Service (Port 8082)
+- `/api/v1/messages/process` - Verarbeitung und Weiterleitung von Nachrichten
+- `/api/v1/messages/queue_status` - Status der Nachrichtenqueue
+- `/api/v1/messages/failed` - Fehlgeschlagene Nachrichten
+- `/api/v1/messages/retry/<message_id>` - Erneuter Versuch einer fehlgeschlagenen Nachricht
+- `/api/v1/messages/clear` - Löschen aller Queues
+- `/api/v1/system/health` - Gesundheitsstatus
+- `/api/v1/system/endpoints` - Liste verfügbarer Endpunkte
+- `/api/v1/system/logs` - Abruf von Systemlogs
+- `/api/v1/templates/list` - Liste verfügbarer Templates
+- `/api/v1/templates/reload` - Neuladen der Templates
+- `/api/v1/templates/test` - Test der Template-Transformation
+
 ## 3. Komponenten-Interaktion
 
 ### Nachrichtenfluss
