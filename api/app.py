@@ -5,8 +5,15 @@ import logging
 import os
 import time
 import uuid
+import sys
 from datetime import datetime
 from routes import api_bp  # Direkter Import für lokale Ausführung
+
+# Füge das Projektverzeichnis zum Python-Pfad hinzu
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Importiere die zentrale API-Konfiguration
+from utils.api_config import get_route, API_VERSION
 
 # Konfiguriere Logging
 logging.basicConfig(
@@ -27,17 +34,37 @@ except ImportError:
         logger.info("Gateway-Modell über absoluten Import geladen")
     except ImportError:
         # Fallback in case of deployment differences
-        import sys
         logger.error(f"Konnte Gateway-Modell nicht importieren. Python-Pfad: {sys.path}")
         Gateway = None
         update_all_devices_for_gateway = None
+
+# Einheitliches Response-Format
+def success_response(data=None, message=None, status_code=200):
+    if message and not data:
+        data = {"message": message}
+    elif message and isinstance(data, dict):
+        data["message"] = message
+    
+    return jsonify({
+        "status": "success",
+        "data": data,
+        "error": None
+    }), status_code
+
+def error_response(message, status_code=400):
+    return jsonify({
+        "status": "error",
+        "data": None,
+        "error": {"message": message}
+    }), status_code
 
 # Erstelle Flask-App
 app = Flask(__name__)
 CORS(app)  # Erlaube Cross-Origin Requests für Frontend-Integration
 
 # Registriere den API Blueprint
-app.register_blueprint(api_bp, url_prefix='/api')
+# Aktualisiere den URL-Präfix auf das neue Format
+app.register_blueprint(api_bp, url_prefix=f'/api/{API_VERSION}')
 
 # Speicherort für empfangene Nachrichten
 MESSAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
@@ -47,7 +74,7 @@ os.makedirs(MESSAGES_DIR, exist_ok=True)
 last_messages = []
 MAX_STORED_MESSAGES = 50
 
-@app.route('/api/test', methods=['POST'])
+@app.route('/api/v1/test', methods=['POST'])
 def receive_message():
     """
     Endpunkt zum Empfangen von MQTT-Nachrichten vom Gateway
@@ -65,7 +92,7 @@ def receive_message():
             logger.info(f"Empfangene Nachricht: {json.dumps(data, indent=2)[:200]}...")  # Zeige die ersten 200 Zeichen
         except json.JSONDecodeError:
             logger.error("Ungültiges JSON empfangen")
-            return jsonify({"status": "error", "message": "Invalid JSON"}), 400
+            return error_response("Invalid JSON", 400)
         
         # Gateway-ID extrahieren und in Datenbank speichern
         gateway_uuid = None
@@ -158,29 +185,29 @@ def receive_message():
         
         # Hier würde später die Weiterleitung an die Template-Engine erfolgen
         
-        return jsonify({"status": "success", "message_id": message['id']}), 200
+        return success_response({"message_id": message['id']}, "Nachricht erfolgreich empfangen", 200)
     
     except Exception as e:
         logger.error(f"Fehler beim Verarbeiten der Nachricht: {str(e)}")
         import traceback
         logger.error(f"Stacktrace: {traceback.format_exc()}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return error_response(str(e), 500)
 
-@app.route('/api/messages', methods=['GET'])
+@app.route('/api/v1/messages', methods=['GET'])
 def get_messages():
     """
     Endpunkt zum Abrufen der letzten empfangenen Nachrichten
     """
-    return jsonify(last_messages), 200
+    return success_response(last_messages)
 
-@app.route('/api/health', methods=['GET'])
+@app.route('/api/v1/health', methods=['GET'])
 def health_check():
     """
     Einfacher Health-Check-Endpunkt
     """
-    return jsonify({"status": "ok", "timestamp": int(time.time())}), 200
+    return success_response({"timestamp": int(time.time())}, "System funktioniert normal")
 
-@app.route('/api/test-message', methods=['POST'])
+@app.route('/api/v1/test-message', methods=['POST'])
 def create_test_message():
     """
     Endpunkt zum Erstellen einer Testnachricht (für Entwicklung und Präsentation)
@@ -224,12 +251,17 @@ def create_test_message():
         
         logger.info(f"Testnachricht erstellt: {filepath}")
         
-        return jsonify({"status": "success", "message_id": message['id'], "data": test_data}), 200
+        return success_response({
+            "message_id": message['id'], 
+            "data": test_data
+        }, "Testnachricht erfolgreich erstellt")
     
     except Exception as e:
         logger.error(f"Fehler beim Erstellen der Testnachricht: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return error_response(str(e), 500)
 
 if __name__ == '__main__':
     logger.info("IoT Gateway API Server wird gestartet...")
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    # Port aus der zentralen Konfiguration verwenden
+    port = int(os.environ.get('API_PORT', 8080))
+    app.run(host='0.0.0.0', port=port, debug=True)

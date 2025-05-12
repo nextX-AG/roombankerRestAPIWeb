@@ -8,10 +8,37 @@ from models import Customer, Gateway, Device, initialize_db, register_device_fro
 import os
 import json
 import glob
+import sys
 from datetime import datetime
+
+# Füge das Projektverzeichnis zum Python-Pfad hinzu
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Importiere die zentrale API-Konfiguration
+from utils.api_config import get_route
 
 # Blueprint für alle API-Routen
 api_bp = Blueprint('api', __name__)
+
+# Einheitliches Response-Format
+def success_response(data=None, message=None, status_code=200):
+    if message and not data:
+        data = {"message": message}
+    elif message and isinstance(data, dict):
+        data["message"] = message
+    
+    return jsonify({
+        "status": "success",
+        "data": data,
+        "error": None
+    }), status_code
+
+def error_response(message, status_code=400):
+    return jsonify({
+        "status": "error",
+        "data": None,
+        "error": {"message": message}
+    }), status_code
 
 # MongoDB-Verbindung initialisieren
 @api_bp.before_app_request
@@ -111,63 +138,63 @@ def get_gateway_messages(gateway_uuid, limit=10):
 
 # ----- Kunden-Endpunkte -----
 
-@api_bp.route('/customers', methods=['GET'])
+@api_bp.route(get_route('customers', 'list'), methods=['GET'])
 def get_customers():
     """Gibt alle Kunden zurück"""
     customers = [customer.to_dict() for customer in Customer.find_all()]
-    return jsonify(customers)
+    return success_response(customers)
 
-@api_bp.route('/customers/<customer_id>', methods=['GET'])
-def get_customer(customer_id):
+@api_bp.route(get_route('customers', 'detail'), methods=['GET'])
+def get_customer(id):
     """Gibt einen Kunden anhand seiner ID zurück"""
-    customer = Customer.find_by_id(customer_id)
+    customer = Customer.find_by_id(id)
     if not customer:
-        return jsonify({"error": "Kunde nicht gefunden"}), 404
-    return jsonify(customer.to_dict())
+        return error_response("Kunde nicht gefunden", 404)
+    return success_response(customer.to_dict())
 
-@api_bp.route('/customers', methods=['POST'])
+@api_bp.route(get_route('customers', 'create'), methods=['POST'])
 def create_customer():
     """Erstellt einen neuen Kunden"""
     data = request.json
     
     # Pflichtfelder überprüfen
     if not data or 'name' not in data:
-        return jsonify({"error": "Name ist erforderlich"}), 400
+        return error_response("Name ist erforderlich", 400)
     
     try:
         customer = Customer.create(**data)
-        return jsonify(customer.to_dict()), 201
+        return success_response(customer.to_dict(), "Kunde erfolgreich erstellt", 201)
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return error_response(str(e), 400)
 
-@api_bp.route('/customers/<customer_id>', methods=['PUT'])
-def update_customer(customer_id):
+@api_bp.route(get_route('customers', 'update'), methods=['PUT'])
+def update_customer(id):
     """Aktualisiert einen vorhandenen Kunden"""
     data = request.json
     
-    customer = Customer.find_by_id(customer_id)
+    customer = Customer.find_by_id(id)
     if not customer:
-        return jsonify({"error": "Kunde nicht gefunden"}), 404
+        return error_response("Kunde nicht gefunden", 404)
     
     try:
         customer.update(**data)
-        return jsonify(customer.to_dict())
+        return success_response(customer.to_dict(), "Kunde erfolgreich aktualisiert")
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return error_response(str(e), 400)
 
-@api_bp.route('/customers/<customer_id>', methods=['DELETE'])
-def delete_customer(customer_id):
+@api_bp.route(get_route('customers', 'delete'), methods=['DELETE'])
+def delete_customer(id):
     """Löscht einen Kunden"""
-    customer = Customer.find_by_id(customer_id)
+    customer = Customer.find_by_id(id)
     if not customer:
-        return jsonify({"error": "Kunde nicht gefunden"}), 404
+        return error_response("Kunde nicht gefunden", 404)
     
     customer.delete()
-    return jsonify({"message": "Kunde erfolgreich gelöscht"})
+    return success_response(message="Kunde erfolgreich gelöscht")
 
 # ----- Gateway-Endpunkte -----
 
-@api_bp.route('/gateways', methods=['GET'])
+@api_bp.route(get_route('gateways', 'list'), methods=['GET'])
 def get_gateways():
     """Gibt alle Gateways zurück, optional gefiltert nach Kunde"""
     customer_id = request.args.get('customer_id')
@@ -177,72 +204,72 @@ def get_gateways():
     else:
         gateways = Gateway.find_all()
     
-    return jsonify([gateway.to_dict() for gateway in gateways])
+    return success_response([gateway.to_dict() for gateway in gateways])
 
-@api_bp.route('/gateways/unassigned', methods=['GET'])
+@api_bp.route(get_route('gateways', 'unassigned'), methods=['GET'])
 def get_unassigned_gateways():
     """Gibt alle Gateways ohne Kundenzuordnung zurück"""
-    print("DEBUG: /gateways/unassigned endpoint called")
+    print("DEBUG: /api/v1/gateways/unassigned endpoint called")
     try:
         gateways = Gateway.find_unassigned()
         print(f"DEBUG: Found {len(gateways)} unassigned gateways")
-        return jsonify([gateway.to_dict() for gateway in gateways])
+        return success_response([gateway.to_dict() for gateway in gateways])
     except Exception as e:
-        print(f"DEBUG: Error in /gateways/unassigned: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        print(f"DEBUG: Error in /api/v1/gateways/unassigned: {str(e)}")
+        return error_response(str(e), 500)
 
-@api_bp.route('/gateways/<uuid>', methods=['GET'])
+@api_bp.route(get_route('gateways', 'detail'), methods=['GET'])
 def get_gateway(uuid):
     """Gibt ein Gateway anhand seiner UUID zurück"""
     gateway = Gateway.find_by_uuid(uuid)
     if not gateway:
-        return jsonify({"error": "Gateway nicht gefunden"}), 404
-    return jsonify(gateway.to_dict())
+        return error_response("Gateway nicht gefunden", 404)
+    return success_response(gateway.to_dict())
 
-@api_bp.route('/gateways', methods=['POST'])
+@api_bp.route(get_route('gateways', 'create'), methods=['POST'])
 def create_gateway():
     """Erstellt ein neues Gateway"""
     data = request.json
     
     # Pflichtfelder überprüfen
     if not data or 'uuid' not in data or 'customer_id' not in data:
-        return jsonify({"error": "UUID und customer_id sind erforderlich"}), 400
+        return error_response("UUID und customer_id sind erforderlich", 400)
     
     # Überprüfen, ob der Kunde existiert
     customer = Customer.find_by_id(data['customer_id'])
     if not customer:
-        return jsonify({"error": "Angegebener Kunde existiert nicht"}), 400
+        return error_response("Angegebener Kunde existiert nicht", 400)
     
     try:
         gateway = Gateway.create(**data)
-        return jsonify(gateway.to_dict()), 201
+        return success_response(gateway.to_dict(), "Gateway erfolgreich erstellt", 201)
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return error_response(str(e), 400)
 
-@api_bp.route('/gateways/<uuid>', methods=['PUT'])
+@api_bp.route(get_route('gateways', 'update'), methods=['PUT'])
 def update_gateway(uuid):
     """Aktualisiert ein vorhandenes Gateway"""
     data = request.json
     
     gateway = Gateway.find_by_uuid(uuid)
     if not gateway:
-        return jsonify({"error": "Gateway nicht gefunden"}), 404
+        return error_response("Gateway nicht gefunden", 404)
     
     try:
         gateway.update(**data)
-        return jsonify(gateway.to_dict())
+        return success_response(gateway.to_dict(), "Gateway erfolgreich aktualisiert")
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return error_response(str(e), 400)
 
-@api_bp.route('/gateways/<uuid>', methods=['DELETE'])
+@api_bp.route(get_route('gateways', 'delete'), methods=['DELETE'])
 def delete_gateway(uuid):
     """Löscht ein Gateway"""
     gateway = Gateway.find_by_uuid(uuid)
     if not gateway:
-        return jsonify({"error": "Gateway nicht gefunden"}), 404
+        return error_response("Gateway nicht gefunden", 404)
     
     gateway.delete()
-    return jsonify({"message": "Gateway erfolgreich gelöscht"})
+    return success_response(message="Gateway erfolgreich gelöscht")
 
 @api_bp.route('/gateways/<uuid>/status', methods=['PUT'])
 def update_gateway_status(uuid):
@@ -318,7 +345,7 @@ def get_gateway_history(uuid):
 
 # ----- Geräte-Endpunkte -----
 
-@api_bp.route('/devices', methods=['GET'])
+@api_bp.route('/api/v1/devices', methods=['GET'])
 def get_devices():
     """Gibt alle Geräte zurück, optional gefiltert nach Gateway"""
     gateway_uuid = request.args.get('gateway_uuid')
@@ -328,7 +355,7 @@ def get_devices():
     else:
         devices = Device.find_all()
     
-    return jsonify([device.to_dict() for device in devices])
+    return success_response([device.to_dict() for device in devices])
 
 @api_bp.route('/devices/<gateway_uuid>/<device_id>', methods=['GET'])
 def get_device(gateway_uuid, device_id):

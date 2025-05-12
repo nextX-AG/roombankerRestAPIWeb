@@ -6,6 +6,13 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# Füge das Projektverzeichnis zum Python-Pfad hinzu
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Importiere die zentrale API-Konfiguration
+from utils.api_config import get_route
+
 # Konfiguriere Logging
 logging.basicConfig(
     level=logging.INFO,
@@ -59,7 +66,7 @@ def load_users():
 def generate_token():
     return secrets.token_hex(32)
 
-@app.route('/api/auth/login', methods=['POST'])
+@app.route(get_route('auth', 'login'), methods=['POST'])
 def login():
     """
     Endpunkt für die Benutzeranmeldung
@@ -70,8 +77,9 @@ def login():
     
     if not username or not password:
         return jsonify({
-            'status': 'error',
-            'message': 'Benutzername und Passwort sind erforderlich'
+            'status': 'error', 
+            'data': None,
+            'error': {'message': 'Benutzername und Passwort sind erforderlich'}
         }), 400
     
     users = load_users()
@@ -79,7 +87,8 @@ def login():
     if username not in users:
         return jsonify({
             'status': 'error',
-            'message': 'Ungültige Anmeldedaten'
+            'data': None,
+            'error': {'message': 'Ungültige Anmeldedaten'}
         }), 401
     
     user = users[username]
@@ -87,7 +96,8 @@ def login():
     if not check_password_hash(user['password_hash'], password):
         return jsonify({
             'status': 'error',
-            'message': 'Ungültige Anmeldedaten'
+            'data': None,
+            'error': {'message': 'Ungültige Anmeldedaten'}
         }), 401
     
     # Token generieren
@@ -99,16 +109,19 @@ def login():
     
     return jsonify({
         'status': 'success',
-        'message': 'Anmeldung erfolgreich',
-        'token': token,
-        'user': {
-            'username': user['username'],
-            'role': user['role'],
-            'name': user['name']
-        }
+        'data': {
+            'token': token,
+            'user': {
+                'username': user['username'],
+                'role': user['role'],
+                'name': user['name']
+            },
+            'message': 'Anmeldung erfolgreich'
+        },
+        'error': None
     }), 200
 
-@app.route('/api/auth/logout', methods=['POST'])
+@app.route(get_route('auth', 'logout'), methods=['POST'])
 def logout():
     """
     Endpunkt für die Benutzerabmeldung
@@ -121,10 +134,11 @@ def logout():
     
     return jsonify({
         'status': 'success',
-        'message': 'Abmeldung erfolgreich'
+        'data': {'message': 'Abmeldung erfolgreich'},
+        'error': None
     }), 200
 
-@app.route('/api/auth/verify', methods=['POST'])
+@app.route(get_route('auth', 'refresh'), methods=['POST'])
 def verify_token():
     """
     Endpunkt zur Überprüfung eines Tokens
@@ -135,24 +149,29 @@ def verify_token():
     if not token:
         return jsonify({
             'status': 'error',
-            'message': 'Token ist erforderlich'
+            'data': None,
+            'error': {'message': 'Token ist erforderlich'}
         }), 400
     
     if token not in active_tokens:
         return jsonify({
             'status': 'error',
-            'message': 'Ungültiges oder abgelaufenes Token'
+            'data': None,
+            'error': {'message': 'Ungültiges oder abgelaufenes Token'}
         }), 401
     
     user_info = active_tokens[token]
     
     return jsonify({
         'status': 'success',
-        'message': 'Token ist gültig',
-        'user': user_info
+        'data': {
+            'user': user_info,
+            'message': 'Token ist gültig'
+        },
+        'error': None
     }), 200
 
-@app.route('/api/auth/users', methods=['GET'])
+@app.route(get_route('auth', 'status'), methods=['GET'])
 def get_users():
     """
     Endpunkt zum Abrufen aller Benutzer (nur für Administratoren)
@@ -170,9 +189,13 @@ def get_users():
             'name': user_data['name']
         })
     
-    return jsonify(user_list), 200
+    return jsonify({
+        'status': 'success',
+        'data': user_list,
+        'error': None
+    }), 200
 
-@app.route('/api/auth/users', methods=['POST'])
+@app.route('/api/v1/auth/users', methods=['POST'])
 def create_user():
     """
     Endpunkt zum Erstellen eines neuen Benutzers (nur für Administratoren)
@@ -188,7 +211,8 @@ def create_user():
     if not username or not password:
         return jsonify({
             'status': 'error',
-            'message': 'Benutzername und Passwort sind erforderlich'
+            'data': None,
+            'error': {'message': 'Benutzername und Passwort sind erforderlich'}
         }), 400
     
     users = load_users()
@@ -196,7 +220,8 @@ def create_user():
     if username in users:
         return jsonify({
             'status': 'error',
-            'message': f'Benutzer "{username}" existiert bereits'
+            'data': None,
+            'error': {'message': f'Benutzer "{username}" existiert bereits'}
         }), 400
     
     # Neuen Benutzer erstellen
@@ -213,10 +238,13 @@ def create_user():
     
     return jsonify({
         'status': 'success',
-        'message': f'Benutzer "{username}" wurde erstellt'
+        'data': {'message': f'Benutzer "{username}" wurde erstellt'},
+        'error': None
     }), 201
 
 if __name__ == '__main__':
     logger.info("Auth Service wird gestartet...")
     create_default_users()  # Standardbenutzer erstellen, falls nicht vorhanden
-    app.run(host='0.0.0.0', port=8082, debug=True)
+    # Port aus der zentralen Konfiguration verwenden
+    port = int(os.environ.get('AUTH_PORT', 8081))
+    app.run(host='0.0.0.0', port=port, debug=True)
