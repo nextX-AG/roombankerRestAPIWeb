@@ -341,7 +341,7 @@
   - [x] Vereinheitlichung der API-Routen im Auth-Service
   - [x] Vereinheitlichung der API-Routen im API-Service
   - [x] Vereinheitlichung der API-Routen im Processor-Service
-  - [ ] NGINX-Konfigurationsgenerator implementieren
+  - [x] NGINX-Konfigurationsgenerator implementieren (`utils/nginx_config_generator.py`)
   - [ ] Erste Dienste in das neue Format umziehen
 
 - [ ] **Phase 3: Vollständige Umstellung**
