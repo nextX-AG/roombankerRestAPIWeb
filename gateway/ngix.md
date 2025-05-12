@@ -35,6 +35,15 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
+    # IoT-System-Status-Endpunkt
+    location /api/iot-status {
+        proxy_pass http://localhost:8083/api/iot-status;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
     # API-Endpunkte für Templates und Endpoints (jetzt auch auf Worker-Port 8083)
     location /api/templates {
         proxy_pass http://localhost:8083/api/templates;

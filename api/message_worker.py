@@ -6,7 +6,9 @@ import signal
 import logging
 import threading
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from typing import Dict, Any, List, Optional
+from datetime import datetime
 
 # Füge das Projektverzeichnis zum Python-Pfad hinzu
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,6 +26,7 @@ logger = logging.getLogger('message-worker')
 
 # Flask-App für API-Endpunkte
 app = Flask(__name__)
+CORS(app)  # Erlaube Cross-Origin Requests
 
 # Globale Worker-Instanz
 worker_instance = None
@@ -50,8 +53,17 @@ class MessageWorker:
         # Projektverzeichnis
         PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
+        # Stelle sicher, dass das Templates-Verzeichnis existiert
+        templates_dir = os.path.join(PROJECT_DIR, 'templates')
+        if not os.path.exists(templates_dir):
+            try:
+                os.makedirs(templates_dir)
+                logger.info(f"Templates-Verzeichnis {templates_dir} erstellt")
+            except Exception as e:
+                logger.error(f"Fehler beim Erstellen des Templates-Verzeichnisses: {str(e)}")
+        
         # Initialisiere Template-Engine und Message-Forwarder
-        self.template_engine = TemplateEngine(os.path.join(PROJECT_DIR, 'templates'))
+        self.template_engine = TemplateEngine(templates_dir)
         self.message_forwarder = MessageForwarder()
         
         # Signal Handler für graceful shutdown
@@ -335,6 +347,68 @@ def health_check():
         "worker_status": status
     }), 200
 
+@app.route('/api/iot-status', methods=['GET'])
+def iot_system_status():
+    """Gibt den Status des gesamten IoT-Systems zurück"""
+    if worker_instance is None:
+        return jsonify({"status": "error", "message": "Worker ist nicht initialisiert"}), 500
+    
+    try:
+        # Systeminformationen sammeln
+        import platform
+        import psutil
+        
+        # Worker-Status
+        worker_status = worker_instance.get_status()
+        
+        # Redis-Status
+        redis_status = {"connected": False, "error": None}
+        try:
+            queue = worker_instance.queue
+            if queue and queue.redis_client:
+                ping_result = queue.redis_client.ping()
+                redis_status["connected"] = ping_result
+                redis_status["queue_status"] = queue.get_queue_status()
+        except Exception as e:
+            redis_status["error"] = str(e)
+        
+        # Template-Status
+        template_status = {"loaded": 0, "error": None}
+        try:
+            if worker_instance.template_engine:
+                template_status["loaded"] = len(worker_instance.template_engine.templates)
+                template_status["directory"] = worker_instance.template_engine.templates_dir
+                template_status["exists"] = os.path.exists(worker_instance.template_engine.templates_dir)
+        except Exception as e:
+            template_status["error"] = str(e)
+        
+        # System-Informationen
+        system_info = {
+            "platform": platform.platform(),
+            "python_version": platform.python_version(),
+            "cpu_usage": psutil.cpu_percent(),
+            "memory_usage": psutil.virtual_memory().percent,
+            "disk_usage": psutil.disk_usage('/').percent
+        }
+        
+        return jsonify({
+            "status": "healthy" if worker_status['running'] and redis_status["connected"] else "unhealthy",
+            "worker": worker_status,
+            "redis": redis_status,
+            "templates": template_status,
+            "system": system_info,
+            "timestamp": datetime.now().isoformat()
+        }), 200
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen des System-Status: {str(e)}")
+        import traceback
+        logger.error(f"Stacktrace: {traceback.format_exc()}")
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
 @app.route('/api/endpoints', methods=['GET'])
 def get_endpoints():
     """Gibt alle verfügbaren Endpunkte zurück"""
@@ -342,13 +416,19 @@ def get_endpoints():
         return jsonify({"error": "Worker ist nicht initialisiert"}), 500
     
     try:
+        # Leere Liste zurückgeben, wenn message_forwarder nicht existiert
+        if not hasattr(worker_instance, 'message_forwarder') or worker_instance.message_forwarder is None:
+            logger.warning("Message Forwarder ist nicht initialisiert")
+            return jsonify([]), 200
+        
         endpoints = worker_instance.message_forwarder.get_endpoint_names()
         return jsonify(endpoints), 200
     except Exception as e:
         logger.error(f"Fehler beim Abrufen der Endpunkte: {str(e)}")
         import traceback
         logger.error(f"Stacktrace: {traceback.format_exc()}")
-        return jsonify({"error": str(e)}), 500
+        # Bei Fehler leere Liste zurückgeben statt Fehler
+        return jsonify([]), 200
 
 @app.route('/api/templates', methods=['GET'])
 def get_templates():
@@ -357,11 +437,23 @@ def get_templates():
         return jsonify({"error": "Worker ist nicht initialisiert"}), 500
     
     try:
+        # Prüfe, ob das Templates-Verzeichnis existiert
+        if not os.path.exists(worker_instance.template_engine.templates_dir):
+            logger.warning(f"Templates-Verzeichnis {worker_instance.template_engine.templates_dir} existiert nicht")
+            # Leere Liste zurückgeben statt Fehler
+            return jsonify([]), 200
+        
+        # Versuche, die Templates neu zu laden (für den Fall, dass sich etwas geändert hat)
+        worker_instance.template_engine.reload_templates()
+        
         templates = worker_instance.template_engine.get_template_names()
         return jsonify(templates), 200
     except Exception as e:
         logger.error(f"Fehler beim Abrufen der Templates: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        logger.error(f"Stacktrace: {traceback.format_exc()}")
+        # Bei Fehler leere Liste zurückgeben statt Fehler
+        return jsonify([]), 200
 
 # Singleton-Instanz für die Anwendung
 worker_instance = None
