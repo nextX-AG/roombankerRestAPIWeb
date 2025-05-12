@@ -96,20 +96,21 @@ if [ -d "$VENV_DIR" ] && [ -f "$VENV_DIR/bin/activate" ]; then
     source "$VENV_DIR/bin/activate"
 fi
 
-# Konfiguration generieren
-echo -e "${BLUE}Generiere NGINX-Konfiguration...${NC}"
-SITE_ONLY_ARG=$([ "$SITE_ONLY" == "true" ] && echo "--site-only" || echo "")
-python "$PROJECT_DIR/utils/nginx_config_generator.py" --server-name "$SERVER_NAME" --output "$OUTPUT_FILE" $SITE_ONLY_ARG
-
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Fehler beim Generieren der NGINX-Konfiguration!${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}NGINX-Konfiguration wurde generiert: ${OUTPUT_FILE}${NC}"
-
-# Konfiguration anzeigen, wenn DRY_RUN aktiviert ist
+# Wird im Dry-Run-Modus ausgeführt
 if [ "$DRY_RUN" = true ]; then
+    # Konfiguration generieren im Dry-Run-Modus
+    echo -e "${BLUE}Generiere NGINX-Konfiguration...${NC}"
+    SITE_ONLY_ARG=$([ "$SITE_ONLY" == "true" ] && echo "--site-only" || echo "")
+    python "$PROJECT_DIR/utils/nginx_config_generator.py" --server-name "$SERVER_NAME" --output "$OUTPUT_FILE" $SITE_ONLY_ARG
+
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Fehler beim Generieren der NGINX-Konfiguration!${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}NGINX-Konfiguration wurde generiert: ${OUTPUT_FILE}${NC}"
+    
+    # Anzeigen der generierten Konfiguration
     echo -e "${BLUE}Generierte Konfiguration (Dry Run):${NC}"
     echo "========================================"
     cat "$OUTPUT_FILE"
@@ -141,17 +142,10 @@ if [ "$DRY_RUN" = false ]; then
     # Sicherstellen, dass das Zielverzeichnis existiert
     mkdir -p "$(dirname "$INSTALL_PATH")"
     
-    # Alte Konfiguration sichern, falls vorhanden
-    if [ -f "$INSTALL_PATH" ]; then
-        BACKUP_FILE="${INSTALL_PATH}.bak.$(date +%Y%m%d%H%M%S)"
-        echo -e "${YELLOW}Erstelle Backup der alten Konfiguration: ${BACKUP_FILE}${NC}"
-        cp "$INSTALL_PATH" "$BACKUP_FILE"
-    fi
-    
-    # Bereinige alle vorhandenen Gateway-Konfigurationen
+    # Stoppe Nginx und bereinige bestehende Konfigurationen
     echo -e "${YELLOW}Bereinige vorhandene Gateway-Konfigurationen...${NC}"
     
-    # Stoppe Nginx kurz, um Fehlern beim Entfernen von Dateien vorzubeugen
+    # Stoppe Nginx temporär
     if systemctl is-active --quiet nginx; then
         echo -e "${BLUE}Stoppe Nginx temporär...${NC}"
         systemctl stop nginx
@@ -161,18 +155,39 @@ if [ "$DRY_RUN" = false ]; then
     fi
     
     # Entferne ALLE möglichen Symlinks und Dateien für Gateway-Konfigurationen
-    echo -e "${YELLOW}Entferne alle Konfigurationen und Backups...${NC}"
+    echo -e "${YELLOW}Entferne alle alten Konfigurationen...${NC}"
     rm -f /etc/nginx/sites-enabled/iot-gateway*
     rm -f /etc/nginx/sites-enabled/evalarm-iot*
     rm -f /etc/nginx/sites-available/iot-gateway*
     rm -f /etc/nginx/sites-available/evalarm-iot*
     
-    # Konfiguration kopieren
-    echo -e "${BLUE}Erstelle neue Nginx-Konfiguration...${NC}"
+    # JETZT erst generiere die Konfiguration
+    echo -e "${BLUE}Generiere neue Nginx-Konfiguration...${NC}"
+    python "$PROJECT_DIR/utils/nginx_config_generator.py" --server-name "$SERVER_NAME" --output "$OUTPUT_FILE" $SITE_ONLY_ARG
+
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Fehler beim Generieren der NGINX-Konfiguration!${NC}"
+        # Starte Nginx wieder, falls es lief
+        if [ "$NGINX_WAS_RUNNING" = true ]; then
+            echo -e "${BLUE}Starte Nginx wieder...${NC}"
+            systemctl start nginx
+        fi
+        exit 1
+    fi
+
+    echo -e "${GREEN}NGINX-Konfiguration wurde generiert: ${OUTPUT_FILE}${NC}"
+
+    # Kopiere die Konfiguration
+    echo -e "${BLUE}Installiere neue Nginx-Konfiguration...${NC}"
     cp "$OUTPUT_FILE" "$INSTALL_PATH"
 
     if [ $? -ne 0 ]; then
         echo -e "${RED}Fehler beim Kopieren der Konfigurationsdatei!${NC}"
+        # Starte Nginx wieder, falls es lief
+        if [ "$NGINX_WAS_RUNNING" = true ]; then
+            echo -e "${BLUE}Starte Nginx wieder...${NC}"
+            systemctl start nginx
+        fi
         exit 1
     fi
 
