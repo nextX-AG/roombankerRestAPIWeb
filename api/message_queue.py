@@ -3,6 +3,7 @@ import logging
 import redis
 import time
 import uuid
+import os
 from typing import Dict, Any, Union, List, Optional
 
 # Konfiguriere Logging
@@ -319,5 +320,12 @@ def get_message_queue():
     """
     global message_queue
     if message_queue is None:
-        message_queue = init_message_queue()
+        # Hole Parameter aus Umgebungsvariablen
+        host = os.environ.get('REDIS_HOST', 'localhost')
+        port = int(os.environ.get('REDIS_PORT', 6379))
+        db = int(os.environ.get('REDIS_DB', 0))
+        password = os.environ.get('REDIS_PASSWORD')
+        prefix = os.environ.get('REDIS_PREFIX', 'iot_gateway')
+        
+        message_queue = init_message_queue(host, port, db, password, prefix)
     return message_queue 
