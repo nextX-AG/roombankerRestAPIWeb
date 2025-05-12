@@ -29,10 +29,10 @@ HOSTS = {
         'worker': f'http://localhost:{PORTS["worker"]}'
     },
     'production': {
-        'api': f'http://iot-api:{PORTS["api"]}',
-        'auth': f'http://iot-auth:{PORTS["auth"]}',
-        'processor': f'http://iot-processor:{PORTS["processor"]}',
-        'worker': f'http://iot-worker:{PORTS["worker"]}'
+        'api': f'http://localhost:{PORTS["api"]}',
+        'auth': f'http://localhost:{PORTS["auth"]}',
+        'processor': f'http://localhost:{PORTS["processor"]}',
+        'worker': f'http://localhost:{PORTS["worker"]}'
     }
 }
 
