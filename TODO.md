@@ -340,7 +340,7 @@
   - [x] Frontend-API-Client erstellt (`frontend/src/api.js`)
   - [x] Vereinheitlichung der API-Routen im Auth-Service
   - [x] Vereinheitlichung der API-Routen im API-Service
-  - [ ] Vereinheitlichung der API-Routen im Processor-Service
+  - [x] Vereinheitlichung der API-Routen im Processor-Service
   - [ ] NGINX-Konfigurationsgenerator implementieren
   - [ ] Erste Dienste in das neue Format umziehen
 
