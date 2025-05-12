@@ -4,10 +4,11 @@
 
 Das System besteht aus mehreren Komponenten:
 
-1. **API-Server** (Port 8080): Hauptschnittstelle für das Frontend, verwaltet Kunde, Gateways und Geräte
-2. **Message Processor** (Port 8081): Verarbeitet eingehende Nachrichten und leitet sie weiter
-3. **Auth Service** (Port 8082): Verwaltet Benutzerauthentifizierung und -autorisierung
-4. **Frontend**: React-basierte Benutzeroberfläche
+1. **API-Gateway** (Port 8000): Zentraler Einstiegspunkt für alle API-Anfragen
+2. **API-Server** (Port 8080): Hauptschnittstelle für das Frontend, verwaltet Kunde, Gateways und Geräte
+3. **Message Processor** (Port 8081): Verarbeitet eingehende Nachrichten und leitet sie weiter
+4. **Auth Service** (Port 8082): Verwaltet Benutzerauthentifizierung und -autorisierung
+5. **Frontend**: React-basierte Benutzeroberfläche
 
 ## Datenbanken
 
@@ -15,6 +16,19 @@ Das System besteht aus mehreren Komponenten:
 - **Redis**: Message Queue und Caching
 
 ## API-Endpunkte
+
+### API-Gateway
+
+Alle API-Anfragen werden über das API-Gateway geleitet, das als zentraler Einstiegspunkt dient.
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/v1/gateway/status` | GET | Status des API-Gateways und aller verbundenen Services |
+
+Das API-Gateway leitet Anfragen basierend auf dem Pfad automatisch an den zuständigen Service weiter:
+- `/api/v1/auth/*` → Auth Service
+- `/api/v1/gateways/*`, `/api/v1/customers/*`, `/api/v1/devices/*` → API Service 
+- `/api/v1/messages/*`, `/api/v1/templates/*` → Worker Service
 
 ### Gateway-Nachrichteneingang
 

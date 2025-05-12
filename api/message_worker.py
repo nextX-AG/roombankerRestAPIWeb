@@ -19,12 +19,20 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from api.message_queue import get_message_queue
 from utils.template_engine import TemplateEngine, MessageForwarder
-from utils.api_config import get_route
+from utils.api_config import get_route, API_VERSION
+from utils.api_handlers import (
+    success_response, error_response, 
+    not_found_response, validation_error_response,
+    unauthorized_response, forbidden_response,
+    api_error_handler
+)
 
 # Konfiguriere Logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filename=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'worker.log'),
+    filemode='a'
 )
 logger = logging.getLogger('message-worker')
 
@@ -253,284 +261,324 @@ class MessageWorker:
             'queue_status': self.queue.get_queue_status()
         }
 
-# API-Endpunkte mit der zentralen API-Konfiguration
+# Hilfsfunktion zur Überprüfung der Worker-Initialisierung
+def check_worker_initialized():
+    """
+    Überprüft, ob der Worker initialisiert ist und gibt eine Fehlerantwort zurück, wenn nicht
+    
+    Returns:
+        None, wenn der Worker initialisiert ist, sonst eine Fehlerantwort
+    """
+    if worker_instance is None:
+        return error_response("Worker ist nicht initialisiert", 500)
+    return None
 
+# API-Endpunkte mit der zentralen API-Konfiguration
 @app.route(get_route('messages', 'status'), methods=['GET'])
+@api_error_handler
 def get_message_status():
     """Gibt den Status aller verarbeiteten Nachrichten zurück"""
-    if worker_instance is None:
-        return jsonify({"status": "error", "data": None, "error": {"message": "Worker ist nicht initialisiert"}}), 500
+    error = check_worker_initialized()
+    if error:
+        return error
     
     queue = worker_instance.queue
     
-    try:
-        # Hole die letzten Ergebnisse
-        results_json = queue.redis_client.lrange(queue.results_list, 0, 99)
-        results = [json.loads(result) for result in results_json]
-        
-        # Hole fehlgeschlagene Nachrichten
-        failed_messages = queue.get_failed_messages()
-        
-        # Kombiniere alle Statusnachrichten
-        all_statuses = results + failed_messages
-        
-        # Sortiere nach Zeit (neueste zuerst)
-        all_statuses.sort(key=lambda x: x.get('completed_at', 0) or x.get('failed_at', 0) or 0, reverse=True)
-        
-        return jsonify({"status": "success", "data": all_statuses, "error": None}), 200
-    except Exception as e:
-        logger.error(f"Fehler beim Abrufen des Nachrichtenstatus: {str(e)}")
-        return jsonify({"status": "error", "data": None, "error": {"message": str(e)}}), 500
+    # Hole die letzten Ergebnisse
+    results_json = queue.redis_client.lrange(queue.results_list, 0, 99)
+    results = [json.loads(result) for result in results_json]
+    
+    # Hole fehlgeschlagene Nachrichten
+    failed_messages = queue.get_failed_messages()
+    
+    # Kombiniere alle Statusnachrichten
+    all_statuses = results + failed_messages
+    
+    # Sortiere nach Zeit (neueste zuerst)
+    all_statuses.sort(key=lambda x: x.get('completed_at', 0) or x.get('failed_at', 0) or 0, reverse=True)
+    
+    logger.info(f"Nachrichtenstatus abgefragt: {len(all_statuses)} Nachrichten gefunden")
+    return success_response(all_statuses)
 
 @app.route(get_route('messages', 'queue_status'), methods=['GET'])
+@api_error_handler
 def get_queue_status():
     """Gibt den Status der Nachrichtenqueue zurück"""
-    if worker_instance is None:
-        return jsonify({"status": "error", "data": None, "error": {"message": "Worker ist nicht initialisiert"}}), 500
+    error = check_worker_initialized()
+    if error:
+        return error
     
-    try:
-        queue = worker_instance.queue
-        status = queue.get_queue_status()
-        
-        return jsonify({"status": "success", "data": status, "error": None}), 200
-    except Exception as e:
-        logger.error(f"Fehler beim Abrufen des Queue-Status: {str(e)}")
-        return jsonify({"status": "error", "data": None, "error": {"message": str(e)}}), 500
+    queue = worker_instance.queue
+    status = queue.get_queue_status()
+    
+    logger.info(f"Queue-Status abgefragt: {status.get('queue_length', 0)} Nachrichten in der Queue")
+    return success_response(status)
 
 @app.route(get_route('messages', 'forwarding'), methods=['GET'])
+@api_error_handler
 def get_forwarding_status():
     """Gibt den Status der Nachrichtenweiterleitung zurück"""
-    if worker_instance is None:
-        return jsonify({"status": "error", "data": None, "error": {"message": "Worker ist nicht initialisiert"}}), 500
+    error = check_worker_initialized()
+    if error:
+        return error
     
-    try:
-        queue = worker_instance.queue
-        
-        # Hole die letzten Ergebnisse
-        results_json = queue.redis_client.lrange(queue.results_list, 0, 99)
-        results = [json.loads(result) for result in results_json]
-        
-        # Hole fehlgeschlagene Nachrichten
-        failed_messages = queue.get_failed_messages()
-        
-        # Hole aktuelle Verarbeitungsqueue
-        processing_ids = queue.redis_client.hkeys(queue.processing_queue)
-        processing_messages = []
-        for job_id in processing_ids:
-            job_json = queue.redis_client.hget(queue.processing_queue, job_id)
-            if job_json:
-                processing_messages.append(json.loads(job_json))
-        
-        # Zähle nach Status
-        forwarding_status = {
-            "pending": queue.redis_client.llen(queue.main_queue),
-            "processing": len(processing_messages),
-            "completed": len([msg for msg in results if msg.get('status') == 'completed']),
-            "failed": len(failed_messages),
-            "details": {
-                "pending": [],
-                "processing": processing_messages,
-                "completed": [msg for msg in results if msg.get('status') == 'completed'],
-                "failed": failed_messages
-            }
+    queue = worker_instance.queue
+    
+    # Hole die letzten Ergebnisse
+    results_json = queue.redis_client.lrange(queue.results_list, 0, 99)
+    results = [json.loads(result) for result in results_json]
+    
+    # Hole fehlgeschlagene Nachrichten
+    failed_messages = queue.get_failed_messages()
+    
+    # Hole aktuelle Verarbeitungsqueue
+    processing_ids = queue.redis_client.hkeys(queue.processing_queue)
+    processing_messages = []
+    for job_id in processing_ids:
+        job_json = queue.redis_client.hget(queue.processing_queue, job_id)
+        if job_json:
+            processing_messages.append(json.loads(job_json))
+    
+    # Zähle nach Status
+    forwarding_status = {
+        "pending": queue.redis_client.llen(queue.main_queue),
+        "processing": len(processing_messages),
+        "completed": len([msg for msg in results if msg.get('status') == 'completed']),
+        "failed": len(failed_messages),
+        "details": {
+            "pending": [],
+            "processing": processing_messages,
+            "completed": [msg for msg in results if msg.get('status') == 'completed'],
+            "failed": failed_messages
         }
-        
-        return jsonify({"status": "success", "data": forwarding_status, "error": None}), 200
-    except Exception as e:
-        logger.error(f"Fehler beim Abrufen des Weiterleitungsstatus: {str(e)}")
-        return jsonify({"status": "error", "data": None, "error": {"message": str(e)}}), 500
+    }
+    
+    logger.info(f"Weiterleitungsstatus abgefragt: {forwarding_status['pending']} ausstehend, {forwarding_status['processing']} in Verarbeitung, {forwarding_status['completed']} abgeschlossen, {forwarding_status['failed']} fehlgeschlagen")
+    return success_response(forwarding_status)
 
 @app.route(get_route('messages', 'retry'), methods=['POST'])
+@api_error_handler
 def retry_message(message_id):
     """Versucht, eine fehlgeschlagene Nachricht erneut zu senden"""
-    if worker_instance is None:
-        return jsonify({"status": "error", "data": None, "error": {"message": "Worker ist nicht initialisiert"}}), 500
+    error = check_worker_initialized()
+    if error:
+        return error
     
-    try:
-        # Implementiere Retry-Logik hier
-        queue = worker_instance.queue
-        success = queue.retry_failed_message(message_id)
-        
-        if success:
-            return jsonify({"status": "success", "data": {"retried": True}, "error": None}), 200
-        else:
-            return jsonify({"status": "error", "data": None, "error": {"message": "Nachricht konnte nicht erneut versucht werden"}}), 404
-    except Exception as e:
-        logger.error(f"Fehler beim erneuten Versuch der Nachricht: {str(e)}")
-        return jsonify({"status": "error", "data": None, "error": {"message": str(e)}}), 500
+    # Implementiere Retry-Logik hier
+    queue = worker_instance.queue
+    success = queue.retry_failed_message(message_id)
+    
+    if success:
+        logger.info(f"Nachricht {message_id} erfolgreich für erneuten Versuch eingeplant")
+        return success_response({"retried": True, "message_id": message_id})
+    else:
+        logger.warning(f"Nachricht {message_id} nicht in der Failed-Queue gefunden")
+        return not_found_response("message", message_id)
 
 @app.route(get_route('system', 'health'), methods=['GET'])
+@api_error_handler
 def health_check():
     """Gesundheitscheck für den Worker"""
-    if worker_instance is None:
-        return jsonify({"status": "error", "data": None, "error": {"message": "Worker ist nicht initialisiert"}}), 500
+    error = check_worker_initialized()
+    if error:
+        return error
     
     status = worker_instance.get_status()
-    return jsonify({
-        "status": "success",
-        "data": {
-            "health_status": "healthy" if status['running'] else "unhealthy",
-            "worker_status": status
-        },
-        "error": None
-    }), 200
+    health_status = "healthy" if status['running'] else "unhealthy"
+    
+    logger.info(f"Health-Check durchgeführt: {health_status}")
+    return success_response({
+        "service": "worker",
+        "version": API_VERSION,
+        "health_status": health_status,
+        "worker_status": status
+    })
 
 @app.route(get_route('system', 'iot_status'), methods=['GET'])
+@api_error_handler
 def iot_system_status():
     """Gibt den Status des gesamten IoT-Systems zurück"""
-    if worker_instance is None:
-        return jsonify({"status": "error", "data": None, "error": {"message": "Worker ist nicht initialisiert"}}), 500
+    error = check_worker_initialized()
+    if error:
+        return error
     
+    # Systeminformationen sammeln
+    import platform
     try:
-        # Systeminformationen sammeln
-        import platform
         import psutil
-        
-        # Worker-Status
-        worker_status = worker_instance.get_status()
-        
-        # Redis-Status
-        redis_status = {"connected": False, "error": None}
-        try:
-            queue = worker_instance.queue
-            if queue and queue.redis_client:
-                ping_result = queue.redis_client.ping()
-                redis_status["connected"] = ping_result
-                redis_status["queue_status"] = queue.get_queue_status()
-        except Exception as e:
-            redis_status["error"] = str(e)
-        
-        # Template-Status
-        template_status = {"loaded": 0, "error": None}
-        try:
-            if worker_instance.template_engine:
-                template_status["loaded"] = len(worker_instance.template_engine.templates)
-                template_status["directory"] = worker_instance.template_engine.templates_dir
-                template_status["exists"] = os.path.exists(worker_instance.template_engine.templates_dir)
-        except Exception as e:
-            template_status["error"] = str(e)
-        
-        # System-Informationen
-        system_info = {
-            "platform": platform.platform(),
-            "python_version": platform.python_version(),
+    except ImportError:
+        logger.warning("psutil ist nicht installiert, einige Systeminformationen sind nicht verfügbar")
+        psutil = None
+    
+    # Worker-Status
+    worker_status = worker_instance.get_status()
+    
+    # Redis-Status
+    redis_status = {"connected": False, "error": None}
+    try:
+        queue = worker_instance.queue
+        if queue and queue.redis_client:
+            ping_result = queue.redis_client.ping()
+            redis_status["connected"] = ping_result
+            redis_status["queue_status"] = queue.get_queue_status()
+    except Exception as e:
+        redis_status["error"] = str(e)
+    
+    # Template-Status
+    template_status = {"loaded": 0, "error": None}
+    try:
+        if worker_instance.template_engine:
+            template_status["loaded"] = len(worker_instance.template_engine.templates)
+            template_status["directory"] = worker_instance.template_engine.templates_dir
+            template_status["exists"] = os.path.exists(worker_instance.template_engine.templates_dir)
+    except Exception as e:
+        template_status["error"] = str(e)
+    
+    # System-Informationen
+    system_info = {
+        "platform": platform.platform(),
+        "python_version": platform.python_version()
+    }
+    
+    # Optional: psutil-Informationen
+    if psutil:
+        system_info.update({
             "cpu_usage": psutil.cpu_percent(),
             "memory_usage": psutil.virtual_memory().percent,
             "disk_usage": psutil.disk_usage('/').percent
-        }
-        
-        result = {
-            "health_status": "healthy" if worker_status['running'] and redis_status["connected"] else "unhealthy",
-            "worker": worker_status,
-            "redis": redis_status,
-            "templates": template_status,
-            "system": system_info,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        return jsonify({"status": "success", "data": result, "error": None}), 200
-    except Exception as e:
-        logger.error(f"Fehler beim Abrufen des System-Status: {str(e)}")
-        import traceback
-        logger.error(f"Stacktrace: {traceback.format_exc()}")
-        return jsonify({
-            "status": "error",
-            "data": None,
-            "error": {"message": str(e), "details": traceback.format_exc()}
-        }), 500
+        })
+    
+    health_status = "healthy" if worker_status['running'] and redis_status["connected"] else "unhealthy"
+    
+    result = {
+        "service": "worker",
+        "version": API_VERSION,
+        "health_status": health_status,
+        "worker": worker_status,
+        "redis": redis_status,
+        "templates": template_status,
+        "system": system_info,
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    logger.info(f"System-Status abgefragt: {health_status}")
+    return success_response(result)
 
 @app.route(get_route('system', 'endpoints'), methods=['GET'])
+@api_error_handler
 def get_endpoints():
     """Gibt alle verfügbaren Endpunkte zurück"""
-    if worker_instance is None:
-        return jsonify({"status": "error", "data": None, "error": {"message": "Worker ist nicht initialisiert"}}), 500
+    error = check_worker_initialized()
+    if error:
+        return error
     
-    try:
-        # Leere Liste zurückgeben, wenn message_forwarder nicht existiert
-        if not hasattr(worker_instance, 'message_forwarder') or worker_instance.message_forwarder is None:
-            logger.warning("Message Forwarder ist nicht initialisiert")
-            return jsonify({"status": "success", "data": [], "error": None}), 200
-        
-        endpoints = worker_instance.message_forwarder.get_endpoint_names()
-        return jsonify({"status": "success", "data": endpoints, "error": None}), 200
-    except Exception as e:
-        logger.error(f"Fehler beim Abrufen der Endpunkte: {str(e)}")
-        import traceback
-        logger.error(f"Stacktrace: {traceback.format_exc()}")
-        # Bei Fehler leere Liste zurückgeben mit Erfolgs-Status
-        return jsonify({"status": "success", "data": [], "error": None}), 200
+    # Leere Liste zurückgeben, wenn message_forwarder nicht existiert
+    if not hasattr(worker_instance, 'message_forwarder') or worker_instance.message_forwarder is None:
+        logger.warning("Message Forwarder ist nicht initialisiert")
+        return success_response([])
+    
+    endpoints = worker_instance.message_forwarder.get_endpoint_names()
+    logger.info(f"{len(endpoints)} Endpunkte gefunden")
+    return success_response(endpoints)
 
 @app.route(get_route('templates', 'list'), methods=['GET'])
+@api_error_handler
 def get_templates():
     """Gibt alle verfügbaren Templates zurück"""
-    if worker_instance is None:
-        return jsonify({"status": "error", "data": None, "error": {"message": "Worker ist nicht initialisiert"}}), 500
+    error = check_worker_initialized()
+    if error:
+        return error
     
-    try:
-        # Prüfe, ob das Templates-Verzeichnis existiert
-        if not os.path.exists(worker_instance.template_engine.templates_dir):
-            logger.warning(f"Templates-Verzeichnis {worker_instance.template_engine.templates_dir} existiert nicht")
-            # Leere Liste zurückgeben statt Fehler
-            return jsonify({"status": "success", "data": [], "error": None}), 200
-        
-        # Versuche, die Templates neu zu laden (für den Fall, dass sich etwas geändert hat)
-        worker_instance.template_engine.reload_templates()
-        
-        templates = worker_instance.template_engine.get_template_names()
-        return jsonify({"status": "success", "data": templates, "error": None}), 200
-    except Exception as e:
-        logger.error(f"Fehler beim Abrufen der Templates: {str(e)}")
-        import traceback
-        logger.error(f"Stacktrace: {traceback.format_exc()}")
-        # Bei Fehler leere Liste zurückgeben statt Fehler
-        return jsonify({"status": "success", "data": [], "error": None}), 200
+    # Prüfe, ob das Templates-Verzeichnis existiert
+    if not os.path.exists(worker_instance.template_engine.templates_dir):
+        logger.warning(f"Templates-Verzeichnis {worker_instance.template_engine.templates_dir} existiert nicht")
+        # Leere Liste zurückgeben statt Fehler
+        return success_response([])
+    
+    # Versuche, die Templates neu zu laden (für den Fall, dass sich etwas geändert hat)
+    worker_instance.template_engine.reload_templates()
+    
+    templates = worker_instance.template_engine.get_template_names()
+    logger.info(f"{len(templates)} Templates gefunden")
+    return success_response(templates)
 
 @app.route(get_route('templates', 'detail'), methods=['GET'])
+@api_error_handler
 def get_template(template_id):
     """Gibt ein spezifisches Template zurück"""
-    if worker_instance is None:
-        return jsonify({"status": "error", "data": None, "error": {"message": "Worker ist nicht initialisiert"}}), 500
+    error = check_worker_initialized()
+    if error:
+        return error
     
-    try:
-        template = worker_instance.template_engine.get_template(template_id)
-        if template:
-            return jsonify({"status": "success", "data": template, "error": None}), 200
-        else:
-            return jsonify({"status": "error", "data": None, "error": {"message": f"Template '{template_id}' nicht gefunden"}}), 404
-    except Exception as e:
-        logger.error(f"Fehler beim Abrufen des Templates '{template_id}': {str(e)}")
-        return jsonify({"status": "error", "data": None, "error": {"message": str(e)}}), 500
+    template = worker_instance.template_engine.get_template(template_id)
+    if template:
+        logger.info(f"Template {template_id} abgerufen")
+        return success_response(template)
+    else:
+        logger.warning(f"Template {template_id} nicht gefunden")
+        return not_found_response("template", template_id)
 
 @app.route(get_route('templates', 'test'), methods=['POST'])
+@api_error_handler
 def test_transform():
     """Testet die Transformation einer Nachricht mit einem Template"""
-    if worker_instance is None:
-        return jsonify({"status": "error", "data": None, "error": {"message": "Worker ist nicht initialisiert"}}), 500
+    error = check_worker_initialized()
+    if error:
+        return error
     
-    try:
-        data = request.json
-        if not data or not isinstance(data, dict):
-            return jsonify({"status": "error", "data": None, "error": {"message": "Ungültiges JSON-Format"}}), 400
-        
-        template_id = data.get('template_id')
-        message = data.get('message')
-        
-        if not template_id:
-            return jsonify({"status": "error", "data": None, "error": {"message": "template_id fehlt"}}), 400
-        
-        if not message:
-            return jsonify({"status": "error", "data": None, "error": {"message": "message fehlt"}}), 400
-        
-        transformed = worker_instance.template_engine.transform_message(message, template_id)
-        
-        if transformed:
-            return jsonify({"status": "success", "data": transformed, "error": None}), 200
-        else:
-            return jsonify({"status": "error", "data": None, "error": {"message": f"Transformation mit Template '{template_id}' fehlgeschlagen"}}), 400
+    data = request.json
     
-    except Exception as e:
-        logger.error(f"Fehler bei der Test-Transformation: {str(e)}")
-        return jsonify({"status": "error", "data": None, "error": {"message": str(e)}}), 500
+    # Validierung
+    validation_errors = {}
+    if not data or not isinstance(data, dict):
+        return validation_error_response({"request": "Ungültiges JSON-Format"})
+    
+    if 'template_id' not in data:
+        validation_errors['template_id'] = "Template-ID ist erforderlich"
+    
+    if 'message' not in data:
+        validation_errors['message'] = "Nachricht ist erforderlich"
+    
+    if validation_errors:
+        return validation_error_response(validation_errors)
+    
+    template_id = data.get('template_id')
+    message = data.get('message')
+    
+    transformed = worker_instance.template_engine.transform_message(message, template_id)
+    
+    if transformed:
+        logger.info(f"Test-Transformation mit Template {template_id} erfolgreich")
+        return success_response({
+            'original_message': message,
+            'transformed_message': transformed,
+            'template_used': template_id
+        })
+    else:
+        logger.warning(f"Test-Transformation mit Template {template_id} fehlgeschlagen")
+        return error_response(f"Transformation mit Template '{template_id}' fehlgeschlagen", 400)
+
+@app.route('/api/endpoints', methods=['GET'])
+@api_error_handler
+def list_worker_endpoints():
+    """
+    Listet alle verfügbaren Endpunkte dieses Services auf
+    """
+    endpoints = [
+        {'path': get_route('messages', 'status'), 'method': 'GET', 'description': 'Nachrichtenstatus abrufen'},
+        {'path': get_route('messages', 'queue_status'), 'method': 'GET', 'description': 'Queue-Status abrufen'},
+        {'path': get_route('messages', 'forwarding'), 'method': 'GET', 'description': 'Weiterleitungsstatus abrufen'},
+        {'path': get_route('messages', 'retry'), 'method': 'POST', 'description': 'Nachricht erneut verarbeiten'},
+        {'path': get_route('system', 'health'), 'method': 'GET', 'description': 'Systemstatus abrufen'},
+        {'path': get_route('system', 'iot_status'), 'method': 'GET', 'description': 'IoT-Systemstatus abrufen'},
+        {'path': get_route('system', 'endpoints'), 'method': 'GET', 'description': 'Verfügbare Endpunkte auflisten'},
+        {'path': get_route('templates', 'list'), 'method': 'GET', 'description': 'Templates auflisten'},
+        {'path': get_route('templates', 'detail'), 'method': 'GET', 'description': 'Template-Details abrufen'},
+        {'path': get_route('templates', 'test'), 'method': 'POST', 'description': 'Template-Transformation testen'},
+        {'path': '/api/endpoints', 'method': 'GET', 'description': 'API-Endpunkte auflisten'}
+    ]
+    
+    return success_response(endpoints)
 
 # Singleton-Instanz für die Anwendung
 worker_instance = None
@@ -582,6 +630,7 @@ if __name__ == '__main__':
     flask_thread.daemon = True
     flask_thread.start()
     logger.info(f"Worker API gestartet auf Port {flask_port}")
+    print(f"Worker Service läuft auf Port {flask_port} - API Version {API_VERSION}")
     
     try:
         # Halte den Hauptthread am Leben, bis SIGINT oder SIGTERM empfangen wird

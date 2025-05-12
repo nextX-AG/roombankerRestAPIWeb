@@ -258,10 +258,10 @@
   - [x] Konsistentes Response-Format `{status, data, error}`
   - [x] Message Worker API-Endpunkte angepasst
 
-- [ ] **API-Gateway-Pattern implementieren (HÖCHSTE PRIORITÄT)**
-  - [ ] Zentraler API-Gateway-Dienst, der alle Anfragen verarbeitet
-  - [ ] Dynamische Route-Weiterleitung zu spezifischen Service-Funktionen
-  - [ ] Einheitliche Fehlerbehandlung und Logging
+- [x] **API-Gateway-Pattern implementieren (HÖCHSTE PRIORITÄT)**
+  - [x] Zentraler API-Gateway-Dienst, der alle Anfragen verarbeitet
+  - [x] Dynamische Route-Weiterleitung zu spezifischen Service-Funktionen
+  - [x] Einheitliche Fehlerbehandlung und Logging
 
 - [x] **Zentrale Konfigurationsverwaltung**
   - [x] Zentrale API-Konfigurationsdatei (`utils/api_config.py`) erstellt
@@ -334,7 +334,7 @@
   - [x] Analyse des bestehenden Codes auf Refactoring-Möglichkeiten
   - [x] Detaillierter Migrationsplan mit Prioritäten
 
-- [ ] **Phase 2: Minimale Implementation**
+- [x] **Phase 2: Minimale Implementation**
   - [x] Vereinheitlichung der API-Routen im Message Worker
   - [x] Zentrale API-Konfiguration implementiert (`utils/api_config.py`)
   - [x] Frontend-API-Client erstellt (`frontend/src/api.js`)
@@ -342,7 +342,12 @@
   - [x] Vereinheitlichung der API-Routen im API-Service
   - [x] Vereinheitlichung der API-Routen im Processor-Service
   - [x] NGINX-Konfigurationsgenerator implementieren (`utils/nginx_config_generator.py`)
-  - [ ] Erste Dienste in das neue Format umziehen
+  - [x] Erste Dienste in das neue Format umziehen
+    - [x] Gemeinsame API-Handler erstellt (`utils/api_handlers.py`)
+    - [x] Auth-Service in das neue Format umgestellt
+    - [x] API-Service in das neue Format umgestellt
+    - [x] Processor-Service in das neue Format umgestellt
+    - [x] Worker-Service in das neue Format umstellen
 
 - [ ] **Phase 3: Vollständige Umstellung**
   - [ ] Alle Dienste migrieren

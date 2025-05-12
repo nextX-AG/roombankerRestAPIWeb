@@ -44,7 +44,8 @@ ENDPOINTS = {
         'login': '/login',
         'logout': '/logout',
         'refresh': '/refresh',
-        'status': '/status'
+        'status': '/status',
+        'users': '/users'
     },
     
     # API-Service Endpunkte
@@ -74,26 +75,33 @@ ENDPOINTS = {
         'by_gateway': '/gateway/<gateway_uuid>'
     },
     
-    # Message Worker Endpunkte
+    # Message Worker & Processor Endpunkte
     'messages': {
         'base': f'{API_BASE}/messages',
         'status': '/status',
+        'detail': '/<message_id>',
+        'process': '/process',
         'queue_status': '/queue/status',
         'forwarding': '/forwarding',
-        'retry': '/retry/<message_id>'
+        'retry': '/retry/<message_id>',
+        'failed': '/failed',
+        'clear': '/clear'
     },
     
     'templates': {
         'base': f'{API_BASE}/templates',
         'list': '',
         'detail': '/<template_id>',
-        'test': '/test-transform'
+        'test': '/test-transform',
+        'reload': '/reload'
     },
     
     'system': {
-        'health': f'{API_BASE}/health',
-        'iot_status': f'{API_BASE}/iot-status',
-        'endpoints': f'{API_BASE}/endpoints'
+        'base': f'{API_BASE}/system',
+        'health': '/health',
+        'iot_status': '/iot-status',
+        'endpoints': '/endpoints',
+        'logs': '/logs'
     }
 }
 
@@ -163,9 +171,9 @@ def _get_service_for_category(category):
         'gateways': 'api',
         'customers': 'api',
         'devices': 'api',
-        'messages': 'worker',
-        'templates': 'worker',
-        'system': 'worker'
+        'messages': 'processor',
+        'templates': 'processor',
+        'system': 'processor'
     }
     
     return service_mapping.get(category, 'api')  # Default: api-Service

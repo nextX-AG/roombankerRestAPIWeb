@@ -12,8 +12,6 @@ import {
   faTowerCell, 
   faLock,
   faLockOpen,
-  faSignalPerfect,
-  faSignalWeak,
   faSignal,
   faCircle
 } from '@fortawesome/free-solid-svg-icons';

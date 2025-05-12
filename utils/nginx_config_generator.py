@@ -79,7 +79,46 @@ http {{
         root /var/www/iot-gateway/frontend/dist;
         index index.html;
 
-        # API-Routen zu den entsprechenden Services
+        # Globale CORS-Header für alle Anfragen
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With' always;
+        
+        # Spezielle Behandlung von OPTIONS-Requests (Preflight)
+        if ($request_method = 'OPTIONS') {{
+            add_header 'Access-Control-Allow-Origin' '*';
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With';
+            add_header 'Access-Control-Max-Age' '1728000';
+            add_header 'Content-Type' 'text/plain charset=UTF-8';
+            add_header 'Content-Length' '0';
+            return 204;
+        }}
+
+        # API-Gateway als zentraler Einstiegspunkt für alle API-Anfragen
+        location /api/ {{
+            proxy_pass http://gateway_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_buffering off;
+            
+            # Timeout-Konfiguration
+            proxy_connect_timeout 60s;
+            proxy_send_timeout 60s;
+            proxy_read_timeout 60s;
+            
+            # Buffer-Größen
+            proxy_buffer_size 4k;
+            proxy_buffers 4 32k;
+            proxy_busy_buffers_size 64k;
+        }}
+
+        # Legacy-Routen zu den Mikroservices (falls benötigt)
 {location_blocks}
 
         # Frontend-Routing für React-App (SPA)
@@ -119,6 +158,7 @@ def generate_nginx_config(server_name: str = "evalarm-iot.example.com",
     
     # Service-Namen und Ports
     services = {
+        "gateway": 8000,  # API-Gateway auf Port 8000
         "api": PORTS["api"],
         "processor": PORTS["processor"],
         "auth": PORTS["auth"],
@@ -163,8 +203,14 @@ def generate_nginx_config(server_name: str = "evalarm-iot.example.com",
         ("/api/v1/templates/test", "processor_backend")
     ]
     
-    # Location-Blöcke für jede API-Route generieren
+    # Location-Blöcke für jede API-Route generieren (als Legacy-Routen)
     location_blocks = []
+    
+    # Kommentar für Legacy-Routen hinzufügen
+    location_blocks.append("""
+        # Hinweis: Die folgenden Location-Blöcke sind Legacy-Routen, 
+        # die direkt zu den einzelnen Services führen.
+        # Für neue Entwicklungen sollte das API-Gateway unter /api/ verwendet werden.""")
     
     # Allgemeine API-Routen basierend auf Kategorien
     for category, endpoints in ENDPOINTS.items():

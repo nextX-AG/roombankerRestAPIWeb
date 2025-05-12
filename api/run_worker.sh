@@ -1,13 +1,16 @@
 #!/bin/bash
 
-# Starte den Message Worker mit Redis-Konfiguration
+# Starte den Message Worker
 echo "Starte Message Worker..."
 cd "$(dirname "$0")"
 
-# Standard-Konfiguration
+# Umgebungsvariablen für Ports aus zentraler Konfiguration setzen
+export WORKER_PORT=8083
+export WORKER_API_PORT=$WORKER_PORT
 export WORKER_THREADS=2
 export WORKER_POLL_INTERVAL=0.5
-export WORKER_API_PORT=8083
+
+# Redis-Konfiguration aus Processor-Skript übernehmen
 export REDIS_PORT=6379
 export REDIS_DB=0
 export REDIS_PASSWORD="78WDQEuz"
@@ -58,37 +61,5 @@ if [ "$CONNECTION_SUCCESSFUL" = false ]; then
     exit 1
 fi
 
-# Redis-Verbindung mit ausführlichem Logging testen
-echo "Finale Redis-Verbindungsdetails:"
-python3 -c "
-import redis
-import sys
-try:
-    print(f'Verbinde zu Redis auf {sys.argv[1]}:{sys.argv[2]} mit Passwort...')
-    client = redis.Redis(
-        host=sys.argv[1], 
-        port=int(sys.argv[2]), 
-        db=int(sys.argv[3]), 
-        password=sys.argv[4],
-        socket_timeout=5
-    )
-    result = client.ping()
-    print(f'Redis-Verbindung erfolgreich: {result}')
-    # Teste Info-Abruf
-    info = client.info()
-    print(f'Redis Version: {info.get(\"redis_version\")}')
-    print(f'Connected Clients: {info.get(\"connected_clients\")}')
-    sys.exit(0)
-except Exception as e:
-    print(f'Finale Verbindung fehlgeschlagen: {str(e)}')
-    sys.exit(1)
-" "$REDIS_HOST" "$REDIS_PORT" "$REDIS_DB" "$REDIS_PASSWORD"
-
-# Wenn der Redis-Test erfolgreich war, starte den Message Worker
-if [ $? -eq 0 ]; then
-    echo "Starte Message Worker mit Redis-Host: $REDIS_HOST auf Port $WORKER_API_PORT"
-    python3 message_worker.py
-else
-    echo "Message Worker wird nicht gestartet, da die Redis-Verbindung fehlgeschlagen ist."
-    exit 1
-fi 
+echo "Starte Message Worker auf Port $WORKER_PORT mit Redis-Host: $REDIS_HOST"
+python3 message_worker.py 

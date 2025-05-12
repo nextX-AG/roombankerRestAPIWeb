@@ -88,6 +88,18 @@ Alle API-Antworten verwenden ein konsistentes Format:
 4. Template Engine transformiert Nachrichten ins Zielformat
 5. Message Forwarder leitet transformierte Nachrichten weiter
 
+### Redis-Konfiguration
+
+Der Processor Service implementiert eine robuste Redis-Verbindungsstrategie:
+
+1. Mehrere potenzielle Redis-Hosts werden in einer priorisierten Liste konfiguriert
+2. Jeder Host wird systematisch mit definierten Verbindungsparametern getestet
+3. Der erste erfolgreich antwortende Host wird für die Verbindung verwendet
+4. Der Service wird nicht gestartet, wenn keine Verbindung hergestellt werden kann
+5. Umfangreiche Logging-Funktionen für die Verbindungsdiagnostik sind integriert
+
+Diese Strategie gewährleistet eine zuverlässige Verbindung zur Message Queue und stellt sicher, dass die Anwendung in allen Umgebungen konsistent funktioniert.
+
 ### Authentifizierungsfluss
 
 1. Benutzer sendet Anmeldedaten an Auth Service

@@ -9,14 +9,16 @@ const isProduction = import.meta.env.PROD;
 // API-Version für alle Aufrufe
 export const API_VERSION = 'v1';
 
+// Gateway-URL - expliziter Port für Entwicklung
+export const GATEWAY_URL = isProduction ? '/api' : 'http://localhost:8000/api';
+
 // Basis-URLs für API-Zugriffe
 const config = {
-  // In der Produktion werden alle Anfragen über den Nginx-Proxy geleitet (relative Pfade)
-  // In der Entwicklung werden die Dienste direkt auf den entsprechenden Ports angesprochen
-  apiBaseUrl: isProduction ? '/api' : 'http://localhost:8080/api',
-  processorUrl: isProduction ? '/api' : 'http://localhost:8082/api',
-  workerUrl: isProduction ? '/api' : 'http://localhost:8083/api',
-  authUrl: isProduction ? '/api/auth' : 'http://localhost:8081/api/auth',
+  // In der Entwicklung und Produktion werden alle Anfragen über das API-Gateway geleitet
+  apiBaseUrl: GATEWAY_URL,
+  processorUrl: GATEWAY_URL,
+  workerUrl: GATEWAY_URL,
+  authUrl: GATEWAY_URL,
   
   // Standardformat für API-Responses
   responseFormat: {

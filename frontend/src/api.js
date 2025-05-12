@@ -5,12 +5,8 @@
 
 import config, { API_VERSION } from './config';
 
-// Basis-URLs für die verschiedenen Services
-const API_URLS = {
-  api: config.apiBaseUrl,
-  worker: config.workerUrl,
-  auth: config.authUrl
-};
+// Basis-URL für alle Services (jetzt über das Gateway)
+const API_URL = config.apiBaseUrl;
 
 /**
  * Hilfsfunktion für API-Aufrufe mit einheitlichem Fehlerhandling
@@ -34,19 +30,42 @@ async function fetchApi(url, options = {}) {
       options.headers['Authorization'] = `Bearer ${token}`;
     }
 
+    console.log(`API Request: ${options.method || 'GET'} ${url}`);
+
     // API-Aufruf durchführen
     const response = await fetch(url, options);
     
-    // JSON-Daten extrahieren
-    const data = await response.json();
-    
-    // HTTP-Fehler behandeln
-    if (!response.ok) {
-      throw new Error(data?.error?.message || `HTTP error! status: ${response.status}`);
+    // JSON-Daten extrahieren (mit Fehlerbehandlung)
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      console.error('Failed to parse JSON response:', e);
+      throw new Error('Fehler beim Parsen der Server-Antwort');
     }
     
-    // Standardmäßig wird data zurückgegeben (das ist unser Erfolgsformat)
-    return data;
+    // Überprüfen, ob die Antwort das erwartete Format hat
+    if (data && typeof data === 'object' && 'status' in data) {
+      // Gateway-Format erkannt
+      if (data.status === 'error') {
+        throw new Error(data.error?.message || 'Ein unbekannter Fehler ist aufgetreten');
+      }
+      
+      // Erfolgsfall: Daten zurückgeben
+      return data;
+    }
+    
+    // HTTP-Fehler behandeln (falls kein Gateway-Format)
+    if (!response.ok) {
+      throw new Error(data?.message || `HTTP-Fehler! Status: ${response.status}`);
+    }
+    
+    // Fallback: Daten in unser Standardformat konvertieren
+    return {
+      status: 'success',
+      data: data,
+      error: null
+    };
   } catch (error) {
     console.error('API Error:', error);
     
@@ -55,27 +74,24 @@ async function fetchApi(url, options = {}) {
       status: 'error',
       data: null,
       error: {
-        message: error.message
+        message: error.message || 'Ein unbekannter Fehler ist aufgetreten'
       }
     };
   }
 }
 
 /**
- * Generiert eine API-URL basierend auf Service, Ressource und Aktion
+ * Generiert eine API-URL basierend auf Ressource und Aktion
+ * Alle Anfragen gehen jetzt über das zentrale API-Gateway
  * 
- * @param {string} service - Der Service (api, worker, auth)
- * @param {string} resource - Die Ressource (gateways, messages, etc.)
+ * @param {string} resource - Die Ressource (gateways, messages, auth, etc.)
  * @param {string} action - Die Aktion (list, detail, etc.)
  * @param {Object} params - Parameter für die URL
  * @returns {string} - Die vollständige API-URL
  */
-function getApiUrl(service, resource, action, params = {}) {
-  // Basis-URL für den Service
-  const baseUrl = API_URLS[service] || API_URLS.api;
-  
+function getApiUrl(resource, action, params = {}) {
   // Resource-Pfad mit Version
-  let path = `/${resource}`;
+  let path = `/${API_VERSION}/${resource}`;
   
   // Aktion hinzufügen, wenn vorhanden
   if (action) {
@@ -89,90 +105,97 @@ function getApiUrl(service, resource, action, params = {}) {
     });
   }
   
-  return `${baseUrl}/${API_VERSION}${path}`;
+  // Pfad bereinigen (keine doppelten Slashes)
+  path = path.replace(/\/+/g, '/');
+  
+  return `${API_URL}${path}`;
 }
 
 // Auth-API-Endpunkte
 export const authApi = {
   login: async (username, password) => {
-    return fetchApi(getApiUrl('auth', 'auth', 'login'), {
+    // Falls das Frontend noch den alten Pfad verwendet, korrigieren wir das hier
+    const loginUrl = `${API_URL}/v1/auth/login`;
+    console.log(`Login-Anfrage an: ${loginUrl}`);
+    
+    return fetchApi(loginUrl, {
       method: 'POST',
       body: JSON.stringify({ username, password })
     });
   },
   
   logout: async () => {
-    return fetchApi(getApiUrl('auth', 'auth', 'logout'), {
+    return fetchApi(getApiUrl('auth', 'logout'), {
       method: 'POST'
     });
   },
   
   status: async () => {
-    return fetchApi(getApiUrl('auth', 'auth', 'status'));
+    return fetchApi(getApiUrl('auth', 'status'));
   }
 };
 
 // Gateway-API-Endpunkte
 export const gatewayApi = {
   list: async () => {
-    return fetchApi(getApiUrl('api', 'gateways', ''));
+    return fetchApi(getApiUrl('gateways', ''));
   },
   
   detail: async (uuid) => {
-    return fetchApi(getApiUrl('api', 'gateways', ':uuid', { uuid }));
+    return fetchApi(getApiUrl('gateways', uuid));
   },
   
   create: async (gateway) => {
-    return fetchApi(getApiUrl('api', 'gateways', ''), {
+    return fetchApi(getApiUrl('gateways', ''), {
       method: 'POST',
       body: JSON.stringify(gateway)
     });
   },
   
   update: async (uuid, gateway) => {
-    return fetchApi(getApiUrl('api', 'gateways', ':uuid', { uuid }), {
+    return fetchApi(getApiUrl('gateways', uuid), {
       method: 'PUT',
       body: JSON.stringify(gateway)
     });
   },
   
   delete: async (uuid) => {
-    return fetchApi(getApiUrl('api', 'gateways', ':uuid', { uuid }), {
+    return fetchApi(getApiUrl('gateways', uuid), {
       method: 'DELETE'
     });
   },
   
   unassigned: async () => {
-    return fetchApi(getApiUrl('api', 'gateways', 'unassigned'));
+    return fetchApi(getApiUrl('gateways', 'unassigned'));
   }
 };
 
 // Customer-API-Endpunkte
 export const customerApi = {
   list: async () => {
-    return fetchApi(getApiUrl('api', 'customers', ''));
+    return fetchApi(getApiUrl('customers', ''));
   },
   
   detail: async (id) => {
-    return fetchApi(getApiUrl('api', 'customers', ':id', { id }));
+    return fetchApi(getApiUrl('customers', id));
   },
   
   create: async (customer) => {
-    return fetchApi(getApiUrl('api', 'customers', ''), {
+    return fetchApi(getApiUrl('customers', ''), {
       method: 'POST',
       body: JSON.stringify(customer)
     });
   },
   
   update: async (id, customer) => {
-    return fetchApi(getApiUrl('api', 'customers', ':id', { id }), {
+    return fetchApi(getApiUrl('customers', id), {
       method: 'PUT',
       body: JSON.stringify(customer)
     });
   },
   
   delete: async (id) => {
-    return fetchApi(getApiUrl('api', 'customers', ':id', { id }), {
+    return fetchApi(getApiUrl('customers', id), {
       method: 'DELETE'
     });
   }
@@ -181,15 +204,15 @@ export const customerApi = {
 // Templates-API-Endpunkte
 export const templateApi = {
   list: async () => {
-    return fetchApi(getApiUrl('worker', 'templates', ''));
+    return fetchApi(getApiUrl('templates', ''));
   },
   
   detail: async (id) => {
-    return fetchApi(getApiUrl('worker', 'templates', ':id', { id }));
+    return fetchApi(getApiUrl('templates', id));
   },
   
   test: async (templateId, message) => {
-    return fetchApi(getApiUrl('worker', 'templates', 'test-transform'), {
+    return fetchApi(getApiUrl('templates', 'test-transform'), {
       method: 'POST',
       body: JSON.stringify({ template_id: templateId, message })
     });
@@ -199,19 +222,19 @@ export const templateApi = {
 // Message-API-Endpunkte
 export const messageApi = {
   status: async () => {
-    return fetchApi(getApiUrl('worker', 'messages', 'status'));
+    return fetchApi(getApiUrl('messages', 'status'));
   },
   
   queueStatus: async () => {
-    return fetchApi(getApiUrl('worker', 'messages', 'queue/status'));
+    return fetchApi(getApiUrl('messages', 'queue/status'));
   },
   
   forwarding: async () => {
-    return fetchApi(getApiUrl('worker', 'messages', 'forwarding'));
+    return fetchApi(getApiUrl('messages', 'forwarding'));
   },
   
   retry: async (messageId) => {
-    return fetchApi(getApiUrl('worker', 'messages', `retry/${messageId}`), {
+    return fetchApi(getApiUrl('messages', `retry/${messageId}`), {
       method: 'POST'
     });
   }
@@ -220,15 +243,19 @@ export const messageApi = {
 // System-API-Endpunkte
 export const systemApi = {
   health: async () => {
-    return fetchApi(getApiUrl('worker', 'health', ''));
+    return fetchApi(getApiUrl('health', ''));
   },
   
   iotStatus: async () => {
-    return fetchApi(getApiUrl('worker', 'iot-status', ''));
+    return fetchApi(getApiUrl('iot-status', ''));
   },
   
   endpoints: async () => {
-    return fetchApi(getApiUrl('worker', 'endpoints', ''));
+    return fetchApi(getApiUrl('endpoints', ''));
+  },
+
+  gatewayStatus: async () => {
+    return fetchApi(getApiUrl('gateway', 'status'));
   }
 };
 

@@ -8,8 +8,14 @@ from flask_cors import CORS
 # Füge das Projektverzeichnis zum Python-Pfad hinzu
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Importiere die zentrale API-Konfiguration
+# Importiere die zentrale API-Konfiguration und API-Handler
 from utils.api_config import get_route, API_VERSION
+from utils.api_handlers import (
+    success_response, error_response, 
+    not_found_response, validation_error_response,
+    unauthorized_response, forbidden_response,
+    api_error_handler
+)
 
 # Importiere die Template-Engine und den Message-Forwarder
 from utils.template_engine import TemplateEngine, MessageForwarder
@@ -24,33 +30,15 @@ from api.models import initialize_db, Customer, Gateway, Device, register_device
 # Konfiguriere Logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filename=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'processor.log'),
+    filemode='a'
 )
 logger = logging.getLogger('message-processor')
 
 # Initialisiere Flask-App
 app = Flask(__name__)
 CORS(app)
-
-# Einheitliches Response-Format
-def success_response(data=None, message=None, status_code=200):
-    if message and not data:
-        data = {"message": message}
-    elif message and isinstance(data, dict):
-        data["message"] = message
-    
-    return jsonify({
-        "status": "success",
-        "data": data,
-        "error": None
-    }), status_code
-
-def error_response(message, status_code=400):
-    return jsonify({
-        "status": "error",
-        "data": None,
-        "error": {"message": message}
-    }), status_code
 
 # Projektverzeichnis
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -82,246 +70,294 @@ initialize_db(
 )
 
 @app.route(get_route('messages', 'process'), methods=['POST'])
+@api_error_handler
 def process_message():
     """
     Endpunkt zum Verarbeiten und Weiterleiten von Nachrichten (async über Redis Queue)
     """
-    try:
-        # Extrahiere Nachricht und Template-Name aus der Anfrage
-        data = request.json
-        message = data.get('message')
-        template_name = data.get('template')
-        endpoint_name = data.get('endpoint')
-        
-        if not message or not template_name or not endpoint_name:
-            return error_response('Nachricht, Template-Name und Endpunkt-Name sind erforderlich', 400)
-        
-        # Gateway-UUID extrahieren und Gateway in der Datenbank aktualisieren
-        gateway_uuid = None
-        if isinstance(message, dict) and 'gateway' in message and 'uuid' in message['gateway']:
-            gateway_uuid = message['gateway']['uuid']
-            print(f"DEBUG-MP: Found gateway UUID in message['gateway']['uuid']: {gateway_uuid}")
-        else:
-            # Versuche, Gateway-ID aus anderen Feldern zu extrahieren
-            gateway_uuid = message.get('id') or message.get('uuid') or message.get('gateway_id') or message.get('gatewayId')
-            print(f"DEBUG-MP: Extracted gateway UUID from alternative fields: {gateway_uuid}, message keys: {list(message.keys()) if isinstance(message, dict) else 'not a dict'}")
-        
-        if gateway_uuid:
-            # Gateway in der Datenbank aktualisieren oder erstellen
-            gateway = Gateway.find_by_uuid(gateway_uuid)
-            print(f"DEBUG-MP: Looked up gateway {gateway_uuid} in DB, result: {'found' if gateway else 'not found'}")
-            if gateway:
-                gateway.update_status('online')
-                print(f"DEBUG-MP: Updated existing gateway {gateway_uuid} status to 'online'")
-            else:
-                # Wenn Gateway nicht existiert, erstellen wir ein temporäres Gateway ohne Kundenzuordnung
-                # Dieses kann später über die UI einem Kunden zugeordnet werden
-                Gateway.create(uuid=gateway_uuid, customer_id=None)
-                print(f"DEBUG-MP: Created new gateway {gateway_uuid} with no customer assignment")
-            
-            # Geräte aus subdevicelist registrieren/aktualisieren
-            if isinstance(message, dict) and 'subdevicelist' in message:
-                subdevices = message.get('subdevicelist', [])
-                print(f"DEBUG-MP: Found {len(subdevices)} devices in subdevicelist")
-                for device_data in subdevices:
-                    register_device_from_message(gateway_uuid, device_data)
-        else:
-            print(f"DEBUG-MP: No gateway UUID found in message. Message data: {message}")
-        
-        # Füge die Nachricht in die Queue ein (asynchrone Verarbeitung)
-        message_id = queue.enqueue_message(message, template_name, endpoint_name)
-        
-        # Erstelle Antwort mit Message-ID
-        return success_response({
-            'message_id': message_id,
-            'status': 'queued'
-        }, f'Nachricht wurde in die Queue eingefügt (ID: {message_id})', 202)  # 202 Accepted
+    # Extrahiere Nachricht und Template-Name aus der Anfrage
+    data = request.json
     
-    except Exception as e:
-        logger.error(f"Fehler beim Einreihen der Nachricht: {str(e)}")
-        return error_response(str(e), 500)
+    # Validiere erforderliche Felder
+    validation_errors = {}
+    if not data:
+        return validation_error_response({"request": "Keine Daten übermittelt"})
+    
+    if 'message' not in data:
+        validation_errors['message'] = 'Nachricht ist erforderlich'
+    
+    if 'template' not in data:
+        validation_errors['template'] = 'Template-Name ist erforderlich'
+    
+    if 'endpoint' not in data:
+        validation_errors['endpoint'] = 'Endpunkt-Name ist erforderlich'
+    
+    if validation_errors:
+        return validation_error_response(validation_errors)
+    
+    message = data.get('message')
+    template_name = data.get('template')
+    endpoint_name = data.get('endpoint')
+    
+    # Gateway-UUID extrahieren und Gateway in der Datenbank aktualisieren
+    gateway_uuid = None
+    if isinstance(message, dict) and 'gateway' in message and 'uuid' in message['gateway']:
+        gateway_uuid = message['gateway']['uuid']
+        logger.info(f"Gateway UUID aus message['gateway']['uuid'] extrahiert: {gateway_uuid}")
+    else:
+        # Versuche, Gateway-ID aus anderen Feldern zu extrahieren
+        gateway_uuid = message.get('id') or message.get('uuid') or message.get('gateway_id') or message.get('gatewayId')
+        logger.info(f"Gateway UUID aus alternativen Feldern extrahiert: {gateway_uuid}")
+    
+    if gateway_uuid:
+        # Gateway in der Datenbank aktualisieren oder erstellen
+        gateway = Gateway.find_by_uuid(gateway_uuid)
+        
+        if gateway:
+            gateway.update_status('online')
+            logger.info(f"Gateway {gateway_uuid} Status auf 'online' aktualisiert")
+        else:
+            # Wenn Gateway nicht existiert, erstellen wir ein temporäres Gateway ohne Kundenzuordnung
+            # Dieses kann später über die UI einem Kunden zugeordnet werden
+            Gateway.create(uuid=gateway_uuid, customer_id=None)
+            logger.info(f"Neues Gateway {gateway_uuid} ohne Kundenzuordnung erstellt")
+        
+        # Geräte aus subdevicelist registrieren/aktualisieren
+        if isinstance(message, dict) and 'subdevicelist' in message:
+            subdevices = message.get('subdevicelist', [])
+            logger.info(f"{len(subdevices)} Geräte in der subdevicelist gefunden")
+            for device_data in subdevices:
+                register_device_from_message(gateway_uuid, device_data)
+    else:
+        logger.warning(f"Keine Gateway-UUID in der Nachricht gefunden")
+    
+    # Füge die Nachricht in die Queue ein (asynchrone Verarbeitung)
+    message_id = queue.enqueue_message(message, template_name, endpoint_name)
+    logger.info(f"Nachricht in Queue eingefügt: ID {message_id}, Template {template_name}, Endpoint {endpoint_name}")
+    
+    # Erstelle Antwort mit Message-ID
+    return success_response({
+        'message_id': message_id,
+        'status': 'queued'
+    }, f'Nachricht wurde in die Queue eingefügt (ID: {message_id})', 202)  # 202 Accepted
 
 @app.route(get_route('messages', 'detail'), methods=['GET'])
+@api_error_handler
 def get_message_status(message_id):
     """
     Endpunkt zum Abfragen des Status einer Nachricht
     """
-    try:
-        # Suche nach der Nachricht in allen Queues
-        # TODO: Implementieren
-
-        # Vorläufige Implementierung
-        return error_response(f'Status für Nachricht {message_id} ist noch nicht implementiert', 404)
+    # Suche nach der Nachricht in allen Queues
+    # TODO: Implementieren
+    logger.info(f"Statusabfrage für Nachricht {message_id}")
     
-    except Exception as e:
-        logger.error(f"Fehler beim Abfragen des Nachrichten-Status: {str(e)}")
-        return error_response(str(e), 500)
+    # Vorläufige Implementierung
+    return error_response(f'Status für Nachricht {message_id} ist noch nicht implementiert', 404)
 
 @app.route(get_route('messages', 'queue_status'), methods=['GET'])
+@api_error_handler
 def get_queue_status():
     """
     Endpunkt zum Abfragen des Queue-Status
     """
-    try:
-        # Hole den Status der Queue
-        queue_status = queue.get_queue_status()
-        
-        # Hole den Status des Workers
-        worker_status = worker.get_status()
-        
-        # Kombiniere die Informationen
-        status = {
-            'queue': queue_status,
-            'worker': worker_status
-        }
-        
-        return success_response(status)
+    # Hole den Status der Queue
+    queue_status = queue.get_queue_status()
     
-    except Exception as e:
-        logger.error(f"Fehler beim Abfragen des Queue-Status: {str(e)}")
-        return error_response(str(e), 500)
+    # Hole den Status des Workers
+    worker_status = worker.get_status()
+    
+    # Kombiniere die Informationen
+    status = {
+        'queue': queue_status,
+        'worker': worker_status
+    }
+    
+    logger.info(f"Queue-Status abgefragt, aktuelle Länge: {queue_status.get('queue_length', 0)}")
+    return success_response(status)
 
 @app.route(get_route('messages', 'failed'), methods=['GET'])
+@api_error_handler
 def get_failed_messages():
     """
     Endpunkt zum Abfragen fehlgeschlagener Nachrichten
     """
-    try:
-        # Hole alle fehlgeschlagenen Nachrichten
-        failed_messages = queue.get_failed_messages()
-        
-        return success_response(failed_messages)
+    # Hole alle fehlgeschlagenen Nachrichten
+    failed_messages = queue.get_failed_messages()
     
-    except Exception as e:
-        logger.error(f"Fehler beim Abfragen fehlgeschlagener Nachrichten: {str(e)}")
-        return error_response(str(e), 500)
+    logger.info(f"{len(failed_messages)} fehlgeschlagene Nachrichten gefunden")
+    return success_response(failed_messages)
 
 @app.route(get_route('messages', 'retry'), methods=['POST'])
+@api_error_handler
 def retry_failed_message(message_id):
     """
     Endpunkt zum erneuten Verarbeiten einer fehlgeschlagenen Nachricht
     """
-    try:
-        # Versuche, die Nachricht erneut zu verarbeiten
-        success = queue.retry_failed_message(message_id)
-        
-        if not success:
-            return error_response(f'Nachricht {message_id} wurde nicht in der Failed-Queue gefunden', 404)
-        
-        return success_response(message=f'Nachricht {message_id} wurde für eine erneute Verarbeitung eingeplant')
+    # Versuche, die Nachricht erneut zu verarbeiten
+    success = queue.retry_failed_message(message_id)
     
-    except Exception as e:
-        logger.error(f"Fehler beim erneuten Verarbeiten der Nachricht: {str(e)}")
-        return error_response(str(e), 500)
+    if not success:
+        logger.warning(f"Nachricht {message_id} wurde nicht in der Failed-Queue gefunden")
+        return error_response(f'Nachricht {message_id} wurde nicht in der Failed-Queue gefunden', 404)
+    
+    logger.info(f"Nachricht {message_id} für erneute Verarbeitung eingeplant")
+    return success_response(message=f'Nachricht {message_id} wurde für eine erneute Verarbeitung eingeplant')
 
 @app.route(get_route('messages', 'clear'), methods=['POST'])
+@api_error_handler
 def clear_queues():
     """
     Endpunkt zum Löschen aller Queues (nur für Entwicklung/Tests)
     """
-    try:
-        # Löschen aller Queues
-        queue.clear_all_queues()
-        
-        return success_response(message='Alle Queues wurden gelöscht')
+    # Löschen aller Queues
+    queue.clear_all_queues()
     
-    except Exception as e:
-        logger.error(f"Fehler beim Löschen der Queues: {str(e)}")
-        return error_response(str(e), 500)
+    logger.info("Alle Queues wurden gelöscht")
+    return success_response(message='Alle Queues wurden gelöscht')
 
 @app.route(get_route('system', 'health'), methods=['GET'])
+@api_error_handler
 def health_check():
     """
     Endpunkt für Health-Checks
     """
-    try:
-        # Prüfe, ob der Worker läuft
-        worker_status = worker.get_status()
-        
-        if not worker_status['running']:
-            return success_response({
-                'health_status': 'warning',
-                'worker': worker_status
-            }, 'Worker ist nicht aktiv')
-        
-        # Prüfe, ob die Redis-Verbindung funktioniert
-        queue_status = queue.get_queue_status()
-        
-        return success_response({
-            'health_status': 'healthy',
-            'worker': worker_status,
-            'queue': queue_status
-        })
+    # Prüfe, ob der Worker läuft
+    worker_status = worker.get_status()
     
-    except Exception as e:
-        logger.error(f"Fehler beim Health-Check: {str(e)}")
-        return error_response(str(e), 500)
+    if not worker_status['running']:
+        logger.warning("Health-Check: Worker ist nicht aktiv")
+        return success_response({
+            'service': 'processor',
+            'version': API_VERSION,
+            'health_status': 'warning',
+            'worker': worker_status
+        }, 'Worker ist nicht aktiv')
+    
+    # Prüfe, ob die Redis-Verbindung funktioniert
+    queue_status = queue.get_queue_status()
+    
+    logger.info("Health-Check: System ist gesund")
+    return success_response({
+        'service': 'processor',
+        'version': API_VERSION,
+        'health_status': 'healthy',
+        'worker': worker_status,
+        'queue': queue_status
+    })
 
 @app.route(get_route('templates', 'list'), methods=['GET'])
+@api_error_handler
 def get_templates():
     """
     Endpunkt zum Abrufen aller verfügbaren Templates
     """
     template_names = template_engine.get_template_names()
+    logger.info(f"{len(template_names)} Templates gefunden")
     return success_response(template_names)
 
 @app.route(get_route('system', 'endpoints'), methods=['GET'])
+@api_error_handler
 def get_endpoints():
     """
     Endpunkt zum Abrufen aller verfügbaren Endpunkte
     """
     endpoint_names = message_forwarder.get_endpoint_names()
+    logger.info(f"{len(endpoint_names)} Endpunkte gefunden")
     return success_response(endpoint_names)
 
 @app.route(get_route('templates', 'reload'), methods=['POST'])
+@api_error_handler
 def reload_templates():
     """
     Endpunkt zum Neuladen aller Templates
     """
     template_engine.reload_templates()
-    return success_response(message='Templates wurden neu geladen')
+    template_names = template_engine.get_template_names()
+    logger.info(f"Templates neu geladen, {len(template_names)} Templates verfügbar")
+    return success_response({
+        'templates': template_names
+    }, 'Templates wurden neu geladen')
 
 @app.route(get_route('templates', 'test'), methods=['POST'])
+@api_error_handler
 def test_transform():
     """
     Endpunkt zum Testen der Transformation ohne Weiterleitung
     """
-    try:
-        # Extrahiere Nachricht und Template-Name aus der Anfrage
-        data = request.json
-        message = data.get('message')
-        template_name = data.get('template_id')
-        
-        if not message or not template_name:
-            return error_response('Nachricht und Template-Name sind erforderlich', 400)
-        
-        # Transformiere Nachricht
-        transformed_message = template_engine.transform_message(message, template_name)
-        
-        if not transformed_message:
-            return error_response(f'Fehler bei der Transformation mit Template "{template_name}"', 500)
-        
-        # Erstelle Antwort
-        return success_response({
-            'original_message': message,
-            'transformed_message': transformed_message,
-            'template_used': template_name
-        })
+    # Extrahiere Nachricht und Template-Name aus der Anfrage
+    data = request.json
     
-    except Exception as e:
-        logger.error(f"Fehler bei der Transformation der Nachricht: {str(e)}")
-        return error_response(str(e), 500)
+    # Validiere erforderliche Felder
+    validation_errors = {}
+    if not data:
+        return validation_error_response({"request": "Keine Daten übermittelt"})
+    
+    if 'message' not in data:
+        validation_errors['message'] = 'Nachricht ist erforderlich'
+    
+    if 'template_id' not in data:
+        validation_errors['template_id'] = 'Template-ID ist erforderlich'
+    
+    if validation_errors:
+        return validation_error_response(validation_errors)
+    
+    message = data.get('message')
+    template_name = data.get('template_id')
+    
+    # Transformiere Nachricht
+    transformed_message = template_engine.transform_message(message, template_name)
+    
+    if not transformed_message:
+        logger.error(f"Fehler bei der Transformation mit Template {template_name}")
+        return error_response(f'Fehler bei der Transformation mit Template "{template_name}"', 500)
+    
+    logger.info(f"Transformation mit Template {template_name} erfolgreich")
+    
+    # Erstelle Antwort
+    return success_response({
+        'original_message': message,
+        'transformed_message': transformed_message,
+        'template_used': template_name
+    })
 
 @app.route(get_route('system', 'logs'), methods=['GET'])
+@api_error_handler
 def get_logs():
     """
     Endpunkt zum Abrufen der letzten Logs
     """
     # TODO: Implementieren eines Log-Abrufsystems
+    logger.info("Log-Abruf angefordert (noch nicht implementiert)")
     return error_response('Log-Abruf ist noch nicht implementiert', 501)
+
+@app.route('/api/endpoints', methods=['GET'])
+@api_error_handler
+def list_processor_endpoints():
+    """
+    Listet alle verfügbaren Endpunkte dieses Services auf
+    """
+    endpoints = [
+        {'path': get_route('messages', 'process'), 'method': 'POST', 'description': 'Nachricht verarbeiten'},
+        {'path': get_route('messages', 'detail'), 'method': 'GET', 'description': 'Nachrichtenstatus abrufen'},
+        {'path': get_route('messages', 'queue_status'), 'method': 'GET', 'description': 'Queue-Status abrufen'},
+        {'path': get_route('messages', 'failed'), 'method': 'GET', 'description': 'Fehlgeschlagene Nachrichten abrufen'},
+        {'path': get_route('messages', 'retry'), 'method': 'POST', 'description': 'Nachricht erneut verarbeiten'},
+        {'path': get_route('messages', 'clear'), 'method': 'POST', 'description': 'Alle Queues löschen'},
+        {'path': get_route('system', 'health'), 'method': 'GET', 'description': 'Systemstatus abrufen'},
+        {'path': get_route('templates', 'list'), 'method': 'GET', 'description': 'Templates auflisten'},
+        {'path': get_route('system', 'endpoints'), 'method': 'GET', 'description': 'Verfügbare Endpunkte auflisten'},
+        {'path': get_route('templates', 'reload'), 'method': 'POST', 'description': 'Templates neu laden'},
+        {'path': get_route('templates', 'test'), 'method': 'POST', 'description': 'Template-Transformation testen'},
+        {'path': get_route('system', 'logs'), 'method': 'GET', 'description': 'System-Logs abrufen'},
+        {'path': '/api/endpoints', 'method': 'GET', 'description': 'API-Endpunkte auflisten'}
+    ]
+    
+    return success_response(endpoints)
 
 if __name__ == '__main__':
     logger.info("Message Processor wird gestartet...")
     # Port aus der zentralen Konfiguration verwenden
     port = int(os.environ.get('PROCESSOR_PORT', 8082))
+    logger.info(f"Processor Service läuft auf Port {port}")
+    print(f"Processor Service läuft auf Port {port} - API Version {API_VERSION}")
     app.run(host='0.0.0.0', port=port, debug=True)

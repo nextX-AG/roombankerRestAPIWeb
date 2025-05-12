@@ -1,16 +1,29 @@
 #!/bin/bash
 
-# Starte den Message Processor mit Redis-Konfiguration
-echo "Starte Message Processor..."
-cd "$(dirname "$0")"
+# Skript zum Starten des Message Processors mit Redis-Konfiguration
 
-# Standard-Konfiguration
+# Projektverzeichnis ermitteln
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Überprüfen, ob Python-Abhängigkeiten installiert sind
+echo "Prüfe Python-Abhängigkeiten..."
+python3 -m pip install -r "$PROJECT_DIR/requirements.txt" --quiet
+
+# Port- und PYTHONPATH-Konfiguration
+export PROCESSOR_PORT=8082
+export PYTHONPATH="$PROJECT_DIR:$PYTHONPATH"
+
+# Standard-Redis-Konfiguration
 export WORKER_THREADS=2
 export WORKER_POLL_INTERVAL=0.5
 export REDIS_PORT=6379
 export REDIS_DB=0
 export REDIS_PASSWORD="78WDQEuz"
 export REDIS_PREFIX=iot_gateway
+
+echo "Starte Message Processor..."
+cd "$SCRIPT_DIR"
 
 # Mögliche Redis-Hosts
 REDIS_HOSTS=("localhost" "127.0.0.1" "157.180.37.234" "evAlarmServer")
@@ -53,13 +66,22 @@ done
 
 # Wenn keine Verbindung hergestellt werden konnte
 if [ "$CONNECTION_SUCCESSFUL" = false ]; then
-    echo "Fehler: Konnte keine Verbindung zu Redis herstellen. Message Processor wird nicht gestartet."
-    exit 1
+    if [ "$FLASK_ENV" != "production" ]; then
+        echo "WARNUNG: Im Entwicklungsmodus - Message Processor wird ohne Redis-Verbindung gestartet."
+        echo "Einige Funktionen werden nicht verfügbar sein. Empfehle Installation von Redis für volle Funktionalität."
+        echo "Start mit: docker run --name redis -p 6379:6379 -d redis"
+        export REDIS_UNAVAILABLE=true
+        export REDIS_HOST="localhost"
+    else
+        echo "Fehler: Konnte keine Verbindung zu Redis herstellen. Message Processor wird nicht gestartet."
+        exit 1
+    fi
 fi
 
 # Redis-Verbindung mit ausführlichem Logging testen
-echo "Finale Redis-Verbindungsdetails:"
-python3 -c "
+if [ "$REDIS_UNAVAILABLE" != "true" ]; then
+    echo "Finale Redis-Verbindungsdetails:"
+    python3 -c "
 import redis
 import sys
 try:
@@ -82,12 +104,7 @@ except Exception as e:
     print(f'Finale Verbindung fehlgeschlagen: {str(e)}')
     sys.exit(1)
 " "$REDIS_HOST" "$REDIS_PORT" "$REDIS_DB" "$REDIS_PASSWORD"
-
-# Wenn der Redis-Test erfolgreich war, starte den Message Processor
-if [ $? -eq 0 ]; then
-    echo "Starte Message Processor mit Redis-Host: $REDIS_HOST"
-    python3 message_processor.py
-else
-    echo "Message Processor wird nicht gestartet, da die Redis-Verbindung fehlgeschlagen ist."
-    exit 1
 fi
+
+echo "Message Processor wird auf Port $PROCESSOR_PORT gestartet..."
+python3 processor_service.py
