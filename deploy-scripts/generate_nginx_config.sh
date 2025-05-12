@@ -36,7 +36,6 @@ function show_help {
     echo "  -i, --install <path>         Installationsort für die NGINX-Konfiguration (default: $INSTALL_PATH)"
     echo "  -r, --restart                NGINX nach Installation neu starten"
     echo "  -d, --dry-run                Konfiguration nur ausgeben, nicht installieren"
-    echo "  -f, --full                   Generiert eine vollständige NGINX-Konfiguration mit globalen Direktiven"
     echo ""
     echo "Beispiel:"
     echo "  $0 --server-name evalarm.example.com --restart"
@@ -71,10 +70,6 @@ while [[ $# -gt 0 ]]; do
             DRY_RUN=true
             shift
             ;;
-        -f|--full)
-            SITE_ONLY=false
-            shift
-            ;;
         *)
             echo -e "${RED}Unbekannte Option: $1${NC}"
             show_help
@@ -100,7 +95,9 @@ fi
 if [ "$DRY_RUN" = true ]; then
     # Konfiguration generieren im Dry-Run-Modus
     echo -e "${BLUE}Generiere NGINX-Konfiguration...${NC}"
-    SITE_ONLY_ARG=$([ "$SITE_ONLY" == "true" ] && echo "--site-only" || echo "")
+    # Erzwinge site-only
+    SITE_ONLY="true"
+    SITE_ONLY_ARG="--site-only"
     python "$PROJECT_DIR/utils/nginx_config_generator.py" --server-name "$SERVER_NAME" --output "$OUTPUT_FILE" $SITE_ONLY_ARG
 
     if [ $? -ne 0 ]; then
@@ -163,6 +160,9 @@ if [ "$DRY_RUN" = false ]; then
     
     # JETZT erst generiere die Konfiguration
     echo -e "${BLUE}Generiere neue Nginx-Konfiguration...${NC}"
+    # Erzwinge site-only, um sicherzustellen, dass keine globalen Direktiven generiert werden
+    SITE_ONLY="true"
+    SITE_ONLY_ARG="--site-only"
     python "$PROJECT_DIR/utils/nginx_config_generator.py" --server-name "$SERVER_NAME" --output "$OUTPUT_FILE" $SITE_ONLY_ARG
 
     if [ $? -ne 0 ]; then
@@ -176,6 +176,32 @@ if [ "$DRY_RUN" = false ]; then
     fi
 
     echo -e "${GREEN}NGINX-Konfiguration wurde generiert: ${OUTPUT_FILE}${NC}"
+
+    # Zusätzliche Sicherheitsmaßnahme: Filtere globale Direktiven heraus
+    echo -e "${BLUE}Entferne globale Direktiven aus der Konfiguration...${NC}"
+    TEMP_FILE="${OUTPUT_FILE}.temp"
+
+    # Komplexerer Filter, der globale Direktiven und zugehörige Blöcke entfernt
+    cat "$OUTPUT_FILE" | 
+        grep -v "worker_processes" | 
+        grep -v "worker_rlimit_nofile" | 
+        grep -v "events {" |
+        grep -v "http {" |
+        grep -v "include /etc/nginx/mime.types;" |
+        grep -v "gzip on" |
+        sed '/^[[:space:]]*$/d' > "$TEMP_FILE"  # Leere Zeilen entfernen
+
+    # Überprüfen, ob der Server-Block in der gefilterten Datei vorhanden ist
+    if ! grep -q "server {" "$TEMP_FILE"; then
+        echo -e "${RED}Warnung: Kein Server-Block in der gefilterten Konfiguration gefunden!${NC}"
+        echo -e "${YELLOW}Versuche alternative Filtermethode...${NC}"
+        
+        # Alternative Methode: Extrahiere nur den Server-Block
+        cat "$OUTPUT_FILE" | 
+            sed -n '/server {/,/}/p' > "$TEMP_FILE"
+    fi
+
+    mv "$TEMP_FILE" "$OUTPUT_FILE"
 
     # Kopiere die Konfiguration
     echo -e "${BLUE}Installiere neue Nginx-Konfiguration...${NC}"
