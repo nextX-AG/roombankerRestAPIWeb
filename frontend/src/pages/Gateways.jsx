@@ -5,9 +5,9 @@ import { faPlus, faEdit, faTrash, faSync, faUsers, faEye, faNetworkWired, faServ
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import GatewayStatusIcons from '../components/GatewayStatusIcons';
+import config from '../config';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-const PROCESSOR_URL = import.meta.env.VITE_PROCESSOR_URL || 'http://localhost:8081/api';
 
 /**
  * Gateways-Verwaltungskomponente
@@ -111,7 +111,7 @@ const Gateways = () => {
   // Lade alle verfügbaren Templates
   const fetchTemplates = async () => {
     try {
-      const response = await axios.get(`${PROCESSOR_URL}/templates`);
+      const response = await axios.get(`${config.workerUrl}/templates`);
       setAvailableTemplates(response.data);
     } catch (err) {
       console.error('Fehler beim Laden der Templates:', err);
