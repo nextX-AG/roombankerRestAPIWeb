@@ -43,13 +43,18 @@ const Messages = () => {
   const fetchForwardingStatus = async () => {
     try {
       setLoadingStatus(true);
-      const [statusResponse, queueResponse] = await Promise.all([
-        axios.get(`${config.apiBaseUrl}/messages/status`),
-        axios.get(`${config.apiBaseUrl}/messages/queue/status`)
+      
+      // Hole Weiterleitungsstatus vom Worker
+      const forwardingResponse = await axios.get(`${config.workerUrl}/messages/forwarding`);
+      setForwardingStatus([
+        ...forwardingResponse.data.details.completed,
+        ...forwardingResponse.data.details.failed
       ]);
-      setForwardingStatus(statusResponse.data);
+      
+      // Hole Queue-Status vom Worker
+      const queueResponse = await axios.get(`${config.workerUrl}/messages/queue/status`);
       setQueueStatus(queueResponse.data);
-      setError(null);
+      
       setLoadingStatus(false);
     } catch (error) {
       console.error('Fehler beim Abrufen des Weiterleitungsstatus:', error);
@@ -257,7 +262,7 @@ const Messages = () => {
   // Nachricht erneut versuchen
   const handleRetryMessage = async (messageId) => {
     try {
-      await axios.post(`${config.apiBaseUrl}/messages/retry/${messageId}`);
+      await axios.post(`${config.workerUrl}/messages/retry/${messageId}`);
       fetchForwardingStatus();
     } catch (error) {
       console.error('Fehler beim erneuten Versuch:', error);

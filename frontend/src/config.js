@@ -12,6 +12,7 @@ const config = {
   // In der Entwicklung werden die Dienste direkt auf den entsprechenden Ports angesprochen
   apiBaseUrl: isProduction ? '/api' : 'http://localhost:8080/api',
   processorUrl: isProduction ? '/api' : 'http://localhost:8081/api',
+  workerUrl: isProduction ? '/api' : 'http://localhost:8083/api',
   authUrl: isProduction ? '/api/auth' : 'http://localhost:8082/api/auth',
 };
 

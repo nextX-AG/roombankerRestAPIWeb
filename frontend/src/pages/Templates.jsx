@@ -104,14 +104,14 @@ const Templates = () => {
     const fetchTemplates = async () => {
       try {
         setError(null);
-        const response = await axios.get(`${config.processorUrl}/templates`);
+        const response = await axios.get(`${config.workerUrl}/templates`);
           setTemplates(response.data);
           if (response.data.length > 0) {
             setSelectedTemplate(response.data[0]);
           }
       } catch (error) {
         console.error('Fehler beim Abrufen der Templates:', error);
-        setError('Fehler beim Abrufen der Templates');
+        setError('Fehler beim Laden der Templates: ' + (error.response?.data?.message || error.message));
       }
     };
 
@@ -187,7 +187,7 @@ const Templates = () => {
 
       if (newTemplate) {
         // Neues Template erstellen
-        const response = await axios.post(`${config.processorUrl}/templates`, {
+        const response = await axios.post(`${config.workerUrl}/templates`, {
           name: tempName,
           template_code: templateCode,
           provider_type: providerType
@@ -197,7 +197,7 @@ const Templates = () => {
         setSuccess('Template erfolgreich erstellt');
       } else {
         // Bestehendes Template aktualisieren
-        const response = await axios.put(`${config.processorUrl}/templates/${selectedTemplate.id}`, {
+        const response = await axios.put(`${config.workerUrl}/templates/${selectedTemplate.id}`, {
           name: tempName,
           template_code: templateCode,
           provider_type: providerType
@@ -223,7 +223,7 @@ const Templates = () => {
     }
 
     try {
-      await axios.delete(`${config.processorUrl}/templates/${selectedTemplate.id}`);
+      await axios.delete(`${config.workerUrl}/templates/${selectedTemplate.id}`);
       setTemplates(templates.filter(t => t.id !== selectedTemplate.id));
       setSelectedTemplate(null);
       setTemplateCode('');
@@ -280,7 +280,7 @@ const Templates = () => {
     if (!selectedTemplate) return;
       
     try {
-      const response = await axios.post(`${config.processorUrl}/test-transform`, {
+      const response = await axios.post(`${config.workerUrl}/test-transform`, {
         template_id: selectedTemplate.id,
         message: testMessage
       });

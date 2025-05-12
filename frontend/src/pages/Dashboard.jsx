@@ -19,6 +19,7 @@ import config from '../config';
 const Dashboard = () => {
   const [apiStatus, setApiStatus] = useState('checking');
   const [processorStatus, setProcessorStatus] = useState('checking');
+  const [workerStatus, setWorkerStatus] = useState('checking');
   const [lastMessages, setLastMessages] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [endpoints, setEndpoints] = useState([]);
@@ -45,25 +46,44 @@ const Dashboard = () => {
 
     const checkProcessorStatus = async () => {
       try {
-        const response = await axios.get(`${config.processorUrl}/templates`);
-        if (response.status === 200) {
-          setProcessorStatus('online');
-          setTemplates(response.data);
-        } else {
-          setProcessorStatus('offline');
-        }
+        const response = await axios.get(`${config.processorUrl}/health`);
+        setProcessorStatus(response.status === 200 ? 'online' : 'offline');
       } catch (err) {
+        console.error('Fehler beim Prüfen des Processor-Status:', err);
         setProcessorStatus('offline');
       }
     };
 
-    const fetchEndpoints = async () => {
+    const checkWorkerStatus = async () => {
       try {
-        const response = await axios.get(`${config.processorUrl}/endpoints`);
-        setEndpointCount(response.data.length);
-      } catch (error) {
-        console.error('Fehler beim Abrufen der Endpunkte:', error);
-        setEndpointCount(0);
+        const response = await axios.get(`${config.workerUrl}/health`);
+        setWorkerStatus(response.status === 200 ? 'online' : 'offline');
+        
+        // Wenn Worker erreichbar ist, Templates und Endpoints abrufen
+        if (response.status === 200) {
+          try {
+            const templatesResponse = await axios.get(`${config.workerUrl}/templates`);
+            setTemplates(templatesResponse.data);
+            setTemplateCount(templatesResponse.data.length);
+          } catch (error) {
+            console.error('Fehler beim Abrufen der Templates:', error);
+            setTemplates([]);
+            setTemplateCount(0);
+          }
+          
+          try {
+            const endpointsResponse = await axios.get(`${config.workerUrl}/endpoints`);
+            setEndpoints(endpointsResponse.data);
+            setEndpointCount(endpointsResponse.data.length);
+          } catch (error) {
+            console.error('Fehler beim Abrufen der Endpunkte:', error);
+            setEndpoints([]);
+            setEndpointCount(0);
+          }
+        }
+      } catch (err) {
+        console.error('Fehler beim Prüfen des Worker-Status:', err);
+        setWorkerStatus('offline');
       }
     };
 
@@ -82,13 +102,13 @@ const Dashboard = () => {
     // Initial und alle 10 Sekunden aktualisieren
     checkApiStatus();
     checkProcessorStatus();
-    fetchEndpoints();
+    checkWorkerStatus();
     fetchMessages();
 
     const interval = setInterval(() => {
       checkApiStatus();
       checkProcessorStatus();
-      fetchEndpoints();
+      checkWorkerStatus();
       fetchMessages();
     }, 10000);
 
