@@ -239,11 +239,16 @@ def generate_nginx_config(server_name: str = "evalarm-iot.example.com",
     # Service-Namen und Ports
     services = {
         "gateway": 8000,  # API-Gateway auf Port 8000
-        "api": PORTS["api"],
-        "processor": PORTS["processor"],
-        "auth": PORTS["auth"],
-        "worker": PORTS["worker"]
+        "api": PORTS["api"],     # 8080
+        "auth": PORTS["auth"],   # 8081 (Auth Service)
+        "processor": PORTS["processor"], # 8082 (Message Processor)
+        "worker": PORTS["worker"] # 8083
     }
+    
+    # Log die aktuellen Ports für die Diagnose
+    logger.info(f"Generiere Konfiguration mit folgenden Ports:")
+    for service, port in services.items():
+        logger.info(f"- {service}: {port}")
     
     for service_name, port in services.items():
         upstream = f"""
@@ -302,6 +307,11 @@ upstream {service_name}_backend {{
             for endpoint_name, path in endpoints.items():
                 location = f"""
     location {path} {{
+        # CORS-Header für API-Anfragen
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With' always;
+        
         proxy_pass http://{service}_backend;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -319,6 +329,11 @@ upstream {service_name}_backend {{
                 location_path = endpoints["base"]
                 location = f"""
     location {location_path} {{
+        # CORS-Header für API-Anfragen
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With' always;
+        
         proxy_pass http://{service}_backend;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -335,6 +350,11 @@ upstream {service_name}_backend {{
     for route, backend in processor_routes:
         location = f"""
     location {route} {{
+        # CORS-Header für API-Anfragen
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With' always;
+        
         proxy_pass http://{backend};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -366,7 +386,20 @@ upstream {service_name}_backend {{
     
     # Ggf. in Datei speichern
     if output_file:
+        # Sicherstellen, dass Verzeichnis existiert
         os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
+        
+        # Wenn die Datei bereits existiert, sichere Überschreibung
+        if os.path.exists(output_file):
+            logger.info(f"Überschreibe bestehende Konfiguration: {output_file}")
+            backup_file = f"{output_file}.bak"
+            try:
+                import shutil
+                shutil.copy2(output_file, backup_file)
+                logger.info(f"Backup erstellt: {backup_file}")
+            except Exception as e:
+                logger.warning(f"Konnte kein Backup erstellen: {str(e)}")
+        
         with open(output_file, 'w') as f:
             f.write(nginx_config)
         logger.info(f"NGINX-Konfiguration gespeichert in: {output_file}")

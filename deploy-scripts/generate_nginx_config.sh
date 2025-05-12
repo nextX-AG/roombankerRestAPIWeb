@@ -127,6 +127,7 @@ if [ "$DRY_RUN" = false ]; then
         echo "sudo cp \"$OUTPUT_FILE\" \"$INSTALL_PATH\""
         
         if [ "$RESTART_NGINX" = true ]; then
+            echo "sudo rm -f \"$ENABLE_PATH\""  # Alte Symlink entfernen
             echo "sudo ln -sf \"$INSTALL_PATH\" \"$ENABLE_PATH\""
             echo "sudo nginx -t && sudo systemctl restart nginx"
         fi
@@ -140,6 +141,19 @@ if [ "$DRY_RUN" = false ]; then
     # Sicherstellen, dass das Zielverzeichnis existiert
     mkdir -p "$(dirname "$INSTALL_PATH")"
     
+    # Alte Konfiguration sichern, falls vorhanden
+    if [ -f "$INSTALL_PATH" ]; then
+        BACKUP_FILE="${INSTALL_PATH}.bak.$(date +%Y%m%d%H%M%S)"
+        echo -e "${YELLOW}Erstelle Backup der alten Konfiguration: ${BACKUP_FILE}${NC}"
+        cp "$INSTALL_PATH" "$BACKUP_FILE"
+    fi
+    
+    # Alten Symlink entfernen, falls vorhanden
+    if [ -L "$ENABLE_PATH" ]; then
+        echo -e "${YELLOW}Entferne alte Symlink: ${ENABLE_PATH}${NC}"
+        rm -f "$ENABLE_PATH"
+    fi
+    
     # Konfiguration kopieren
     cp "$OUTPUT_FILE" "$INSTALL_PATH"
     
@@ -150,11 +164,9 @@ if [ "$DRY_RUN" = false ]; then
     
     echo -e "${GREEN}NGINX-Konfiguration installiert: ${INSTALL_PATH}${NC}"
     
-    # Symlink erstellen (falls nicht vorhanden)
-    if [ ! -e "$ENABLE_PATH" ]; then
-        ln -sf "$INSTALL_PATH" "$ENABLE_PATH"
-        echo -e "${GREEN}NGINX-Konfiguration aktiviert: ${ENABLE_PATH}${NC}"
-    fi
+    # Symlink erstellen
+    ln -sf "$INSTALL_PATH" "$ENABLE_PATH"
+    echo -e "${GREEN}NGINX-Konfiguration aktiviert: ${ENABLE_PATH}${NC}"
     
     # NGINX neu starten, wenn gewünscht
     if [ "$RESTART_NGINX" = true ]; then
@@ -163,6 +175,19 @@ if [ "$DRY_RUN" = false ]; then
         
         if [ $? -ne 0 ]; then
             echo -e "${RED}Fehler in der NGINX-Konfiguration!${NC}"
+            echo -e "${YELLOW}Stelle alte Konfiguration wieder her...${NC}"
+            
+            # Alte Konfiguration wiederherstellen, falls Backup vorhanden
+            if [ -f "$BACKUP_FILE" ]; then
+                cp "$BACKUP_FILE" "$INSTALL_PATH"
+                nginx -t && systemctl restart nginx
+                if [ $? -eq 0 ]; then
+                    echo -e "${GREEN}Alte Konfiguration wiederhergestellt.${NC}"
+                else
+                    echo -e "${RED}Konnte alte Konfiguration nicht wiederherstellen!${NC}"
+                fi
+            fi
+            
             exit 1
         fi
         

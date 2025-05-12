@@ -23,7 +23,7 @@ module.exports = {
       interpreter: '/var/www/iot-gateway/venv/bin/python',
       env: {
         'FLASK_ENV': 'production',
-        'PORT': '8081'
+        'PORT': '8082'
       },
       instances: 1,
       autorestart: true,
@@ -37,7 +37,7 @@ module.exports = {
       interpreter: '/var/www/iot-gateway/venv/bin/python',
       env: {
         'FLASK_ENV': 'production',
-        'PORT': '8082'
+        'PORT': '8081'
       },
       instances: 1,
       autorestart: true,
