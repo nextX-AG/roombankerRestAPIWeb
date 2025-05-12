@@ -17,7 +17,7 @@ project_dir = os.path.dirname(current_dir)
 sys.path.append(project_dir)
 
 # Importiere die zentrale API-Konfiguration
-from api_config import PORTS, API_VERSION, ENDPOINTS, API_BASE
+from utils.api_config import PORTS, API_VERSION, ENDPOINTS, API_BASE
 
 # Konfiguriere Logging
 logging.basicConfig(
