@@ -158,24 +158,24 @@ server {{
     root /var/www/iot-gateway/frontend/dist;
     index index.html;
 
-    # Globale CORS-Header für alle Anfragen
-    add_header 'Access-Control-Allow-Origin' '*' always;
-    add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
-    add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With' always;
-    
-    # Spezielle Behandlung von OPTIONS-Requests (Preflight)
-    if ($request_method = 'OPTIONS') {{
-        add_header 'Access-Control-Allow-Origin' '*';
-        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS';
-        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With';
-        add_header 'Access-Control-Max-Age' '1728000';
-        add_header 'Content-Type' 'text/plain charset=UTF-8';
-        add_header 'Content-Length' '0';
-        return 204;
-    }}
-
     # API-Gateway als zentraler Einstiegspunkt für alle API-Anfragen
     location /api/ {{
+        # CORS-Header für API-Anfragen
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With' always;
+        
+        # Spezielle Behandlung von OPTIONS-Requests (Preflight)
+        if ($request_method = 'OPTIONS') {{
+            add_header 'Access-Control-Allow-Origin' '*';
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With';
+            add_header 'Access-Control-Max-Age' '1728000';
+            add_header 'Content-Type' 'text/plain charset=UTF-8';
+            add_header 'Content-Length' '0';
+            return 204;
+        }}
+        
         proxy_pass http://gateway_backend;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
