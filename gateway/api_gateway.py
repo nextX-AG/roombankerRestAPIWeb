@@ -150,12 +150,22 @@ def determine_target_service(path):
     Returns:
         Service-Name oder None, wenn kein passender Service gefunden wurde
     """
-    # Extrahiere den ersten Teil des Pfads nach /api/v1/
-    path_parts = path.split('/')
-    if len(path_parts) < 3:  # /api/v1/category mindestens erforderlich
+    # Entferne den API-Basis-Pfad (/api/v1/) aus dem Pfad
+    if path.startswith(API_BASE):
+        # Entferne /api/v1/ vom Anfang
+        path_without_base = path[len(API_BASE):].lstrip('/')
+        
+        # Wenn der Pfad leer ist, gibt es keine Kategorie
+        if not path_without_base:
+            return None
+        
+        # Die erste Komponente ist die Kategorie
+        category = path_without_base.split('/')[0]
+        
+        logger.info(f"Entfernter Basispfad: {path} -> {path_without_base}, Kategorie: {category}")
+    else:
+        logger.warning(f"Pfad beginnt nicht mit {API_BASE}: {path}")
         return None
-    
-    category = path_parts[2]  # kategorie nach /api/v1/
     
     # Service-Mapping basierend auf der Pfadkategorie
     service_mapping = {
@@ -163,12 +173,12 @@ def determine_target_service(path):
         'gateways': 'api',
         'customers': 'api',
         'devices': 'api',
-        'messages': 'processor',
-        'templates': 'processor',
-        'system': 'processor',
-        'health': 'processor',
-        'iot-status': 'processor',
-        'endpoints': 'processor'
+        'messages': 'processor',  # Geändert von 'worker' zu 'processor'
+        'templates': 'processor', # Geändert von 'worker' zu 'processor'
+        'system': 'processor',    # Hinzugefügt
+        'health': 'processor',    # Geändert von 'worker' zu 'processor'
+        'iot-status': 'processor',# Geändert von 'worker' zu 'processor'
+        'endpoints': 'processor'  # Geändert von 'worker' zu 'processor'
     }
     
     service = service_mapping.get(category, 'api')  # Default: api-Service
