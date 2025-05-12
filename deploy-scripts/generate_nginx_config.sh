@@ -8,10 +8,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Standardwerte
-SERVER_NAME="evalarm-iot.example.com"
-OUTPUT_FILE="/tmp/evalarm-nginx.conf"
-INSTALL_PATH="/etc/nginx/sites-available/evalarm-iot"
-ENABLE_PATH="/etc/nginx/sites-enabled/evalarm-iot"
+SERVER_NAME="157.180.37.234"
+OUTPUT_FILE="/tmp/iot-gateway-nginx.conf"
+INSTALL_PATH="/etc/nginx/sites-available/iot-gateway"
+ENABLE_PATH="/etc/nginx/sites-enabled/iot-gateway"
 RESTART_NGINX=false
 DRY_RUN=false
 SITE_ONLY=true  # Standard: Nur Site-Konfiguration ohne globale Direktiven
@@ -141,6 +141,13 @@ if [ "$DRY_RUN" = false ]; then
     # Sicherstellen, dass das Zielverzeichnis existiert
     mkdir -p "$(dirname "$INSTALL_PATH")"
     
+    # Bereinige alle vorhandenen Gateway-Konfigurationen
+    echo -e "${YELLOW}Bereinige vorhandene Gateway-Konfigurationen...${NC}"
+    
+    # Entferne alle möglichen Symlinks für Gateway-Konfigurationen
+    rm -f /etc/nginx/sites-enabled/iot-gateway
+    rm -f /etc/nginx/sites-enabled/evalarm-iot
+    
     # Alte Konfiguration sichern, falls vorhanden
     if [ -f "$INSTALL_PATH" ]; then
         BACKUP_FILE="${INSTALL_PATH}.bak.$(date +%Y%m%d%H%M%S)"
@@ -200,6 +207,27 @@ if [ "$DRY_RUN" = false ]; then
         fi
         
         echo -e "${GREEN}NGINX wurde erfolgreich neu gestartet.${NC}"
+        
+        # Prüfe, ob die Services auf den korrekten Ports laufen
+        echo -e "${BLUE}Prüfe Port-Zuweisungen der Services...${NC}"
+        AUTH_PORT=$(netstat -tulpn 2>/dev/null | grep auth_service | grep -o ":[0-9]\+" | grep -o "[0-9]\+")
+        PROCESSOR_PORT=$(netstat -tulpn 2>/dev/null | grep message_processor | grep -o ":[0-9]\+" | grep -o "[0-9]\+")
+        
+        if [ "$AUTH_PORT" != "8081" ]; then
+            echo -e "${RED}Warnung: Auth Service läuft nicht auf Port 8081 (aktuell: $AUTH_PORT)${NC}"
+            echo -e "${YELLOW}Die Nginx-Konfiguration leitet Auth-Anfragen an Port 8081 weiter!${NC}"
+            echo -e "${YELLOW}Bitte prüfe die PM2-Konfiguration in production.config.js${NC}"
+        else
+            echo -e "${GREEN}Auth Service läuft korrekt auf Port 8081.${NC}"
+        fi
+        
+        if [ "$PROCESSOR_PORT" != "8082" ]; then
+            echo -e "${RED}Warnung: Message Processor läuft nicht auf Port 8082 (aktuell: $PROCESSOR_PORT)${NC}"
+            echo -e "${YELLOW}Die Nginx-Konfiguration leitet Processor-Anfragen an Port 8082 weiter!${NC}"
+            echo -e "${YELLOW}Bitte prüfe die PM2-Konfiguration in production.config.js${NC}"
+        else
+            echo -e "${GREEN}Message Processor läuft korrekt auf Port 8082.${NC}"
+        fi
     else
         echo -e "${YELLOW}NGINX wurde nicht neu gestartet. Verwenden Sie --restart, um NGINX neu zu starten.${NC}"
         echo -e "${YELLOW}Oder führen Sie manuell aus: sudo nginx -t && sudo systemctl restart nginx${NC}"
