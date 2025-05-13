@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import axios from 'axios';
-import config from '../config';
+import config, { API_VERSION } from '../config';
+import { authApi } from '../api'; // Importiere den zentralen API-Client
 
 // Erstelle Auth-Kontext
 const AuthContext = createContext();
@@ -16,16 +16,17 @@ export const AuthProvider = ({ children }) => {
   // Beim Laden der App prüfen, ob ein Token im localStorage vorhanden ist
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('authToken');
-      if (token) {
+      const storedToken = localStorage.getItem('authToken');
+      if (storedToken) {
         try {
-          const response = await axios.post(`${config.authUrl}/verify`, { token });
-          if (response.status === 200) {
-            setUser({
-              ...JSON.parse(localStorage.getItem('user')),
-              token
-            });
-            setToken(token);
+          // Verwende den zentralen API-Client
+          const response = await authApi.status();
+          
+          if (response.status === 'success') {
+            // Token ist gültig
+            const storedUser = JSON.parse(localStorage.getItem('user'));
+            setUser(storedUser);
+            setToken(storedToken);
             setAuthenticated(true);
           } else {
             // Token ist ungültig, aus localStorage entfernen
@@ -34,6 +35,10 @@ export const AuthProvider = ({ children }) => {
           }
         } catch (err) {
           console.error('Fehler bei der Token-Überprüfung:', err);
+          // Bei CORS-Fehlern spezifische Fehlermeldung
+          if (err.message && err.message.includes('CORS')) {
+            setError('CORS-Fehler: Probleme mit der API-Verbindung. Bitte kontaktieren Sie den Administrator.');
+          }
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
         }
@@ -47,8 +52,8 @@ export const AuthProvider = ({ children }) => {
   // Token verifizieren
   const verifyToken = async (token) => {
     try {
-      const response = await axios.post(`${config.authUrl}/verify`, { token });
-      return response.data.valid;
+      const response = await authApi.status();
+      return response.status === 'success';
     } catch (error) {
       console.error('Fehler bei der Token-Verifizierung:', error);
       return false;
@@ -60,24 +65,39 @@ export const AuthProvider = ({ children }) => {
     try {
       setError('');
       setLoading(true);
-      const response = await axios.post(`${config.authUrl}/login`, { username, password });
       
+      console.log(`Versuche Login mit Benutzername: ${username}`);
+      
+      // Verwende den zentralen API-Client für Login
+      const response = await authApi.login(username, password);
+      
+      if (response.status === 'success') {
         const { token, user } = response.data;
       
-      // Token und Benutzer im localStorage speichern
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      
-      // State aktualisieren
-      setToken(token);
-      setUser(user);
-      setAuthenticated(true);
-      setLoading(false);
-      
+        // Token und Benutzer im localStorage speichern
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        // State aktualisieren
+        setToken(token);
+        setUser(user);
+        setAuthenticated(true);
+        setLoading(false);
+        
         return true;
+      } else {
+        throw new Error(response.error?.message || 'Anmeldung fehlgeschlagen');
+      }
     } catch (error) {
       console.error('Fehler beim Login:', error);
-      setError('Fehler bei der Anmeldung. Bitte überprüfen Sie Ihre Zugangsdaten.');
+      
+      // Spezifische Fehlermeldungen je nach Fehlertyp
+      if (error.message && error.message.includes('CORS')) {
+        setError('CORS-Fehler: Probleme mit der API-Verbindung. Bitte kontaktieren Sie den Administrator.');
+      } else {
+        setError('Fehler bei der Anmeldung. Bitte überprüfen Sie Ihre Zugangsdaten.');
+      }
+      
       setLoading(false);
       return false;
     }
@@ -87,7 +107,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       if (token) {
-        await axios.post(`${config.authUrl}/logout`, { token });
+        await authApi.logout();
       }
     } catch (error) {
       console.error('Fehler beim Logout:', error);
@@ -138,6 +158,4 @@ export const AuthProvider = ({ children }) => {
 };
 
 // Hook für einfachen Zugriff auf den Auth-Kontext
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);

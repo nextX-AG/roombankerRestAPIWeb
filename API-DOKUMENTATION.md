@@ -7,7 +7,7 @@ Das System besteht aus mehreren Komponenten:
 1. **API-Gateway** (Port 8000): Zentraler Einstiegspunkt für alle API-Anfragen
 2. **API-Server** (Port 8080): Hauptschnittstelle für das Frontend, verwaltet Kunde, Gateways und Geräte
 3. **Auth Service** (Port 8081): Verwaltet Benutzerauthentifizierung und -autorisierung
-4. **Message Processor** (Port 8082): Verarbeitet eingehende Nachrichten und leitet sie weiter
+4. **Message Processor** (Port 8082): Verarbeitet eingehende Nachrichten und leitet sie weiter, beinhaltet auch Worker-Funktionalität
 5. **Frontend**: React-basierte Benutzeroberfläche
 
 ## Datenbanken
@@ -28,7 +28,14 @@ Alle API-Anfragen werden über das API-Gateway geleitet, das als zentraler Einst
 Das API-Gateway leitet Anfragen basierend auf dem Pfad automatisch an den zuständigen Service weiter:
 - `/api/v1/auth/*` → Auth Service (Port 8081)
 - `/api/v1/gateways/*`, `/api/v1/customers/*`, `/api/v1/devices/*` → API Service (Port 8080)
-- `/api/v1/messages/*`, `/api/v1/templates/*` → Worker Service (Port 8082)
+- `/api/v1/messages/*`, `/api/v1/templates/*`, `/api/v1/system/*` → Processor Service (Port 8082)
+
+In der Docker-Umgebung geschieht die Weiterleitung über die Container-Namen:
+- `http://auth:8081` für Auth Service
+- `http://api:8080` für API Service
+- `http://processor:8082` für Processor Service
+
+Die Umgebungsvariable `FLASK_ENV=docker` wird verwendet, um diese Container-basierte Kommunikation zu aktivieren.
 
 ### Gateway-Nachrichteneingang
 
@@ -81,7 +88,7 @@ Eingehende Nachrichten von IoT-Gateways können über verschiedene Wege ins Syst
 | `/api/v1/templates/reload` | POST | Alle Templates neu laden |
 | `/api/v1/templates/test-transform` | POST | Transformation mit einem Template testen |
 
-### Queue-API
+### Queue-API (im Processor)
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
@@ -89,6 +96,8 @@ Eingehende Nachrichten von IoT-Gateways können über verschiedene Wege ins Syst
 | `/api/v1/messages/failed` | GET | Liste fehlgeschlagener Nachrichten |
 | `/api/v1/messages/retry/<message_id>` | POST | Fehlgeschlagene Nachricht erneut verarbeiten |
 | `/api/v1/messages/clear` | POST | Alle Queues leeren (nur für Entwicklung) |
+
+**Hinweis**: Der ursprünglich separate Worker-Service wurde in den Message Processor integriert. Beide Funktionen laufen jetzt im selben Container auf Port 8082. Das API-Gateway verweist auf einen nicht existierenden Worker-Service in seiner Status-Ausgabe, was jedoch für die Funktionalität des Systems nicht kritisch ist.
 
 ### Auth-API
 
@@ -216,6 +225,21 @@ Das System kann über folgende Methoden bereitgestellt werden:
    cd deploy-scripts && ./generate_nginx_config.sh --server-name your-domain.com --restart
    ```
 
+4. **Docker-Deployment (empfohlen)**:
+   ```bash
+   # System starten
+   docker-compose up -d
+   
+   # Status prüfen
+   docker-compose ps
+   
+   # Logs anzeigen
+   docker-compose logs -f
+   
+   # System stoppen
+   docker-compose down
+   ```
+
 ## Nginx-Konfiguration
 
 Die empfohlene Nginx-Konfiguration leitet alle API-Anfragen an das API-Gateway weiter:
@@ -245,4 +269,66 @@ location /api/v1/auth/ {
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
 }
-``` 
+```
+
+## Docker-Architektur
+
+Das System verwendet Docker-Container für eine vereinfachte Bereitstellung und bessere Isolierung der Komponenten.
+
+### Container-Struktur
+
+| Container | Port | Beschreibung |
+|-----------|------|--------------|
+| gateway | 8000 | API-Gateway - zentraler Einstiegspunkt für alle API-Anfragen |
+| api | 8080 | API-Service - verwaltet Kunden, Gateways und Geräte |
+| auth | 8081 | Auth-Service - Authentifizierung und Autorisierung |
+| processor | 8082 | Message Processor - verarbeitet und leitet Nachrichten weiter |
+| frontend | 80 | Frontend-Anwendung mit Node.js |
+| redis | 6380:6379 | Redis für Message Queue und Caching |
+| mongo | 27017 | MongoDB für persistente Datenspeicherung |
+
+### Container-Kommunikation
+
+Im Docker-Netzwerk kommunizieren die Services direkt miteinander über ihre Container-Namen:
+- `http://api:8080`
+- `http://auth:8081`
+- `http://processor:8082`
+- `http://redis:6379`
+- `http://mongo:27017`
+
+Diese Container-basierte Kommunikation wird über eine spezielle Umgebungsvariable `FLASK_ENV=docker` aktiviert, die das System anweist, die Container-Namen statt `localhost` zu verwenden.
+
+### Docker-spezifische Konfiguration
+
+Die `.env`-Datei kann für die Anpassung der Docker-Umgebung verwendet werden:
+
+```
+# Umgebung
+FLASK_ENV=docker
+
+# Ports für die Dienste
+GATEWAY_PORT=8000
+API_PORT=8080
+AUTH_PORT=8081
+PROCESSOR_PORT=8082
+
+# MongoDB Konfiguration
+MONGODB_URI=mongodb://mongo:27017/
+MONGODB_DB=evalarm_gateway
+
+# Redis Konfiguration
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_DB=0
+REDIS_PASSWORD=
+REDIS_PREFIX=iot_gateway
+```
+
+### Vorteile des Docker-Deployments
+
+1. **Vereinfachte Einrichtung**: Alle Abhängigkeiten sind in den Containern enthalten
+2. **Konsistente Umgebungen**: Identisches Verhalten in Entwicklung und Produktion
+3. **Isolierte Komponenten**: Vermeidung von Konflikten zwischen Diensten
+4. **Einfache Skalierung**: Einzelne Komponenten können bei Bedarf skaliert werden
+5. **Effiziente Ressourcennutzung**: Bessere Kontrolle über die Ressourcenzuweisung
+6. **Verbesserte Sicherheit**: Jeder Dienst läuft in einer isolierten Umgebung 

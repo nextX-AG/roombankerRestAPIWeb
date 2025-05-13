@@ -358,3 +358,127 @@
   - [ ] Performance-Benchmarking
   - [ ] Code-Qualitätsmetriken erheben
   - [ ] Sicherheitsüberprüfung 
+
+## 7. Docker-Implementierung (HOHE PRIORITÄT)
+
+### Containerisierung der Komponenten
+- [x] **Separate Container für einzelne Dienste**
+  - [x] API-Gateway Container (Port 8000) erstellen
+  - [x] API-Service Container (Port 8080) erstellen
+  - [x] Auth-Service Container (Port 8081) erstellen
+  - [x] Processor-Service Container (Port 8082) erstellen
+  - [x] Frontend-Container mit Node.js erstellen
+  - [x] Redis Container einbinden
+  - [x] MongoDB Container einbinden
+
+- [x] **Docker Compose für Entwicklungsumgebung**
+  - [x] docker-compose.yml erstellen mit allen Services
+  - [x] Umgebungsvariablen in .env Datei auslagern
+  - [x] Sinnvolle Defaults für Entwicklungsumgebung setzen
+  - [x] Container-Netzwerk für interne Kommunikation konfigurieren
+  - [x] Volume-Mounts für Persistenz und Entwicklung einrichten
+
+- [x] **Einheitliche Dockerfile-Struktur**
+  - [x] Python-Services mit gemeinsamer Basis-Image
+  - [x] Frontend mit Node-Basis für Entwicklung
+  - [x] Health Checks für alle Services implementieren
+
+- [x] **Container-Kommunikation optimieren**
+  - [x] Interne Service-Discovery über Container-Namen statt localhost
+  - [x] API-Gateway als zentraler Service für Kommunikation zwischen Komponenten
+  - [x] Docker-spezifische Konfiguration in api_config.py hinzugefügt
+
+### Deployment-Strategie mit Docker
+- [x] **Entwicklungsumgebung**
+  - [x] Schnelles Setup mit Docker Compose
+  - [x] Zugriff auf Services über API-Gateway
+  - [x] Vereinfachte Logging und Fehlerdiagnose
+
+- [ ] **Testumgebung**
+  - [ ] Docker Compose für Integrationstests
+  - [ ] CI/CD-Pipeline mit automatischen Tests in Containern
+
+- [ ] **Produktionsumgebung**
+  - [ ] Docker Compose für einfaches Deployment
+  - [ ] Sicherheitsoptimierungen für Produktionsumgebung
+  - [ ] Backups und Datenwiederherstellungslösungen
+
+### Nächste Schritte
+- [ ] **Optimierungen**
+  - [ ] Multi-Stage-Builds für optimierte Container-Größe
+  - [ ] Docker Volume-Management verbessern
+  - [ ] Performance-Tuning für Redis und MongoDB Container
+
+- [ ] **Erweiterungen**
+  - [ ] Monitoring und Health-Checks verbessern
+  - [ ] Container-Orchestrierung für Skalierung evaluieren
+  - [ ] Automatische Backups der Datenbanken konfigurieren
+
+## 8. Bugfixing nach Refactoring (HÖCHSTE PRIORITÄT)
+
+### API-Gateway und Routing-Probleme
+- [x] **CORS-Konfiguration korrigieren**
+  - [x] CORS-Headers im API-Gateway für alle Services aktivieren
+    - [x] Überprüfung der `CORS(app)` Konfiguration in allen Services
+    - [x] Fix für doppelte CORS-Header im API-Gateway
+    - [x] Sicherstellen, dass `Access-Control-Allow-Origin` Header korrekt gesetzt ist
+  - [x] CORS-Präflight-Anfragen (OPTIONS) korrekt behandeln
+  - [x] CORS-Konfiguration in allen Microservices vereinheitlichen
+
+- [x] **API-Routing-Probleme beheben**
+  - [x] Login-Route korrigieren
+    - [x] Frontend: `config.authUrl` in `config.js` aktualisiert
+    - [x] AuthContext.jsx: URL angepasst und robuster gestaltet
+  - [x] API-Weiterleitungsregeln im Gateway überprüft und korrigiert
+  - [x] Frontend API-Client auf neue Routen angepasst
+
+- [x] **API-Endpunkt-Konsistenz**
+  - [x] Frontend-API-Aufrufe mit Backend-Endpunkten abgeglichen
+  - [x] Überprüfung auf doppelte Implementierungen
+  - [x] Sicherstellen, dass v1 überall konsistent verwendet wird
+  - [x] Dashboard-Komponente auf richtige API-Endpunkte angepasst
+
+- [x] **Token-Management verbessert**
+  - [x] Konsistente Verwendung von `authToken` statt `auth_token`
+  - [x] Auth-Header korrekt gesetzt für alle Anfragen
+
+### Docker-Kompatibilität sicherstellen (HÖCHSTE PRIORITÄT)
+
+- [x] **Docker-spezifische Konfiguration überprüft**
+  - [x] Bestätigt, dass `FLASK_ENV=docker` in allen Containern korrekt gesetzt ist
+  - [x] Überprüft, ob `utils/api_config.py` die Docker-Hosts korrekt verwendet
+  - [x] Bestätigt, dass die Docker-Container-Namen mit den in `HOSTS['docker']` definierten übereinstimmen
+  - [x] Worker-Service in Processor integriert und Routing angepasst
+
+- [x] **Netzwerk-Konfiguration in Docker validiert**
+  - [x] Kommunikation zwischen Containern über Container-Namen (statt localhost) getestet
+  - [x] Sichergestellt, dass das API-Gateway alle Services im Docker-Netzwerk erreichen kann
+  - [x] Volume-Mounts und Dateipfade in Docker überprüft
+
+- [x] **CORS für Docker-Umgebung optimiert**
+  - [x] CORS-Konfiguration dynamisch über Umgebungsvariablen gesteuert
+  - [x] `ALLOWED_ORIGINS` für alle Umgebungen konfigurierbar gemacht
+  - [x] Sichergestellt, dass sowohl localhost als auch 127.0.0.1 funktionieren
+  - [x] Doppelte CORS-Header entfernt, die zu Browser-Fehlern führten
+
+- [x] **Frontend-Konfiguration für Docker optimiert**
+  - [x] Frontend API-Client für Docker-Umgebung optimiert
+  - [x] Korrekte URLs für API-Zugriffe in Frontend-Config eingerichtet
+  - [x] Hostname-Auflösung für Browser -> Docker korrekt behandelt
+
+### Aktuelle Probleme (Zu bearbeiten)
+
+- [ ] **Dashboard-Status korrekt anzeigen**
+  - [ ] API-Server-Status korrekt anzeigen
+  - [ ] Message Processor-Status korrekt anzeigen
+  - [ ] Testnachricht-Funktionalität implementieren
+
+- [ ] **API-Endpunkte implementieren**
+  - [ ] `/api/v1/health` Endpunkt im API-Service implementieren
+  - [ ] `/api/v1/system/health` Endpunkt im Processor-Service implementieren
+  - [ ] `/api/v1/system/endpoints` und `/api/v1/templates` implementieren
+
+- [ ] **Frontend-Komponenten aktualisieren**
+  - [ ] Sicherstellen, dass alle Komponenten die korrekten API-Routen verwenden
+  - [ ] Überprüfen, dass die Datenstrukturen korrekt verarbeitet werden
+  - [ ] Fehlerbehandlung in Frontend-Komponenten verbessern

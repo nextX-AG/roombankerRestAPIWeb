@@ -36,8 +36,15 @@ const Dashboard = () => {
   useEffect(() => {
     const checkApiStatus = async () => {
       try {
-        const response = await axios.get(`${config.apiBaseUrl}/health`);
-        setApiStatus(response.data.status === 'ok' ? 'online' : 'offline');
+        console.log('Prüfe API-Status:', `${config.apiBaseUrl}/v1/health`);
+        const response = await axios.get(`${config.apiBaseUrl}/v1/health`);
+        console.log('API-Status-Antwort:', response.data);
+        // Überprüfen, ob die Antwort das erwartete Format hat und ob der Status erfolgreich ist
+        if (response.data && response.data.status === 'success') {
+          setApiStatus('online');
+        } else {
+          setApiStatus('offline');
+        }
       } catch (error) {
         console.error('Fehler beim Prüfen des API-Status:', error);
         setApiStatus('offline');
@@ -46,8 +53,15 @@ const Dashboard = () => {
 
     const checkProcessorStatus = async () => {
       try {
-        const response = await axios.get(`${config.processorUrl}/health`);
-        setProcessorStatus(response.status === 200 ? 'online' : 'offline');
+        console.log('Prüfe Processor-Status:', `${config.apiBaseUrl}/v1/system/health`);
+        const response = await axios.get(`${config.apiBaseUrl}/v1/system/health`);
+        console.log('Processor-Status-Antwort:', response.data);
+        // Überprüfen, ob die Antwort das erwartete Format hat und ob der Status erfolgreich ist
+        if (response.data && response.data.status === 'success') {
+          setProcessorStatus('online');
+        } else {
+          setProcessorStatus('offline');
+        }
       } catch (err) {
         console.error('Fehler beim Prüfen des Processor-Status:', err);
         setProcessorStatus('offline');
@@ -56,15 +70,19 @@ const Dashboard = () => {
 
     const checkWorkerStatus = async () => {
       try {
-        const response = await axios.get(`${config.workerUrl}/health`);
-        setWorkerStatus(response.status === 200 ? 'online' : 'offline');
+        // Worker ist jetzt in Processor integriert, daher greifen wir auf denselben Endpunkt zu
+        console.log('Prüfe Worker-Status (integriert im Processor):', `${config.apiBaseUrl}/v1/system/health`);
+        const response = await axios.get(`${config.apiBaseUrl}/v1/system/health`);
+        console.log('Worker-Status-Antwort:', response.data);
         
-        // Wenn Worker erreichbar ist, Templates und Endpoints abrufen
-        if (response.status === 200) {
+        if (response.data && response.data.status === 'success') {
+          setWorkerStatus('online');
+          
+          // Wenn Worker erreichbar ist, Templates und Endpoints abrufen
           try {
-            const templatesResponse = await axios.get(`${config.workerUrl}/templates`);
-            setTemplates(templatesResponse.data);
-            setTemplateCount(templatesResponse.data.length);
+            const templatesResponse = await axios.get(`${config.apiBaseUrl}/v1/templates`);
+            setTemplates(templatesResponse.data.data || []);
+            setTemplateCount((templatesResponse.data.data || []).length);
           } catch (error) {
             console.error('Fehler beim Abrufen der Templates:', error);
             setTemplates([]);
@@ -72,14 +90,16 @@ const Dashboard = () => {
           }
           
           try {
-            const endpointsResponse = await axios.get(`${config.workerUrl}/endpoints`);
-            setEndpoints(endpointsResponse.data);
-            setEndpointCount(endpointsResponse.data.length);
+            const endpointsResponse = await axios.get(`${config.apiBaseUrl}/v1/system/endpoints`);
+            setEndpoints(endpointsResponse.data.data || []);
+            setEndpointCount((endpointsResponse.data.data || []).length);
           } catch (error) {
             console.error('Fehler beim Abrufen der Endpunkte:', error);
             setEndpoints([]);
             setEndpointCount(0);
           }
+        } else {
+          setWorkerStatus('offline');
         }
       } catch (err) {
         console.error('Fehler beim Prüfen des Worker-Status:', err);
@@ -89,9 +109,9 @@ const Dashboard = () => {
 
     const fetchMessages = async () => {
       try {
-        const response = await axios.get(`${config.apiBaseUrl}/messages`);
-        setMessageCount(response.data.length);
-        setLatestMessages(response.data.slice(0, 3));
+        const response = await axios.get(`${config.apiBaseUrl}/v1/messages/status`);
+        setMessageCount((response.data.data || []).length);
+        setLatestMessages((response.data.data || []).slice(0, 3));
       } catch (error) {
         console.error('Fehler beim Abrufen der Nachrichten:', error);
         setMessageCount(0);
@@ -118,13 +138,13 @@ const Dashboard = () => {
   const createTestMessage = async () => {
     try {
       setCreatingMessage(true);
-      const response = await axios.post(`${config.apiBaseUrl}/test-message`);
+      const response = await axios.post(`${config.apiBaseUrl}/v1/system/test-message`);
       setCreationSuccess(true);
       
       // Nachrichten aktualisieren
-      const messagesResponse = await axios.get(`${config.apiBaseUrl}/messages`);
-      setMessageCount(messagesResponse.data.length);
-      setLatestMessages(messagesResponse.data.slice(0, 3));
+      const messagesResponse = await axios.get(`${config.apiBaseUrl}/v1/messages/status`);
+      setMessageCount((messagesResponse.data.data || []).length);
+      setLatestMessages((messagesResponse.data.data || []).slice(0, 3));
       
       setTimeout(() => setCreationSuccess(false), 3000);
     } catch (error) {

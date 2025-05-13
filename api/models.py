@@ -3,6 +3,7 @@ Datenmodelle für das evAlarm-IoT Gateway Management System
 """
 
 import datetime
+import os  # Für Umgebungsvariablen
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
@@ -10,9 +11,18 @@ from bson.objectid import ObjectId
 mongo_client = None
 db = None
 
-def initialize_db(connection_string="mongodb://localhost:27017/", db_name="evalarm_gateway"):
+def initialize_db(connection_string=None, db_name=None):
     """Initialisiert die Verbindung zur MongoDB"""
     global mongo_client, db
+    
+    # Umgebungsvariablen verwenden, falls parameter nicht angegeben wurden
+    if connection_string is None:
+        connection_string = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/')
+    
+    if db_name is None:
+        db_name = os.environ.get('MONGODB_DB', 'evalarm_gateway')
+    
+    print(f"MongoDB Verbindung zu: {connection_string}")
     mongo_client = MongoClient(connection_string)
     db = mongo_client[db_name]
     

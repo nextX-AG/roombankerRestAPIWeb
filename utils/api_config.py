@@ -28,6 +28,12 @@ HOSTS = {
         'processor': f'http://localhost:{PORTS["processor"]}',
         'worker': f'http://localhost:{PORTS["worker"]}'
     },
+    'docker': {
+        'api': f'http://api:{PORTS["api"]}',
+        'auth': f'http://auth:{PORTS["auth"]}',
+        'processor': f'http://processor:{PORTS["processor"]}',
+        'worker': f'http://processor:{PORTS["processor"]}' # Worker ist in Processor integriert
+    },
     'production': {
         'api': f'http://localhost:{PORTS["api"]}',
         'auth': f'http://localhost:{PORTS["auth"]}',

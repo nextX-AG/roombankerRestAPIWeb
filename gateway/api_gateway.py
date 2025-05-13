@@ -36,8 +36,28 @@ logger = logging.getLogger('api-gateway')
 
 app = Flask(__name__)
 
-# CORS für alle Routen aktivieren
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+# CORS-Konfiguration über Umgebungsvariablen
+ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
+if ALLOWED_ORIGINS == '*':
+    # Wildcard-Modus: Alle Origins erlauben
+    logger.info("CORS konfiguriert für alle Origins (*)")
+    CORS(app, resources={r"/api/*": {
+        "origins": "*",
+        "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+        "expose_headers": ["Content-Type", "Authorization"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    }})
+else:
+    # Spezifische Origins erlauben (komma-separierte Liste)
+    allowed_origins_list = [origin.strip() for origin in ALLOWED_ORIGINS.split(',')]
+    logger.info(f"CORS konfiguriert für spezifische Origins: {allowed_origins_list}")
+    CORS(app, resources={r"/api/*": {
+        "origins": allowed_origins_list,
+        "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+        "expose_headers": ["Content-Type", "Authorization"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "supports_credentials": True
+    }})
 
 # Environment-Konfiguration
 ENV = os.environ.get('FLASK_ENV', 'development')
@@ -203,10 +223,24 @@ def create_response_from_target(target_response):
     headers = [(name, value) for name, value in target_response.raw.headers.items()
                if name.lower() not in excluded_headers]
     
-    # CORS-Header hinzufügen für alle Antworten
-    headers.append(('Access-Control-Allow-Origin', '*'))
-    headers.append(('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'))
-    headers.append(('Access-Control-Allow-Headers', 'Content-Type, Authorization'))
+    # NICHT nochmals CORS-Header hinzufügen - dies wird bereits von der Flask-CORS-Erweiterung erledigt
+    # Die folgende Codezeile führt zum doppelten Header und wird entfernt:
+    # headers.append(('Access-Control-Allow-Origin', 'http://localhost'))
+    
+    # Nur die anderen CORS-Header explizit setzen, falls sie noch nicht vorhanden sind
+    cors_headers_to_add = [
+        ('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'),
+        ('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With'),
+        ('Access-Control-Expose-Headers', 'Content-Type, Authorization')
+    ]
+    
+    # Prüfen, welche Header bereits vorhanden sind
+    existing_header_names = {name.lower() for name, _ in headers}
+    
+    # Nur fehlende Header hinzufügen
+    for name, value in cors_headers_to_add:
+        if name.lower() not in existing_header_names:
+            headers.append((name, value))
     
     # Erstelle die Response mit den ursprünglichen Daten und Headern
     response = Response(
@@ -231,13 +265,23 @@ def gateway_status():
         'services': {}
     }
 
+    # Service-spezifische Health-Check-Endpunkte
+    health_endpoints = {
+        'api': f"{API_BASE}/health",             # API-Service
+        'auth': "/api/health",                   # Auth-Service hat einen anderen Pfad
+        'processor': f"{API_BASE}/system/health", # Processor-Service
+        'worker': f"{API_BASE}/system/health"     # Worker-Service (falls vorhanden)
+    }
+
     # Prüfe jeden Service
     for service_name, host in SERVICE_HOSTS.items():
         try:
-            health_url = f"{host}{API_BASE}/health"
+            health_url = f"{host}{health_endpoints.get(service_name, f'{API_BASE}/health')}"
+            logger.info(f"Prüfe Service {service_name} unter URL: {health_url}")
             response = requests.get(health_url, timeout=5)
             service_status = 'online' if response.status_code == 200 else 'degraded'
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logger.error(f"Fehler beim Prüfen von {service_name}: {str(e)}")
             service_status = 'offline'
         
         status_info['services'][service_name] = {
@@ -251,7 +295,7 @@ def gateway_status():
         mimetype='application/json'
     )
 
-# Hinzufügen eines CORS-Preflight-Handlers
+# Hinzufügen eines CORS-Preflight-Handlers mit dynamischem Origin
 @app.route('/api/login', methods=['OPTIONS'])
 @app.route(f'{API_BASE}/<path:path>', methods=['OPTIONS'])
 def handle_options(path=""):
@@ -259,9 +303,23 @@ def handle_options(path=""):
     Handler für OPTIONS-Anfragen (CORS-Preflight)
     """
     resp = Response()
-    resp.headers.add('Access-Control-Allow-Origin', '*')
+    
+    # Origin-Header aus der Anfrage extrahieren
+    origin = request.headers.get('Origin')
+    if origin:
+        # Origin validieren, bevor wir ihn zurückgeben
+        if ALLOWED_ORIGINS == '*' or origin in ALLOWED_ORIGINS.split(','):
+            # Nur einmal setzen, nicht mehrfach
+            resp.headers.add('Access-Control-Allow-Origin', origin)
+            resp.headers.add('Access-Control-Allow-Credentials', 'true')
+    else:
+        # Fallback: Wildcard, wenn kein Origin in der Anfrage
+        resp.headers.add('Access-Control-Allow-Origin', '*')
+    
     resp.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    resp.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    resp.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    resp.headers.add('Access-Control-Expose-Headers', 'Content-Type, Authorization')
+    resp.headers.add('Access-Control-Max-Age', '3600')
     return resp
 
 if __name__ == '__main__':

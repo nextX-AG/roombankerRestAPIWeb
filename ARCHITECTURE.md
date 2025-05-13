@@ -234,3 +234,118 @@ Die Anwendung unterstützt auch automatisches Deployment via GitHub-Webhooks fü
 - Zentralisierte Fehlerbehandlung und -protokollierung
 - Redis-Verbindungssicherheit mit Passwort-Authentifizierung
 - Sichere HTTPS-Kommunikation in Produktionsumgebungen 
+
+## 9. Docker-Deployment und Konfiguration
+
+Das System ist vollständig für Docker-basiertes Deployment optimiert, was Entwicklung, Tests und Produktion vereinfacht.
+
+### Container-Struktur
+
+Das System besteht aus den folgenden Containern:
+
+| Container | Port | Beschreibung |
+|-----------|------|--------------|
+| gateway | 8000 | API-Gateway - zentraler Einstiegspunkt für alle API-Anfragen |
+| api | 8080 | API-Service - verwaltet Kunden, Gateways und Geräte |
+| auth | 8081 | Auth-Service - Authentifizierung und Autorisierung |
+| processor | 8082 | Message Processor - verarbeitet und leitet Nachrichten weiter (inkl. Worker-Funktionalität) |
+| frontend | 80:5173 | Frontend-Anwendung (Vite/React) |
+| redis | 6380:6379 | Redis für Message Queue und Caching |
+| mongo | 27017 | MongoDB für persistente Datenspeicherung |
+
+### Umgebungsvariablen
+
+Die Umgebungsvariable `FLASK_ENV=docker` wird in allen Backend-Containern gesetzt, um die korrekte Host-Konfiguration zu verwenden:
+
+```python
+# In utils/api_config.py
+HOSTS = {
+    'docker': {
+        'api': 'http://api:8080',
+        'auth': 'http://auth:8081',
+        'processor': 'http://processor:8082',
+        'worker': 'http://processor:8082'  # Worker ist in Processor integriert
+    }
+}
+```
+
+### Frontend-Konfiguration in Docker
+
+Die Frontend-Anwendung läuft im Browser des Benutzers und muss daher `localhost` verwenden, auch wenn der Rest des Systems in Docker läuft:
+
+```javascript
+// In frontend/src/config.js
+export const GATEWAY_URL = 
+  isProduction ? '/api' :
+  // Immer localhost verwenden, da der Browser nicht im Docker-Netzwerk läuft
+  'http://localhost:8000/api';
+```
+
+### Health-Checks
+
+Alle Docker-Container sind mit Health-Checks konfiguriert, um den Zustand des Systems zu überwachen:
+
+```yaml
+# Beispiel aus docker-compose.yml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/gateway/status"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+```
+
+### CORS-Konfiguration
+
+Die Cross-Origin Resource Sharing (CORS) Konfiguration wurde besonders für den Docker-Betrieb optimiert und ist hochgradig anpassbar:
+
+#### Dynamische CORS-Konfiguration
+
+Das System verwendet einen flexiblen CORS-Mechanismus, der über Umgebungsvariablen gesteuert wird:
+
+1. **ALLOWED_ORIGINS**: Umgebungsvariable für alle Services
+   - `*` (Standard): Alle Origins erlauben
+   - Komma-getrennte Liste von erlaubten Origins (z.B. `http://localhost,http://example.com`)
+
+2. **Dynamische Origin-Erkennung**: 
+   - Das System gibt den Origin-Header exakt so zurück, wie er in der Anfrage empfangen wurde
+   - Jede Anfrage wird mit dem korrekten Origin beantwortet, ohne harte Codierung
+
+3. **Bereitstellung für Produktion**:
+   - In Produktionsumgebungen muss `ALLOWED_ORIGINS` mit der tatsächlichen Domain aktualisiert werden
+   - Beispiel: `ALLOWED_ORIGINS=https://meine-produktionsseite.de,https://admin.meine-produktionsseite.de`
+
+4. **CORS-Header**:
+   - `Access-Control-Allow-Origin`: Dynamisch basierend auf dem Origin der Anfrage
+   - `Access-Control-Allow-Methods`: GET, POST, PUT, DELETE, OPTIONS
+   - `Access-Control-Allow-Headers`: Content-Type, Authorization, X-Requested-With
+   - `Access-Control-Allow-Credentials`: true (für authentifizierte Anfragen)
+
+5. **Frontend API-Client Konfiguration**:
+   - Der Frontend API-Client aktiviert `credentials: 'include'` für alle Anfragen
+   - Dies ermöglicht das Senden und Empfangen von Cookies/Credentials bei Cross-Origin-Anfragen
+   - Beispiel in `frontend/src/api.js`:
+   ```javascript
+   // CORS-Credentials für Cross-Origin-Anfragen aktivieren
+   options.credentials = 'include';
+   ```
+
+Diese Konfiguration erlaubt dem System, in verschiedenen Umgebungen zu funktionieren, ohne Code-Änderungen vornehmen zu müssen. Die CORS-Einstellungen werden zur Laufzeit durch die Docker-Umgebungsvariablen bestimmt.
+
+### Fehlerbehebung bei Docker-Deployment
+
+Häufige Probleme und Lösungen im Docker-Setup:
+
+1. **Container-Namen vs. Localhost**: Browser-Anfragen müssen immer `localhost` verwenden, da Browser nicht im Docker-Netzwerk laufen
+2. **Worker-Service fehlt**: Die Worker-Funktionalität wurde in den Processor-Service integriert
+3. **CORS-Fehler**: Sichergestellt durch erweiterte Header im API-Gateway
+4. **Gesundheitszustand der Container**: Überwachung über Health-Checks mit entsprechenden Timeouts
+
+### Startup-Reihenfolge
+
+Die Container starten in der folgenden Reihenfolge:
+1. MongoDB und Redis (Datenbanken)
+2. Backend-Services (api, auth, processor)
+3. API-Gateway (abhängig von Backend-Services)
+4. Frontend (abhängig vom API-Gateway)
+
+Diese Abhängigkeiten werden über `depends_on` mit Bedingungen in docker-compose.yml gesteuert. 

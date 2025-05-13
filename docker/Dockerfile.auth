@@ -1,0 +1,29 @@
+FROM python:3.9-slim
+
+# Arbeitsverzeichnis im Container
+WORKDIR /app
+
+# Environment-Variablen setzen
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    FLASK_ENV=production
+
+# Installiere Abhängigkeiten
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Installiere curl für den Healthcheck
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Kopiere den Anwendungscode
+COPY . .
+
+# Ports freigeben (8081 für Auth-Service)
+EXPOSE 8081
+
+# Healthcheck konfigurieren
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8081/api/health || exit 1
+
+# Kommando zum Starten des Auth-Service
+CMD ["python", "api/auth_service.py"] 

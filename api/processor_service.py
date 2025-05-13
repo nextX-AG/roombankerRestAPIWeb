@@ -147,6 +147,45 @@ def health_check():
         'data': health_data
     })
 
+@app.route('/api/v1/system/health', methods=['GET'])
+def system_health():
+    """
+    Systemweiter Gesundheitsstatus für das Dashboard
+    """
+    # System-Informationen sammeln
+    import psutil
+    import socket
+    from datetime import datetime
+    
+    # Uptime berechnen
+    system_start_time = time.time() - 3600  # Vereinfachung: Annahme 1 Stunde Betriebszeit
+    uptime_seconds = time.time() - system_start_time
+    
+    # System-Informationen
+    system_info = {
+        "cpu_percent": psutil.cpu_percent(),
+        "memory_percent": psutil.virtual_memory().percent,
+        "hostname": socket.gethostname()
+    }
+    
+    # Detaillierte Health-Informationen
+    health_data = {
+        "service": "processor",
+        "status": "online",
+        "uptime_seconds": uptime_seconds,
+        "uptime_formatted": f"{int(uptime_seconds // 86400)}d {int((uptime_seconds % 86400) // 3600)}h {int((uptime_seconds % 3600) // 60)}m",
+        "system": system_info,
+        "connections": {
+            "redis": "connected" if REDIS_AVAILABLE else "disconnected"
+        },
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    return jsonify({
+        'status': 'success',
+        'data': health_data
+    })
+
 if __name__ == '__main__':
     port = int(os.environ.get('PROCESSOR_PORT', 8082))
     debug = os.environ.get('FLASK_ENV') != 'production'

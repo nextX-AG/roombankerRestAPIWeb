@@ -6,11 +6,17 @@
 // Prüfe, ob wir uns in der Produktionsumgebung befinden
 const isProduction = import.meta.env.PROD;
 
+// Prüfen, ob wir in Docker laufen (kann durch eine Umgebungsvariable gesteuert werden)
+const isDocker = import.meta.env.VITE_DOCKER === 'true';
+
 // API-Version für alle Aufrufe
 export const API_VERSION = 'v1';
 
-// Gateway-URL - expliziter Port für Entwicklung
-export const GATEWAY_URL = isProduction ? '/api' : 'http://localhost:8000/api';
+// Gateway-URL - basierend auf der Umgebung
+export const GATEWAY_URL = 
+  isProduction ? '/api' :
+  // Der Browser läuft außerhalb von Docker und kann nicht direkt auf Container-Namen zugreifen
+  'http://localhost:8000/api';
 
 // Basis-URLs für API-Zugriffe
 const config = {
@@ -19,6 +25,12 @@ const config = {
   processorUrl: GATEWAY_URL,
   workerUrl: GATEWAY_URL,
   authUrl: GATEWAY_URL,
+  
+  // Debug-Informationen zur Umgebung
+  environment: {
+    isProduction,
+    isDocker
+  },
   
   // Standardformat für API-Responses
   responseFormat: {
@@ -36,5 +48,11 @@ const config = {
     }
   }
 };
+
+// Debug-Ausgabe in der Konsole, um die aktuelle Konfiguration zu zeigen
+console.log('Frontend Config:', {
+  env: isProduction ? 'production' : (isDocker ? 'docker' : 'development'),
+  gatewayUrl: GATEWAY_URL
+});
 
 export default config; 

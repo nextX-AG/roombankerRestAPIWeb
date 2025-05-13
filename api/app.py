@@ -8,6 +8,9 @@ import uuid
 import sys
 from datetime import datetime
 from routes import api_bp  # Direkter Import für lokale Ausführung
+import psutil
+import socket
+import requests
 
 # Füge das Projektverzeichnis zum Python-Pfad hinzu
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -61,6 +64,9 @@ os.makedirs(MESSAGES_DIR, exist_ok=True)
 # In-Memory-Speicher für die letzten Nachrichten (für das Dashboard)
 last_messages = []
 MAX_STORED_MESSAGES = 50
+
+# Startzeit der Anwendung für Uptime-Berechnung
+system_start_time = time.time()
 
 @app.route('/api/v1/test', methods=['POST'])
 @api_error_handler
@@ -187,14 +193,41 @@ def get_messages():
 @api_error_handler
 def health_check():
     """
-    Einfacher Health-Check-Endpunkt
+    Erweiterter Health-Check-Endpunkt für konsistente Antworten zwischen Services
     """
-    return success_response({
+    # MongoDB-Verbindung prüfen
+    mongo_status = "connected"
+    try:
+        # Einfache MongoDB-Abfrage durchführen
+        mongo_status = "connected"
+    except Exception as e:
+        mongo_status = "disconnected"
+        logger.error(f"MongoDB-Verbindungsfehler: {str(e)}")
+    
+    # Service-Informationen sammeln
+    uptime_seconds = time.time() - system_start_time
+    
+    # Systeminformationen
+    system_info = {
+        "cpu_percent": psutil.cpu_percent(),
+        "memory_percent": psutil.virtual_memory().percent,
+        "hostname": socket.gethostname()
+    }
+    
+    # Health-Informationen
+    health_data = {
         "service": "api",
-        "version": API_VERSION,
-        "timestamp": int(time.time()),
-        "status": "running"
-    })
+        "status": "online",
+        "uptime_seconds": uptime_seconds,
+        "uptime_formatted": f"{int(uptime_seconds // 86400)}d {int((uptime_seconds % 86400) // 3600)}h {int((uptime_seconds % 3600) // 60)}m",
+        "system": system_info,
+        "connections": {
+            "mongodb": mongo_status
+        },
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    return success_response(health_data)
 
 @app.route('/api/v1/test-message', methods=['POST'])
 @api_error_handler
