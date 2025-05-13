@@ -141,17 +141,131 @@ def process_message():
         'status': 'queued'
     }, f'Nachricht wurde in die Queue eingefügt (ID: {message_id})', 202)  # 202 Accepted
 
+@app.route('/api/v1/list-messages', methods=['GET'])
+@api_error_handler
+def list_all_messages():
+    """
+    Endpunkt zum Abfragen aller Nachrichten für das Dashboard
+    """
+    from datetime import datetime, timedelta
+    import time
+    
+    logger.info("Liste alle Nachrichten auf für Dashboard")
+    
+    # Für Demonstrationszwecke liefern wir Beispieldaten
+    now = datetime.now()
+    
+    messages = [
+        {
+            "id": "msg-1234567890",
+            "status": "processed",
+            "received_at": (now - timedelta(minutes=5)).isoformat(),
+            "processed_at": (now - timedelta(minutes=4, seconds=50)).isoformat(),
+            "data": {
+                "gateway_id": "gw-abcdef123456",
+                "ts": int(time.time()) - 300,
+                "subdevicelist": [
+                    {
+                        "id": 12345678,
+                        "value": {
+                            "alarmstatus": "normal",
+                            "batterystatus": "ok"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": "msg-0987654321",
+            "status": "processed",
+            "received_at": (now - timedelta(minutes=2)).isoformat(),
+            "processed_at": (now - timedelta(minutes=1, seconds=55)).isoformat(),
+            "data": {
+                "gateway_id": "gw-abcdef123456",
+                "ts": int(time.time()) - 120,
+                "subdevicelist": [
+                    {
+                        "id": 87654321,
+                        "value": {
+                            "alarmstatus": "alarm",
+                            "alarmtype": "panic"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+    
+    return success_response(messages)
+
+@app.route(get_route('messages', 'status'), methods=['GET'])
+@api_error_handler
+def get_messages_status():
+    """
+    Endpunkt zum Abfragen des Status aller Nachrichten
+    """
+    from datetime import datetime, timedelta
+    import time
+    
+    logger.info("Statusabfrage für alle Nachrichten")
+    
+    # Für Demonstrationszwecke liefern wir Beispieldaten
+    now = datetime.now()
+    
+    messages = [
+        {
+            "id": "msg-1234567890",
+            "status": "processed",
+            "received_at": (now - timedelta(minutes=5)).isoformat(),
+            "processed_at": (now - timedelta(minutes=4, seconds=50)).isoformat(),
+            "data": {
+                "gateway_id": "gw-abcdef123456",
+                "ts": int(time.time()) - 300,
+                "subdevicelist": [
+                    {
+                        "id": 12345678,
+                        "value": {
+                            "alarmstatus": "normal",
+                            "batterystatus": "ok"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "id": "msg-0987654321",
+            "status": "processed",
+            "received_at": (now - timedelta(minutes=2)).isoformat(),
+            "processed_at": (now - timedelta(minutes=1, seconds=55)).isoformat(),
+            "data": {
+                "gateway_id": "gw-abcdef123456",
+                "ts": int(time.time()) - 120,
+                "subdevicelist": [
+                    {
+                        "id": 87654321,
+                        "value": {
+                            "alarmstatus": "alarm",
+                            "alarmtype": "panic"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+    
+    return success_response(messages)
+
 @app.route(get_route('messages', 'detail'), methods=['GET'])
 @api_error_handler
 def get_message_status(message_id):
     """
     Endpunkt zum Abfragen des Status einer Nachricht
     """
-    # Suche nach der Nachricht in allen Queues
+    # Suche nach der Nachricht in allen Queues für spezifische Nachrichten-IDs
     # TODO: Implementieren
     logger.info(f"Statusabfrage für Nachricht {message_id}")
     
-    # Vorläufige Implementierung
+    # Vorläufige Implementierung für andere Nachrichten-IDs
     return error_response(f'Status für Nachricht {message_id} ist noch nicht implementiert', 404)
 
 @app.route(get_route('messages', 'queue_status'), methods=['GET'])
@@ -353,6 +467,27 @@ def list_processor_endpoints():
     ]
     
     return success_response(endpoints)
+
+@app.route('/api/v1/system/test-message', methods=['POST'])
+@api_error_handler
+def generate_test_message():
+    """
+    Erzeugt eine Testnachricht für Dashboard-Tests
+    """
+    import time
+    
+    logger.info("Erzeuge Testnachricht")
+    
+    # Einfache Testnachricht
+    test_message = {
+        "gateway_id": "test-gateway-01",
+        "timestamp": int(time.time()),
+        "status": "success",
+        "type": "panic_button"
+    }
+    
+    # Vereinfachte Antwort
+    return success_response(test_message)
 
 if __name__ == '__main__':
     logger.info("Message Processor wird gestartet...")

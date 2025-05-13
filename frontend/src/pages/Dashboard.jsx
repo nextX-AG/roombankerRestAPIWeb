@@ -109,7 +109,7 @@ const Dashboard = () => {
 
     const fetchMessages = async () => {
       try {
-        const response = await axios.get(`${config.apiBaseUrl}/v1/messages/status`);
+        const response = await axios.get(`${config.apiBaseUrl}/v1/list-messages`);
         setMessageCount((response.data.data || []).length);
         setLatestMessages((response.data.data || []).slice(0, 3));
       } catch (error) {
@@ -142,7 +142,7 @@ const Dashboard = () => {
       setCreationSuccess(true);
       
       // Nachrichten aktualisieren
-      const messagesResponse = await axios.get(`${config.apiBaseUrl}/v1/messages/status`);
+      const messagesResponse = await axios.get(`${config.apiBaseUrl}/v1/list-messages`);
       setMessageCount((messagesResponse.data.data || []).length);
       setLatestMessages((messagesResponse.data.data || []).slice(0, 3));
       

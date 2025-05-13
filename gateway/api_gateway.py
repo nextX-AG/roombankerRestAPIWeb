@@ -193,13 +193,17 @@ def determine_target_service(path):
         'gateways': 'api',
         'customers': 'api',
         'devices': 'api',
-        'messages': 'processor',  # Geändert von 'worker' zu 'processor'
-        'templates': 'processor', # Geändert von 'worker' zu 'processor'
-        'system': 'processor',    # Hinzugefügt
-        'health': 'api',          # Geändert von 'processor' zu 'api'
-        'iot-status': 'processor',# Geändert von 'worker' zu 'processor'
-        'endpoints': 'processor'  # Geändert von 'worker' zu 'processor'
+        'messages': 'processor',  # Message-Processor verarbeitet alle /messages Endpunkte
+        'templates': 'processor', 
+        'system': 'processor',    
+        'health': 'api',          # Health-Status für API-Service
+        'iot-status': 'processor',
+        'endpoints': 'processor',
+        'list-messages': 'processor'  # Wichtig: Explizite Route für list-messages
     }
+    
+    # Debug-Ausgabe für Diagnose-Zwecke
+    logger.info(f"Routen-Kategorie: {category}, Voller Pfad: {path}, Ziel-Service: {service_mapping.get(category, 'api')}")
     
     service = service_mapping.get(category, 'api')  # Default: api-Service
     
