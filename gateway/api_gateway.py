@@ -196,7 +196,7 @@ def determine_target_service(path):
         'messages': 'processor',  # Geändert von 'worker' zu 'processor'
         'templates': 'processor', # Geändert von 'worker' zu 'processor'
         'system': 'processor',    # Hinzugefügt
-        'health': 'processor',    # Geändert von 'worker' zu 'processor'
+        'health': 'api',          # Geändert von 'processor' zu 'api'
         'iot-status': 'processor',# Geändert von 'worker' zu 'processor'
         'endpoints': 'processor'  # Geändert von 'worker' zu 'processor'
     }
