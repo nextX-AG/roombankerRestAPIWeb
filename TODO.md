@@ -468,17 +468,17 @@
 
 ### Aktuelle Probleme (Zu bearbeiten)
 
-- [ ] **Dashboard-Status korrekt anzeigen**
-  - [ ] API-Server-Status korrekt anzeigen
-  - [ ] Message Processor-Status korrekt anzeigen
-  - [ ] Testnachricht-Funktionalität implementieren
+- [x] **Dashboard-Status korrekt anzeigen**
+  - [x] API-Server-Status korrekt anzeigen
+  - [x] Message Processor-Status korrekt anzeigen
+  - [x] Testnachricht-Funktionalität implementieren
 
-- [ ] **API-Endpunkte implementieren**
-  - [ ] `/api/v1/health` Endpunkt im API-Service implementieren
-  - [ ] `/api/v1/system/health` Endpunkt im Processor-Service implementieren
-  - [ ] `/api/v1/system/endpoints` und `/api/v1/templates` implementieren
+- [x] **API-Endpunkte implementieren**
+  - [x] `/api/v1/health` Endpunkt im API-Service implementieren
+  - [x] `/api/v1/system/health` Endpunkt im Processor-Service implementieren
+  - [x] `/api/v1/system/endpoints` und `/api/v1/templates` implementieren
 
 - [ ] **Frontend-Komponenten aktualisieren**
-  - [ ] Sicherstellen, dass alle Komponenten die korrekten API-Routen verwenden
+  - [x] Sicherstellen, dass alle Komponenten die korrekten API-Routen verwenden
   - [ ] Überprüfen, dass die Datenstrukturen korrekt verarbeitet werden
   - [ ] Fehlerbehandlung in Frontend-Komponenten verbessern
