@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Table, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faEdit, faTrash, faSync, faUsers, faEye, faBuilding } from '@fortawesome/free-solid-svg-icons';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+import { customerApi } from '../api';
 
 /**
  * Kundenverwaltungs-Komponente
@@ -44,9 +42,13 @@ const Customers = () => {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/customers`);
-      setCustomers(response.data);
-      setError(null);
+      const response = await customerApi.list();
+      if (response.status === 'success') {
+        setCustomers(response.data || []);
+        setError(null);
+      } else {
+        throw new Error(response.error?.message || 'Fehler beim Laden der Kundendaten');
+      }
     } catch (err) {
       console.error('Fehler beim Laden der Kunden:', err);
       setError('Kundendaten konnten nicht geladen werden. Bitte versuchen Sie es später erneut.');
@@ -68,10 +70,14 @@ const Customers = () => {
   const handleAddCustomer = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_URL}/customers`, formData);
-      setShowAddModal(false);
-      resetForm();
-      fetchCustomers();
+      const response = await customerApi.create(formData);
+      if (response.status === 'success') {
+        setShowAddModal(false);
+        resetForm();
+        fetchCustomers();
+      } else {
+        throw new Error(response.error?.message || 'Kunde konnte nicht hinzugefügt werden.');
+      }
     } catch (err) {
       console.error('Fehler beim Hinzufügen des Kunden:', err);
       setError('Kunde konnte nicht hinzugefügt werden.');
@@ -82,10 +88,14 @@ const Customers = () => {
   const handleEditCustomer = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`${API_URL}/customers/${currentCustomer.id}`, formData);
-      setShowEditModal(false);
-      resetForm();
-      fetchCustomers();
+      const response = await customerApi.update(currentCustomer.id, formData);
+      if (response.status === 'success') {
+        setShowEditModal(false);
+        resetForm();
+        fetchCustomers();
+      } else {
+        throw new Error(response.error?.message || 'Kunde konnte nicht bearbeitet werden.');
+      }
     } catch (err) {
       console.error('Fehler beim Bearbeiten des Kunden:', err);
       setError('Kunde konnte nicht bearbeitet werden.');
@@ -95,9 +105,13 @@ const Customers = () => {
   // Kunde löschen
   const handleDeleteCustomer = async () => {
     try {
-      await axios.delete(`${API_URL}/customers/${currentCustomer.id}`);
-      setShowDeleteConfirm(false);
-      fetchCustomers();
+      const response = await customerApi.delete(currentCustomer.id);
+      if (response.status === 'success') {
+        setShowDeleteConfirm(false);
+        fetchCustomers();
+      } else {
+        throw new Error(response.error?.message || 'Kunde konnte nicht gelöscht werden.');
+      }
     } catch (err) {
       console.error('Fehler beim Löschen des Kunden:', err);
       setError('Kunde konnte nicht gelöscht werden.');

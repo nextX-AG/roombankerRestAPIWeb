@@ -54,8 +54,8 @@ app = Flask(__name__)
 CORS(app)  # Erlaube Cross-Origin Requests für Frontend-Integration
 
 # Registriere den API Blueprint
-# Aktualisiere den URL-Präfix auf das neue Format
-app.register_blueprint(api_bp, url_prefix=f'/api/{API_VERSION}')
+# Ohne Präfix, da die Routen in routes.py bereits den vollständigen Pfad haben
+app.register_blueprint(api_bp)
 
 # Speicherort für empfangene Nachrichten
 MESSAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')

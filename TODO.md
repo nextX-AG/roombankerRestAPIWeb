@@ -482,3 +482,122 @@
   - [x] Sicherstellen, dass alle Komponenten die korrekten API-Routen verwenden
   - [ ] Überprüfen, dass die Datenstrukturen korrekt verarbeitet werden
   - [ ] Fehlerbehandlung in Frontend-Komponenten verbessern
+
+## 9. Systematische Überprüfung des Frontend (HÖCHSTE PRIORITÄT)
+
+Eine detaillierte Überprüfung aller Frontend-Komponenten ist notwendig, um die Konsistenz und Funktionalität sicherzustellen.
+
+### Grundlegende API-Kompatibilität überprüfen
+
+- [ ] **API-Versionierung durchsetzen**
+  - [ ] Alle Frontend-API-Aufrufe auf `/api/v1/...` umstellen
+  - [ ] Verwendung der Funktionen aus api.js erzwingen
+  - [ ] Keine direkten axios/fetch-Aufrufe ohne zentrale API-Client-Nutzung
+
+- [ ] **Antwortformat standardisieren**
+  - [ ] Einheitliches Format `{status, data, error}` für alle API-Antworten
+  - [ ] Frontend auf konsistentes Handling dieser Struktur umstellen
+  - [ ] Error-Handling in jeder Komponente überprüfen
+
+### Seiten-für-Seite-Überprüfung
+
+- [ ] **Dashboard**
+  - [ ] API-Status-Anzeige prüfen
+  - [ ] Message-Processor-Status verifizieren
+  - [ ] Testnachricht-Funktionalität validieren
+  - [ ] Messages-Liste korrekt anzeigen
+
+- [ ] **Kundenverwaltung**
+  - [ ] Kunden-Erstellung mit vollständigen Daten testen
+  - [ ] Kundenliste API-Aufruf korrigieren (v1-Pfad)
+  - [ ] Kunden-Bearbeitung auf korrekten API-Pfad umstellen
+  - [ ] Gateway-Zuordnung überprüfen
+  - [ ] evAlarm API-Konfiguration validieren
+
+- [ ] **Gateway-Verwaltung**
+  - [ ] Gateway-Erstellung testen
+  - [ ] Gateway-Liste Abruf überprüfen
+  - [ ] Gateway-Status-Anzeige prüfen
+  - [ ] Kundenverknüpfung validieren
+  - [ ] Nicht zugeordnete Gateways anzeigen
+
+- [ ] **Geräte-Übersicht**
+  - [ ] Vollständigen API-Pfad für Geräteliste verwenden
+  - [ ] Gerätestatus-Anzeige prüfen
+  - [ ] Gateway-Zuordnung bei Geräten validieren
+
+- [ ] **Nachrichtenverwaltung**
+  - [ ] Nachrichtenliste mit korrektem v1-Pfad abrufen
+  - [ ] Nachrichtendetails korrekt anzeigen
+  - [ ] Testnachricht-Erzeugung prüfen
+
+- [ ] **Vorlagen-Verwaltung**
+  - [ ] Template-Liste über `/api/v1/templates` abrufen
+  - [ ] Template-Test-Funktionalität überprüfen
+
+- [ ] **Login & Authentifizierung**
+  - [ ] Login-Prozess mit `/api/v1/auth/login` validieren
+  - [ ] Token-Management überprüfen
+  - [ ] Logout-Funktionalität testen
+
+### Gemeinsame Komponenten
+
+- [ ] **Status-Icons**
+  - [ ] Konsistente Verwendung der Status-Icons
+  - [ ] Einheitliche Darstellung über alle Seiten
+
+- [ ] **Tabellen & Listen**
+  - [ ] Einheitliches Tabellen-Layout
+  - [ ] Konsistente Sortier- und Filterfunktionen
+  - [ ] Standard-Paginierung wo notwendig
+
+- [ ] **Formular-Komponenten**
+  - [ ] Validierung in allen Formularen
+  - [ ] Fehlermeldungen einheitlich darstellen
+  - [ ] Sicherstellung der Barrierefreiheit
+
+### Fehlerbehandlung
+
+- [ ] **Konsistente Fehlerbehandlung**
+  - [ ] API-Fehlerbehandlung in allen Komponenten
+  - [ ] Benutzerfreundliche Fehlermeldungen
+  - [ ] Fallback-Inhalte bei API-Ausfällen
+
+- [ ] **Netzwerkfehler**
+  - [ ] Timeout-Management
+  - [ ] Automatische Wiederholungsversuche
+  - [ ] Offline-Status-Anzeige
+
+### Einheitliches CSS und Design
+
+- [ ] **Design-System durchsetzen**
+  - [ ] Bootstrap-Klassen konsistent verwenden
+  - [ ] Custom-CSS minimieren
+  - [ ] Einheitliche Farbpalette
+
+- [ ] **Responsives Design**
+  - [ ] Mobile-Ansicht für alle Seiten überprüfen
+  - [ ] Flexbox/Grid-Layout durchgehend verwenden
+  - [ ] Tablet-Darstellung testen
+
+### Implementierungsplan
+
+- [ ] **Phase 1: Analyse und Dokumentation**
+  - [ ] Status Quo jeder Komponente dokumentieren
+  - [ ] Hauptprobleme identifizieren
+  - [ ] Prioritätenliste erstellen
+
+- [ ] **Phase 2: API-Refactoring**
+  - [ ] Alle API-Aufrufe zentralisieren 
+  - [ ] Versionierte Pfade überall verwenden
+  - [ ] Einheitliches Antworthandling
+
+- [ ] **Phase 3: Komponenten-Update**
+  - [ ] Jede Seite systematisch korrigieren
+  - [ ] Unit-Tests für kritische Funktionen schreiben
+  - [ ] Wiederverwendbare Komponenten extrahieren
+
+- [ ] **Phase 4: Testrunde**
+  - [ ] Manuelle Tests aller Funktionen
+  - [ ] Automatisierte Tests implementieren
+  - [ ] Browserübergreifende Tests
