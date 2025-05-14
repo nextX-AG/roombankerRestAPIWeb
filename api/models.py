@@ -25,6 +25,7 @@ def initialize_db(connection_string=None, db_name=None):
         try:
             # Teste die bestehende Verbindung
             mongo_client.admin.command('ping')
+            logger.info("MongoDB-Verbindung ist noch aktiv")
             return
         except Exception as e:
             logger.warning(f"Bestehende MongoDB-Verbindung fehlgeschlagen: {str(e)}")
@@ -35,7 +36,7 @@ def initialize_db(connection_string=None, db_name=None):
     try:
         # Umgebungsvariablen verwenden, falls parameter nicht angegeben wurden
         if connection_string is None:
-            connection_string = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/')
+            connection_string = os.environ.get('MONGODB_URI', 'mongodb://mongo:27017/')
         
         if db_name is None:
             db_name = os.environ.get('MONGODB_DB', 'evalarm_gateway')
@@ -57,6 +58,13 @@ def initialize_db(connection_string=None, db_name=None):
     except Exception as e:
         logger.error(f"Fehler beim Verbinden mit MongoDB: {str(e)}")
         raise
+
+# Initialisiere die Datenbank direkt beim Laden dieses Moduls
+try:
+    initialize_db()
+    logger.info("Datenbankverbindung beim Laden des Moduls erfolgreich initialisiert")
+except Exception as e:
+    logger.error(f"Fehler beim Initialisieren der Datenbankverbindung beim Laden des Moduls: {str(e)}")
 
 # Kunden-Modell
 class Customer:
@@ -291,28 +299,64 @@ def determine_device_type(values):
 
 def register_device_from_message(gateway_uuid, device_data):
     """Registriert oder aktualisiert ein Gerät basierend auf empfangenen Nachrichten"""
-    if not device_data or "id" not in device_data:
+    if not device_data:
+        logger.warning(f"Keine Gerätedaten für Gateway {gateway_uuid}")
         return None
     
-    device_id = str(device_data["id"])
-    values = device_data.get("value", {})
+    # Extrahiere Geräte-ID aus verschiedenen Formaten
+    device_id = None
+    values = {}
+    
+    if isinstance(device_data, dict):
+        # Format 1: Standard-Format mit id und value
+        if "id" in device_data:
+            device_id = str(device_data["id"])
+            if "value" in device_data:
+                values = device_data["value"]
+            elif "values" in device_data:
+                values = device_data["values"]
+        
+        # Format 2: Direkte Werte ohne value-Objekt
+        elif "alarmstatus" in device_data or "batterystatus" in device_data:
+            # Verwende erste 8 Zeichen der UUID als temporäre ID
+            device_id = f"device-{gateway_uuid[-8:]}"
+            values = device_data
+    
+    # Wenn immer noch keine ID gefunden wurde, beende mit Fehler
+    if not device_id:
+        logger.warning(f"Keine Geräte-ID aus den Daten extrahiert: {device_data}")
+        return None
+    
+    # Wenn values ein String oder eine Zahl ist, konvertiere zu dict
+    if not isinstance(values, dict):
+        values = {"value": values}
+    
+    logger.info(f"Verarbeite Gerät mit ID {device_id} für Gateway {gateway_uuid}")
+    logger.info(f"Geräte-Werte: {values}")
     
     device = Device.find_by_gateway_and_id(gateway_uuid, device_id)
     
     if device:
         # Gerät aktualisieren
+        logger.info(f"Gerät {device_id} gefunden, aktualisiere Status")
         device.update_status(values)
         return device
     else:
         # Neues Gerät anlegen
         device_type = determine_device_type(values)
-        new_device = Device.create(
-            gateway_uuid=gateway_uuid,
-            device_id=device_id,
-            device_type=device_type,
-            status=values
-        )
-        return new_device
+        logger.info(f"Neues Gerät vom Typ {device_type} für Gateway {gateway_uuid} wird angelegt")
+        try:
+            new_device = Device.create(
+                gateway_uuid=gateway_uuid,
+                device_id=device_id,
+                device_type=device_type,
+                status=values
+            )
+            logger.info(f"Gerät {device_id} erfolgreich angelegt")
+            return new_device
+        except Exception as e:
+            logger.error(f"Fehler beim Anlegen des Geräts {device_id}: {str(e)}")
+            return None
 
 def update_all_devices_for_gateway(gateway_uuid):
     """Aktualisiert den Zeitstempel aller Geräte eines Gateways"""

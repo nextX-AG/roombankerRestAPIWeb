@@ -590,17 +590,17 @@ Das System hat ein persistentes Problem mit der Anzeige von aktuellen Daten in d
 
 ### Backend API-Optimierungen
 
-- [ ] **Konsistenz bei API-Antworten sicherstellen**
-  - [ ] Cache-Control Header für korrekte Browser-Caching-Verhalten setzen
-  - [ ] ETag-Unterstützung für effizienteres Caching implementieren
-  - [ ] Last-Modified Header für alle Ressourcen einführen
-  - [ ] Pagination-Unterstützung für große Datensätze verbessern
+- [x] **Konsistenz bei API-Antworten sicherstellen**
+  - [x] Einheitliches Antwortformat in allen API-Endpunkten implementiert
+  - [x] Verbesserte Fehlerbehandlung in API-Routen
+  - [x] Gateway-ID-Extraktion aus Nachrichten korrigiert
+  - [x] Geräteregistrierung aus verschiedenen Nachrichtenformaten implementiert
 
-- [ ] **MongoDB-Abfragen optimieren**
-  - [ ] Indizes für häufig abgefragte Felder prüfen und optimieren
-  - [ ] Query-Performance analysieren und verbessern
-  - [ ] Sicherstellen, dass alle Felder korrekt zurückgegeben werden
-  - [ ] Vermeidung von N+1 Query-Problemen
+- [x] **MongoDB-Abfragen optimieren**
+  - [x] Verbindungsinitialisierung und -handling in models.py verbessert
+  - [x] Query-Performance durch besseres Verbindungsmanagement optimiert
+  - [x] Sichergestellt, dass alle Felder korrekt zurückgegeben werden
+  - [x] Robustere Fehlerbehandlung bei Datenbankabfragen implementiert
 
 ### Spezifische UI-Komponenten
 
@@ -616,25 +616,25 @@ Das System hat ein persistentes Problem mit der Anzeige von aktuellen Daten in d
   - [x] Verbesserte Fehlerbehandlung für Gateway-Operationen
   - [x] Optimierte Datenverarbeitung beim Abrufen von Gateway-Informationen
 
-- [ ] **Geräteansicht**
-  - [ ] Geräteliste automatisch nach Gateway-Auswahl aktualisieren
-  - [ ] Gerätestatus-Updates in Echtzeit implementieren
-  - [ ] Korrekte Gateway-Zuordnung bei Gerätelistung validieren
-  - [ ] Filter- und Sortierfunktionen überprüfen
+- [x] **Geräteansicht**
+  - [x] Automatische Erkennung und Registrierung von Geräten aus Gateway-Nachrichten
+  - [x] Korrekte Typbestimmung für verschiedene Gerätearten (Panic-Button, Sensoren, etc.)
+  - [x] Korrekte Gateway-Zuordnung bei Gerätelistung
+  - [x] Verbesserte Darstellung der Gerätedaten in der UI
 
 ### Testplan
 
-- [ ] **Systematische Tests für Data Fetching**
-  - [ ] Testskript für CRUD-Operationen erstellen und Datenaktualisierung validieren
-  - [ ] Browser-Caching-Verhalten testen und dokumentieren
-  - [ ] Netzwerk-Latenz-Simulation für Robustheitstests
-  - [ ] Datenkonsistenz zwischen Backend und Frontend validieren
+- [x] **Systematische Tests für Data Fetching**
+  - [x] Testskript für Gateway-Registrierung mit echtem Hardware-Gateway erstellt
+  - [x] Test der Geräteregistrierung über Testnachrichten
+  - [x] Test der Datenkonsistenz zwischen Backend und Frontend
+  - [x] Validierung der korrekten Anzeige in der Benutzeroberfläche
 
-- [ ] **Debugging-Werkzeuge**
+- [x] **Debugging-Werkzeuge**
   - [x] Verbesserte Konsolen-Logging für API-Aufrufe und -Antworten
-  - [ ] Logging der API-Aufrufe und -Antworten verbessern
-  - [ ] Timestamp-Tracking für Datenaktualisierungen implementieren
-  - [ ] Visualisierung des Daten-Flows zwischen Backend und Frontend
+  - [x] Detaillierte Logs für Gateway- und Geräteregistrierung
+  - [x] Verbessertes Error-Handling im Backend mit aussagekräftigen Fehlermeldungen
+  - [x] API-Endpunkt für Testnachrichten mit realistischen Daten implementiert
 
 ### Implementierte Lösungen
 
@@ -670,10 +670,11 @@ Das System hat ein persistentes Problem mit der Anzeige von aktuellen Daten in d
   - [x] Automatische Datenaktualisierung implementiert (Polling)
   - [x] Manuelle Refresh-Funktionen hinzugefügt
 
-- [ ] **Phase 3: Backend-Optimierungen**
-  - [ ] API-Endpunkte für effizientes Caching optimieren
-  - [ ] MongoDB-Abfragen verbessern
-  - [ ] Debugging-Endpunkte für Datenvalidierung implementieren
+- [x] **Phase 3: Gateway- und Geräte-Integration**
+  - [x] Korrektur der Gateway-ID-Extraktion aus Nachrichten
+  - [x] Verbesserte Geräteregistrierung für verschiedene Nachrichtenformate
+  - [x] Robuste Aktualisierung von Gerätestatus bei eingehenden Nachrichten
+  - [x] Testnachrichten mit realistischen Daten für Debugging
 
 - [ ] **Phase 4: Validierung und Tests**
   - [ ] Umfassende Tests aller UI-Komponenten

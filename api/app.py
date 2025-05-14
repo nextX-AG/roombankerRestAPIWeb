@@ -36,18 +36,27 @@ logger = logging.getLogger('iot-gateway-api')
 # Flexibler Import für Gateway-Modell und Geräteaktualisierungsfunktion
 try:
     # Versuche zuerst den lokalen Import
-    from models import Gateway, update_all_devices_for_gateway
+    from models import Gateway, update_all_devices_for_gateway, initialize_db
     logger.info("Gateway-Modell über lokalen Import geladen")
 except ImportError:
     try:
         # Versuche dann den absoluten Import
-        from api.models import Gateway, update_all_devices_for_gateway
+        from api.models import Gateway, update_all_devices_for_gateway, initialize_db
         logger.info("Gateway-Modell über absoluten Import geladen")
     except ImportError:
         # Fallback in case of deployment differences
         logger.error(f"Konnte Gateway-Modell nicht importieren. Python-Pfad: {sys.path}")
         Gateway = None
         update_all_devices_for_gateway = None
+        initialize_db = None
+
+# Stelle sicher, dass die Datenbankverbindung initialisiert wird
+if initialize_db:
+    try:
+        initialize_db()
+        logger.info("Datenbankverbindung in api/app.py initialisiert")
+    except Exception as e:
+        logger.error(f"Fehler beim Initialisieren der Datenbankverbindung in app.py: {str(e)}")
 
 # Erstelle Flask-App
 app = Flask(__name__)
@@ -235,19 +244,76 @@ def create_test_message():
     """
     Endpunkt zum Erstellen einer Testnachricht (für Entwicklung und Präsentation)
     """
-    # Beispiel für eine Panic-Button-Nachricht
+    # Gateway-ID aus der echten Gateway-ID nehmen
+    gateway_uuid = "gw-c490b022-cc18-407e-a07e-a355747a8fdd"
+    
+    # Beispiel für eine Nachricht mit Panic-Button und anderen Geräten
     test_data = {
-        "ts": int(time.time()),
+        "gateway_id": gateway_uuid,
+        "timestamp": int(time.time()),
+        "status": "success",
+        "type": "status_update",
         "subdevicelist": [
             {
-                "id": 665531142918213,
-                "values": {
+                "id": "673922542395461",
+                "value": {
                     "alarmstatus": "alarm",
-                    "alarmtype": "panic"
+                    "alarmtype": "panic",
+                    "batterystatus": "ok"
+                }
+            },
+            {
+                "id": "789456123789456",
+                "value": {
+                    "currenttemperature": 22.5,
+                    "currenthumidity": 45,
+                    "batterystatus": "ok"
                 }
             }
         ]
     }
+    
+    # Gateway in der Datenbank registrieren
+    if Gateway is not None:
+        try:
+            current_time = datetime.now()
+            # Entferne mögliche Whitespaces oder Newlines
+            gateway_uuid = gateway_uuid.strip() if isinstance(gateway_uuid, str) else gateway_uuid
+            logger.info(f"Suche Gateway mit UUID: '{gateway_uuid}'")
+            
+            gateway = Gateway.find_by_uuid(gateway_uuid)
+            if gateway:
+                logger.info(f"Gateway {gateway_uuid} gefunden, aktualisiere Status")
+                # Aktualisiere den Status UND den last_contact-Zeitstempel
+                gateway.update(status='online', last_contact=current_time)
+                logger.info(f"Gateway {gateway_uuid} Status auf 'online' aktualisiert, last_contact={current_time}")
+            else:
+                logger.info(f"Gateway {gateway_uuid} nicht gefunden, erstelle neuen Eintrag")
+                gateway = Gateway.create(uuid=gateway_uuid, customer_id=None, status='online', last_contact=current_time, name=f"Gateway {gateway_uuid[-8:]}")
+                logger.info(f"Neues Gateway {gateway_uuid} ohne Kundenzuordnung erstellt, last_contact={current_time}")
+            
+            # Registriere die Geräte aus der subdevicelist
+            if update_all_devices_for_gateway and 'subdevicelist' in test_data:
+                from routes import register_device_from_message
+                devices_registered = 0
+                for device_data in test_data['subdevicelist']:
+                    try:
+                        device = register_device_from_message(gateway_uuid, device_data)
+                        if device:
+                            devices_registered += 1
+                            logger.info(f"Gerät {device.device_id} für Gateway {gateway_uuid} registriert/aktualisiert")
+                    except Exception as e:
+                        logger.error(f"Fehler bei der Registrierung des Geräts: {str(e)}")
+                
+                logger.info(f"{devices_registered} Geräte für Gateway {gateway_uuid} registriert/aktualisiert")
+                
+        except Exception as e:
+            logger.error(f"Fehler beim Verarbeiten des Gateways {gateway_uuid}: {str(e)}")
+            logger.error(f"Exception Typ: {type(e).__name__}")
+            import traceback
+            logger.error(f"Stacktrace: {traceback.format_exc()}")
+    else:
+        logger.warning(f"Gateway-Modell nicht verfügbar.")
     
     # Erstelle Nachrichtenobjekt mit Metadaten
     message = {
@@ -273,10 +339,7 @@ def create_test_message():
     
     logger.info(f"Testnachricht erstellt: {filepath}")
     
-    return success_response({
-        "message_id": message['id'], 
-        "data": test_data
-    }, "Testnachricht erfolgreich erstellt")
+    return success_response(test_data)
 
 @app.route('/api/endpoints', methods=['GET'])
 @api_error_handler

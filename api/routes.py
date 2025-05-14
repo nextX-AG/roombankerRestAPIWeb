@@ -277,7 +277,7 @@ def delete_gateway(uuid):
     
     gateway.delete()
     logger.info(f"Gateway gelöscht: UUID {uuid}")
-    return success_response(message="Gateway erfolgreich gelöscht")
+    return success_response({"result": "Gateway erfolgreich gelöscht"})
 
 @api_bp.route('/api/v1/gateways/<uuid>/status', methods=['PUT'])
 @api_error_handler
@@ -492,20 +492,47 @@ def process_message():
         logger.info(f"Gateway-Status aktualisiert: UUID {gateway_uuid}")
     else:
         # Wenn Gateway nicht existiert, erstellen wir ein temporäres Gateway ohne Kundenzuordnung
-        Gateway.create(uuid=gateway_uuid, customer_id=None)
+        Gateway.create(uuid=gateway_uuid, customer_id=None, name=f"Gateway {gateway_uuid[-8:]}")
         logger.info(f"Neues unregistriertes Gateway erstellt: UUID {gateway_uuid}")
     
     # Geräte aus subdevicelist registrieren/aktualisieren
-    subdevices = data.get('subdevicelist', [])
     registered_devices = []
     
-    for device_data in subdevices:
-        registered_device = register_device_from_message(gateway_uuid, device_data)
-        if registered_device:
-            registered_devices.append(registered_device.to_dict())
+    # Verschiedene Nachrichtenformate verarbeiten
+    if 'subdevicelist' in data and isinstance(data['subdevicelist'], list):
+        # Format 1: Nachricht mit subdevicelist
+        subdevices = data['subdevicelist']
+        for device_data in subdevices:
+            registered_device = register_device_from_message(gateway_uuid, device_data)
+            if registered_device:
+                registered_devices.append(registered_device.to_dict())
+    elif 'devices' in data and isinstance(data['devices'], list):
+        # Format 2: Nachricht mit devices-Liste
+        for device_data in data['devices']:
+            registered_device = register_device_from_message(gateway_uuid, device_data)
+            if registered_device:
+                registered_devices.append(registered_device.to_dict())
+    else:
+        # Format 3: Direkte Werte in der Nachricht (z.B. bei Nachricht mit nur einem Gerät)
+        device_data = {
+            "id": data.get('device_id', f"device-{gateway_uuid[-8:]}"),
+            "value": {}
+        }
+        
+        # Übertrage relevante Werte in das device_data-Objekt
+        for key in ['alarmstatus', 'alarmtype', 'batterystatus', 'currenttemperature', 'currenthumidity']:
+            if key in data:
+                device_data['value'][key] = data[key]
+        
+        # Nur registrieren, wenn Werte vorhanden sind
+        if device_data['value']:
+            registered_device = register_device_from_message(gateway_uuid, device_data)
+            if registered_device:
+                registered_devices.append(registered_device.to_dict())
     
     logger.info(f"{len(registered_devices)} Geräte für Gateway {gateway_uuid} registriert/aktualisiert")
     return success_response({
+        "gateway_id": gateway_uuid,
         "devices": registered_devices
     }, f"{len(registered_devices)} Geräte registriert/aktualisiert")
 
