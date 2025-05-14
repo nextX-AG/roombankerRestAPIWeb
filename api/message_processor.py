@@ -98,8 +98,33 @@ def process_message():
     message = data.get('message', data)
     gateway_id = data.get('gateway_id')
     
+    # Wenn keine gateway_id direkt im Hauptobjekt gefunden wurde, versuche, sie aus der message zu extrahieren
+    if not gateway_id and isinstance(message, dict):
+        # Versuche verschiedene Felder
+        gateway_id = message.get('gateway_id')
+        
+        if not gateway_id and 'gateway' in message and isinstance(message['gateway'], dict):
+            # Versuche gateway.uuid
+            gateway_id = message['gateway'].get('uuid')
+            # Oder gateway.id
+            if not gateway_id:
+                gateway_id = message['gateway'].get('id')
+        
+        # Weitere mögliche Felder
+        if not gateway_id:
+            possible_fields = ['id', 'uuid', 'gatewayId']
+            for field in possible_fields:
+                if field in message:
+                    gateway_id = message[field]
+                    logger.info(f"Gateway-ID aus {field} extrahiert: {gateway_id}")
+                    break
+    
+    # Wenn immer noch keine Gateway-ID gefunden wurde, lehne die Anfrage ab
     if not gateway_id:
-        return validation_error_response({"gateway_id": "Gateway-ID ist erforderlich"})
+        logger.warning(f"Keine Gateway-ID gefunden. Daten: {data}")
+        return validation_error_response({"gateway_id": "Gateway-ID konnte nicht extrahiert werden"})
+    
+    logger.info(f"Verarbeite Nachricht für Gateway: {gateway_id}")
     
     # Finde den zugehörigen Kunden basierend auf der Gateway-ID
     customer_config = None

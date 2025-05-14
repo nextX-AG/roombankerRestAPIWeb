@@ -147,8 +147,21 @@ const Dashboard = () => {
       const response = await messageApi.list();
       console.log('Nachrichten-Antwort:', response);
       if (response.status === 'success') {
-        setMessageCount((response.data || []).length);
-        setLatestMessages((response.data || []).slice(0, 3));
+        // Extrahiere die Nachrichten aus dem data-Feld
+        const messages = response.data || [];
+        // Sortiere die Nachrichten nach dem Zeitstempel in absteigender Reihenfolge
+        const sortedMessages = Array.isArray(messages) 
+          ? [...messages].sort((a, b) => {
+              // Verwende created_at als Zeitstempel für die Sortierung
+              const timeA = a.created_at || 0;
+              const timeB = b.created_at || 0;
+              return timeB - timeA;
+            })
+          : [];
+        
+        setMessageCount(sortedMessages.length);
+        // Nehme die neuesten 3 Nachrichten
+        setLatestMessages(sortedMessages.slice(0, 3));
       } else {
         setMessageCount(0);
         setLatestMessages([]);
@@ -377,10 +390,33 @@ const Dashboard = () => {
                     <Card key={index} className="mb-3">
                       <Card.Header className="d-flex justify-content-between">
                         <span>ID: {message.id}</span>
-                        <span>Empfangen: {new Date(message.received_at).toLocaleString()}</span>
+                        <span>
+                          {message.status === 'failed' ? (
+                            <Badge bg="danger">Fehlgeschlagen</Badge>
+                          ) : message.status === 'processed' ? (
+                            <Badge bg="success">Verarbeitet</Badge>
+                          ) : (
+                            <Badge bg="info">{message.status}</Badge>
+                          )}
+                        </span>
+                        <span>Erstellt: {new Date(message.created_at * 1000).toLocaleString()}</span>
                       </Card.Header>
                       <Card.Body>
-                        <JsonView data={message.data} />
+                        {message.error && (
+                          <Alert variant="danger" className="mb-3">
+                            <strong>Fehler:</strong> {message.error}
+                          </Alert>
+                        )}
+                        <div className="mb-3">
+                          <h6>Gateway-ID:</h6>
+                          <code>{message.gateway_id || 'Nicht verfügbar'}</code>
+                        </div>
+                        <div className="mb-3">
+                          <h6>Template:</h6>
+                          <code>{message.template || 'Kein Template'}</code>
+                        </div>
+                        <h6>Nachrichteninhalt:</h6>
+                        <JsonView data={message.message || {}} />
                       </Card.Body>
                     </Card>
                   ))}

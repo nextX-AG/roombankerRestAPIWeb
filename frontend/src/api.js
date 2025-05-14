@@ -290,7 +290,7 @@ export const templateApi = {
 // Message-API-Endpunkte
 export const messageApi = {
   list: async () => {
-    return fetchApi(getApiUrl('list-messages', ''));
+    return fetchApi(getApiUrl('messages', 'status'));
   },
   
   status: async () => {
