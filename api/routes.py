@@ -156,7 +156,7 @@ def create_customer():
     
     customer = Customer.create(**data)
     logger.info(f"Neuer Kunde erstellt: {data.get('name')}")
-    return success_response(customer.to_dict(), "Kunde erfolgreich erstellt", 201)
+    return success_response(customer.to_dict(), 201)
 
 @api_bp.route(get_route('customers', 'update'), methods=['PUT'])
 @api_error_handler

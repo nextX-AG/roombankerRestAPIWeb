@@ -6,7 +6,7 @@ import signal
 import logging
 import threading
 import uuid
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Blueprint
 from flask_cors import CORS
 from typing import Dict, Any, List, Optional
 from datetime import datetime
@@ -36,8 +36,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger('message-worker')
 
-# Flask-App für API-Endpunkte
-app = Flask(__name__)
+# Flask-Blueprint für API-Endpunkte
+app = Blueprint('worker', __name__)
 CORS(app)  # Erlaube Cross-Origin Requests
 
 # Globale Worker-Instanz
@@ -77,6 +77,7 @@ class MessageWorker:
         # Initialisiere Template-Engine und Message-Forwarder
         self.template_engine = TemplateEngine(templates_dir)
         self.message_forwarder = MessageForwarder()
+        self.message_forwarder.template_engine = self.template_engine  # Verbinde MessageForwarder mit TemplateEngine
         
         # Signal Handler für graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -126,49 +127,29 @@ class MessageWorker:
         try:
             message = job['message']
             template_name = job['template']
-            endpoint_name = job['endpoint']
+            customer_config = job.get('customer_config')
             
-            # Gateway-UUID aus der Nachricht extrahieren
-            gateway_uuid = None
-            if isinstance(message, dict):
-                # Verschiedene mögliche Bezeichnungen für die Gateway-ID prüfen
-                for key in ['gateway_uuid', 'gateway_id', 'gateway']:
-                    if key in message:
-                        if isinstance(message[key], str):
-                            gateway_uuid = message[key]
-                            break
-                        elif isinstance(message[key], dict) and 'id' in message[key]:
-                            gateway_uuid = message[key]['id']
-                            break
-                
-                # Aus data.gateway_id extrahieren, falls vorhanden
-                if not gateway_uuid and 'data' in message and isinstance(message['data'], dict):
-                    data = message['data']
-                    if 'gateway_id' in data:
-                        gateway_uuid = data['gateway_id']
-                    elif 'gateway' in data and isinstance(data['gateway'], dict) and 'id' in data['gateway']:
-                        gateway_uuid = data['gateway']['id']
+            if not customer_config:
+                error_msg = "Keine Kundenkonfiguration gefunden"
+                logger.error(error_msg)
+                self.queue.mark_as_failed(job['id'], error_msg)
+                return
             
-            # Wenn template_name "auto" ist oder leer, versuche das Template aus dem Gateway zu laden
-            if template_name == "auto" or not template_name:
-                if gateway_uuid:
-                    # Importiere hier, um zirkuläre Imports zu vermeiden
-                    from api.models import Gateway
-                    gateway = Gateway.find_by_uuid(gateway_uuid)
-                    if gateway and gateway.template_id:
-                        logger.info(f"Verwende Template '{gateway.template_id}' aus Gateway-Konfiguration für {gateway_uuid}")
-                        template_name = gateway.template_id
-                    else:
-                        # Standardmäßig evalarm-Template verwenden
-                        logger.info(f"Kein Template für Gateway {gateway_uuid} konfiguriert, verwende 'evalarm'")
-                        template_name = "evalarm"
-                else:
-                    # Standardmäßig evalarm-Template verwenden
-                    logger.info("Kein Gateway gefunden, verwende 'evalarm' Template")
-                    template_name = "evalarm"
+            # Gateway-ID aus der Job-Daten extrahieren
+            gateway_id = job.get('gateway_id')
+            if not gateway_id:
+                error_msg = "Keine Gateway-ID in den Job-Daten gefunden"
+                logger.error(error_msg)
+                self.queue.mark_as_failed(job['id'], error_msg)
+                return
             
-            # Transformiere Nachricht
-            transformed_message = self.template_engine.transform_message(message, template_name)
+            # Transformiere Nachricht mit dem Template und Kundenkonfiguration
+            transformed_message = self.template_engine.transform_message(
+                message, 
+                template_name,
+                customer_config=customer_config,
+                gateway_id=gateway_id
+            )
             
             if not transformed_message:
                 error_msg = f'Fehler bei der Transformation mit Template "{template_name}"'
@@ -176,18 +157,15 @@ class MessageWorker:
                 self.queue.mark_as_failed(job['id'], error_msg)
                 return
             
-            # Auto-Endpoint verwenden, wenn ein Gateway-UUID verfügbar ist
-            actual_endpoint = 'auto' if gateway_uuid and endpoint_name == 'evalarm' else endpoint_name
-            
             # Leite transformierte Nachricht weiter
             response = self.message_forwarder.forward_message(
-                transformed_message, 
-                actual_endpoint, 
-                gateway_uuid=gateway_uuid
+                transformed_message,
+                'evalarm',
+                gateway_uuid=gateway_id
             )
             
-            if not response:
-                error_msg = f'Fehler bei der Weiterleitung an Endpunkt "{endpoint_name}"'
+            if not response or response.status_code >= 400:
+                error_msg = f'Fehler bei der Weiterleitung an evAlarm API: {response.text if response else "Keine Antwort"}'
                 logger.error(error_msg)
                 self.queue.mark_as_failed(job['id'], error_msg)
                 return
@@ -196,8 +174,7 @@ class MessageWorker:
             result = {
                 'original_message': message,
                 'transformed_message': transformed_message,
-                'endpoint': endpoint_name,
-                'gateway_uuid': gateway_uuid,
+                'customer': customer_config['name'],
                 'response_status': response.status_code,
                 'response_text': response.text,
                 'template_used': template_name

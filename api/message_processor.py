@@ -19,10 +19,11 @@ from utils.api_handlers import (
 
 # Importiere die Template-Engine und den Message-Forwarder
 from utils.template_engine import TemplateEngine, MessageForwarder
+from utils.template_utils import select_template
 
 # Importiere die Message Queue und den Worker
 from api.message_queue import init_message_queue, get_message_queue
-from api.message_worker import init_worker, get_worker
+from api.message_worker import init_worker, get_worker, app as worker_app
 
 # Importiere die Datenmodelle
 from api.models import initialize_db, Customer, Gateway, Device, register_device_from_message
@@ -40,12 +41,16 @@ logger = logging.getLogger('message-processor')
 app = Flask(__name__)
 CORS(app)
 
+# Registriere die Worker-Routen
+app.register_blueprint(worker_app)
+
 # Projektverzeichnis
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Initialisiere Template-Engine und Message-Forwarder
 template_engine = TemplateEngine(os.path.join(PROJECT_DIR, 'templates'))
 message_forwarder = MessageForwarder()
+message_forwarder.template_engine = template_engine  # Verbinde MessageForwarder mit TemplateEngine
 
 # Initialisiere Redis Message Queue
 queue = init_message_queue(
@@ -83,63 +88,67 @@ def process_message():
     if not data:
         return validation_error_response({"request": "Keine Daten übermittelt"})
     
-    if 'message' not in data:
+    if 'message' not in data and not isinstance(data, dict):
         validation_errors['message'] = 'Nachricht ist erforderlich'
-    
-    if 'template' not in data:
-        validation_errors['template'] = 'Template-Name ist erforderlich'
-    
-    if 'endpoint' not in data:
-        validation_errors['endpoint'] = 'Endpunkt-Name ist erforderlich'
     
     if validation_errors:
         return validation_error_response(validation_errors)
     
-    message = data.get('message')
-    template_name = data.get('template')
-    endpoint_name = data.get('endpoint')
+    # Extrahiere die Nachricht und Gateway-ID
+    message = data.get('message', data)
+    gateway_id = data.get('gateway_id')
     
-    # Gateway-UUID extrahieren und Gateway in der Datenbank aktualisieren
-    gateway_uuid = None
-    if isinstance(message, dict) and 'gateway' in message and 'uuid' in message['gateway']:
-        gateway_uuid = message['gateway']['uuid']
-        logger.info(f"Gateway UUID aus message['gateway']['uuid'] extrahiert: {gateway_uuid}")
-    else:
-        # Versuche, Gateway-ID aus anderen Feldern zu extrahieren
-        gateway_uuid = message.get('id') or message.get('uuid') or message.get('gateway_id') or message.get('gatewayId')
-        logger.info(f"Gateway UUID aus alternativen Feldern extrahiert: {gateway_uuid}")
+    if not gateway_id:
+        return validation_error_response({"gateway_id": "Gateway-ID ist erforderlich"})
     
-    if gateway_uuid:
-        # Gateway in der Datenbank aktualisieren oder erstellen
-        gateway = Gateway.find_by_uuid(gateway_uuid)
-        
-        if gateway:
-            gateway.update_status('online')
-            logger.info(f"Gateway {gateway_uuid} Status auf 'online' aktualisiert")
-        else:
-            # Wenn Gateway nicht existiert, erstellen wir ein temporäres Gateway ohne Kundenzuordnung
-            # Dieses kann später über die UI einem Kunden zugeordnet werden
-            Gateway.create(uuid=gateway_uuid, customer_id=None)
-            logger.info(f"Neues Gateway {gateway_uuid} ohne Kundenzuordnung erstellt")
-        
-        # Geräte aus subdevicelist registrieren/aktualisieren
-        if isinstance(message, dict) and 'subdevicelist' in message:
-            subdevices = message.get('subdevicelist', [])
-            logger.info(f"{len(subdevices)} Geräte in der subdevicelist gefunden")
-            for device_data in subdevices:
-                register_device_from_message(gateway_uuid, device_data)
+    # Finde den zugehörigen Kunden basierend auf der Gateway-ID
+    customer_config = None
+    with open(os.path.join(PROJECT_DIR, 'templates', 'customer_config.json')) as f:
+        config = json.load(f)
+        for customer_id, customer in config['customers'].items():
+            if gateway_id in customer.get('gateways', []):
+                customer_config = customer
+                logger.info(f"Gateway {gateway_id} zugeordnet zu Kunde {customer.get('name', customer_id)}")
+                break
+    
+    if not customer_config:
+        logger.warning(f"Kein Kunde für Gateway {gateway_id} gefunden")
+        return validation_error_response({"gateway_id": "Gateway ist keinem Kunden zugeordnet"})
+    
+    # Template automatisch auswählen basierend auf dem Nachrichtentyp
+    # Prüfen auf Panic-Alarm
+    is_panic = False
+    if isinstance(message, dict) and 'subdevicelist' in message:
+        for device in message.get('subdevicelist', []):
+            if isinstance(device, dict) and 'value' in device:
+                value = device.get('value', {})
+                if value.get('alarmstatus') == 'alarm' and value.get('alarmtype') == 'panic':
+                    is_panic = True
+                    break
+    
+    # Template auswählen
+    if is_panic:
+        template_name = 'evalarm_panic'
     else:
-        logger.warning(f"Keine Gateway-UUID in der Nachricht gefunden")
+        template_name = 'evalarm'  # Fallback
     
     # Füge die Nachricht in die Queue ein (asynchrone Verarbeitung)
-    message_id = queue.enqueue_message(message, template_name, endpoint_name)
-    logger.info(f"Nachricht in Queue eingefügt: ID {message_id}, Template {template_name}, Endpoint {endpoint_name}")
+    message_id = queue.enqueue_message(
+        message=message,
+        template_name=template_name,
+        endpoint_name='evalarm',
+        customer_config=customer_config,
+        gateway_id=gateway_id
+    )
+    
+    logger.info(f"Nachricht in Queue eingefügt: ID {message_id}, Template {template_name}, Kunde {customer_config['name']}")
     
     # Erstelle Antwort mit Message-ID
     return success_response({
         'message_id': message_id,
-        'status': 'queued'
-    }, f'Nachricht wurde in die Queue eingefügt (ID: {message_id})', 202)  # 202 Accepted
+        'status': 'queued',
+        'message': f'Nachricht wurde in die Queue eingefügt (ID: {message_id})'
+    })
 
 @app.route('/api/v1/list-messages', methods=['GET'])
 @api_error_handler
@@ -488,6 +497,55 @@ def generate_test_message():
     
     # Vereinfachte Antwort
     return success_response(test_message)
+
+@app.route(get_route('messages', 'forwarding'), methods=['GET'])
+@api_error_handler
+def get_forwarding_status():
+    """
+    Endpunkt zum Abfragen des Weiterleitungsstatus
+    """
+    if not worker or not worker.is_running():
+        logger.warning("Worker ist nicht initialisiert oder läuft nicht")
+        return error_response("Worker ist nicht verfügbar", 503)
+    
+    try:
+        # Hole die letzten Ergebnisse
+        results_json = queue.redis_client.lrange(queue.results_list, 0, 99)
+        results = [json.loads(result) for result in results_json if result]
+        
+        # Hole fehlgeschlagene Nachrichten
+        failed_messages = queue.get_failed_messages()
+        
+        # Hole aktuelle Verarbeitungsqueue
+        processing_messages = []
+        processing_queue = queue.redis_client.hgetall(queue.processing_queue)
+        for job_json in processing_queue.values():
+            if job_json:
+                processing_messages.append(json.loads(job_json))
+        
+        # Hole Queue-Statistiken
+        stats = queue.redis_client.hgetall(queue.stats_key) or {}
+        
+        # Zähle nach Status
+        forwarding_status = {
+            "pending": queue.redis_client.llen(queue.main_queue),
+            "processing": len(processing_messages),
+            "completed": int(stats.get('total_processed', 0)),
+            "failed": len(failed_messages),
+            "details": {
+                "pending": [],
+                "processing": processing_messages,
+                "completed": [msg for msg in results if msg.get('status') == 'completed'],
+                "failed": failed_messages
+            }
+        }
+        
+        logger.info(f"Weiterleitungsstatus abgefragt: {forwarding_status['pending']} ausstehend, {forwarding_status['processing']} in Verarbeitung, {forwarding_status['completed']} abgeschlossen, {forwarding_status['failed']} fehlgeschlagen")
+        return success_response(forwarding_status)
+        
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen des Weiterleitungsstatus: {str(e)}")
+        return error_response(f"Interner Serverfehler: {str(e)}", 500)
 
 if __name__ == '__main__':
     logger.info("Message Processor wird gestartet...")

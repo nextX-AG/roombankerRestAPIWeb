@@ -16,6 +16,25 @@ sys.path.append(project_dir)
 
 app = Flask(__name__)
 
+# Template-Auswahl basierend auf Nachrichteninhalt
+def select_template(message):
+    """
+    Wählt das passende Template basierend auf dem Nachrichteninhalt aus.
+    """
+    if not isinstance(message, dict):
+        return 'default'
+
+    # Überprüfe auf Panic-Button-Nachrichten
+    if message.get('code') == 2030:
+        return 'evalarm_panic'
+
+    # Überprüfe auf Alarm-Nachrichten
+    if message.get('code') in [2000, 2001, 2002]:
+        return 'evalarm_alarm'
+
+    # Standard-Template für unbekannte Nachrichten
+    return 'default'
+
 # Redis Import und Initialisierung
 try:
     import redis
@@ -80,23 +99,59 @@ def process_message():
                 'code': 'invalid_input'
             }
         }), 400
-    
-    # Hier würde die eigentliche Verarbeitung stattfinden
-    
-    # Nachricht in Redis Queue speichern
-    message_id = int(time.time() * 1000)  # Einfache ID basierend auf Timestamp
-    redis_client.set(f"message:{message_id}", json.dumps(data))
-    redis_client.lpush("message_queue", message_id)
-    
-    logger.info(f"Nachricht {message_id} in Queue gespeichert")
-    
-    return jsonify({
-        'status': 'success',
-        'data': {
-            'message_id': message_id,
-            'status': 'queued'
+
+    try:
+        # Gateway-ID aus der Nachricht extrahieren
+        gateway_id = data.get('gateway_id')
+        if not gateway_id:
+            return jsonify({
+                'status': 'error',
+                'error': {
+                    'message': 'Gateway-ID fehlt',
+                    'code': 'missing_gateway_id'
+                }
+            }), 400
+
+        # Originalnachricht extrahieren
+        message = data.get('message', data)
+
+        # Template automatisch auswählen
+        template = select_template(message)
+        
+        # Erweiterte Nachricht erstellen
+        processed_data = {
+            'gateway_id': gateway_id,
+            'endpoint': 'evalarm',  # Standard-Endpunkt
+            'template': template,
+            'message': message,
+            'timestamp': int(time.time())
         }
-    })
+        
+        # Nachricht in Redis Queue speichern
+        message_id = int(time.time() * 1000)
+        redis_client.set(f"message:{message_id}", json.dumps(processed_data))
+        redis_client.lpush("message_queue", message_id)
+        
+        logger.info(f"Nachricht {message_id} in Queue gespeichert (Template: {template})")
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'message_id': message_id,
+                'template': template,
+                'status': 'queued'
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Fehler bei der Nachrichtenverarbeitung: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'error': {
+                'message': f'Fehler bei der Verarbeitung: {str(e)}',
+                'code': 'processing_error'
+            }
+        }), 500
 
 @app.route('/api/v1/messages/queue_status', methods=['GET'])
 def queue_status():

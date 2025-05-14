@@ -2,10 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Table, Button, Form, Alert, InputGroup, Badge, Nav, Tab, Accordion } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSync, faSearch, faInfoCircle, faExclamationTriangle, faEnvelope } from '@fortawesome/free-solid-svg-icons';
-import axios from 'axios';
+import { messageApi } from '../api';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import config from '../config';
+import config, { API_VERSION } from '../config';
+import axios from 'axios';
+
+// Verwende die konfigurierte API-URL mit Version
+const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
+const WORKER_URL = `${config.workerUrl}/${API_VERSION}`;
 
 /**
  * Nachrichten-Verwaltungskomponente
@@ -29,13 +34,19 @@ const Messages = () => {
   const fetchMessages = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${config.apiBaseUrl}/messages`);
-        setMessages(response.data);
-      setError(null);
-      setLoading(false);
+      const response = await axios.get(`${config.apiBaseUrl}/v1/list-messages`);
+      if (response.data) {
+        const messagesList = response.data.data || [];
+        setMessages(Array.isArray(messagesList) ? messagesList : []);
+        setError(null);
+      } else {
+        throw new Error('Keine Daten in der Antwort');
+      }
     } catch (error) {
       console.error('Fehler beim Abrufen der Nachrichten:', error);
-      setError('Fehler beim Abrufen der Nachrichten.');
+      setError('Fehler beim Abrufen der Nachrichten: ' + error.message);
+      setMessages([]);
+    } finally {
       setLoading(false);
     }
   };
@@ -44,21 +55,30 @@ const Messages = () => {
     try {
       setLoadingStatus(true);
       
-      // Hole Weiterleitungsstatus vom Worker
-      const forwardingResponse = await axios.get(`${config.workerUrl}/messages/forwarding`);
-      setForwardingStatus([
-        ...forwardingResponse.data.details.completed,
-        ...forwardingResponse.data.details.failed
-      ]);
+      // Hole Weiterleitungsstatus
+      const forwardingResponse = await axios.get(`${config.apiBaseUrl}/v1/messages/forwarding`);
+      if (forwardingResponse.data) {
+        const forwardingData = forwardingResponse.data.data || { details: { completed: [], failed: [] } };
+        setForwardingStatus([
+          ...(forwardingData.details?.completed || []),
+          ...(forwardingData.details?.failed || [])
+        ]);
+      }
       
-      // Hole Queue-Status vom Worker
-      const queueResponse = await axios.get(`${config.workerUrl}/messages/queue/status`);
-      setQueueStatus(queueResponse.data);
+      // Hole Queue-Status
+      const queueResponse = await axios.get(`${config.apiBaseUrl}/v1/messages/queue/status`);
+      if (queueResponse.data) {
+        const queueData = queueResponse.data.data || {};
+        setQueueStatus(queueData);
+      }
       
-      setLoadingStatus(false);
+      setError(null);
     } catch (error) {
       console.error('Fehler beim Abrufen des Weiterleitungsstatus:', error);
-      setError('Fehler beim Abrufen des Weiterleitungsstatus.');
+      setError('Fehler beim Abrufen des Weiterleitungsstatus: ' + error.message);
+      setForwardingStatus([]);
+      setQueueStatus({});
+    } finally {
       setLoadingStatus(false);
     }
   };
@@ -262,11 +282,17 @@ const Messages = () => {
   // Nachricht erneut versuchen
   const handleRetryMessage = async (messageId) => {
     try {
-      await axios.post(`${config.workerUrl}/messages/retry/${messageId}`);
-      fetchForwardingStatus();
+      const response = await axios.post(`${config.apiBaseUrl}/v1/messages/${messageId}/retry`);
+      if (response.data && response.data.status === 'success') {
+        // Aktualisiere die Listen nach erfolgreicher Wiederholung
+        fetchForwardingStatus();
+        fetchMessages();
+      } else {
+        throw new Error(response.data?.error?.message || 'Wiederholung fehlgeschlagen');
+      }
     } catch (error) {
-      console.error('Fehler beim erneuten Versuch:', error);
-      setError('Nachricht konnte nicht erneut versucht werden.');
+      console.error('Fehler bei der Nachrichtenwiederholung:', error);
+      setError('Fehler bei der Nachrichtenwiederholung: ' + error.message);
     }
   };
 
@@ -464,7 +490,7 @@ const Messages = () => {
                       </thead>
                       <tbody>
                         {filteredMessages.length > 0 ? (
-                          filteredMessages.map((message) => (
+                          filteredMessages.map(message => (
                             <tr 
                               key={message.id}
                               className={selectedMessage?.id === message.id ? 'table-primary' : ''}

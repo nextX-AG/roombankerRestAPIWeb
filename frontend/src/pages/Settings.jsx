@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Form, Button, Alert, Table } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSave, faPlus, faTrash, faCog } from '@fortawesome/free-solid-svg-icons';
+import axios from 'axios';
+import config, { API_VERSION } from '../config';
+
+// Verwende die konfigurierte API-URL mit Version
+const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
+const WORKER_URL = `${config.workerUrl}/${API_VERSION}`;
 
 /**
  * Einstellungs-Komponente
@@ -12,14 +18,35 @@ import { faSave, faPlus, faTrash, faCog } from '@fortawesome/free-solid-svg-icon
  * 3. Inhalt in Karten mit konsistenten Headers
  */
 const Settings = () => {
-  const [endpoints, setEndpoints] = useState([
-    { name: 'evalarm', url: 'https://tas.dev.evalarm.de/api/v1/espa', username: 'eva.herford', password: 'GW8OoLZE' }
-  ]);
+  const [endpoints, setEndpoints] = useState([]);
   const [newEndpoint, setNewEndpoint] = useState({ name: '', url: '', username: '', password: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const handleEndpointChange = (index, field, value) => {
+  // Lade Einstellungen beim Start
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  // Hole alle Einstellungen
+  const fetchSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${WORKER_URL}/settings/endpoints`);
+      const endpointsList = response.data?.data || [];
+      setEndpoints(Array.isArray(endpointsList) ? endpointsList : []);
+      setError(null);
+    } catch (error) {
+      console.error('Fehler beim Laden der Einstellungen:', error);
+      setError('Fehler beim Laden der Einstellungen: ' + (error.response?.data?.message || error.message));
+      setEndpoints([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEndpointChange = async (index, field, value) => {
     const updatedEndpoints = [...endpoints];
     updatedEndpoints[index][field] = value;
     setEndpoints(updatedEndpoints);
@@ -29,36 +56,71 @@ const Settings = () => {
     setNewEndpoint({ ...newEndpoint, [field]: value });
   };
 
-  const handleAddEndpoint = () => {
-    // Validierung
-    if (!newEndpoint.name || !newEndpoint.url) {
-      setError('Name und URL sind erforderlich');
-      return;
-    }
+  const handleAddEndpoint = async () => {
+    try {
+      // Validierung
+      if (!newEndpoint.name || !newEndpoint.url) {
+        setError('Name und URL sind erforderlich');
+        return;
+      }
 
-    // Prüfen, ob Name bereits existiert
-    if (endpoints.some(ep => ep.name === newEndpoint.name)) {
-      setError(`Ein Endpunkt mit dem Namen "${newEndpoint.name}" existiert bereits`);
-      return;
-    }
+      // Prüfen, ob Name bereits existiert
+      if (endpoints.some(ep => ep.name === newEndpoint.name)) {
+        setError(`Ein Endpunkt mit dem Namen "${newEndpoint.name}" existiert bereits`);
+        return;
+      }
 
-    setEndpoints([...endpoints, newEndpoint]);
-    setNewEndpoint({ name: '', url: '', username: '', password: '' });
-    setSuccess('Endpunkt hinzugefügt');
-    setError('');
+      const response = await axios.post(`${WORKER_URL}/settings/endpoints`, newEndpoint);
+      if (response.data?.status === 'success') {
+        const newEndpointData = response.data?.data;
+        setEndpoints([...endpoints, newEndpointData]);
+        setNewEndpoint({ name: '', url: '', username: '', password: '' });
+        setSuccess('Endpunkt erfolgreich hinzugefügt');
+        setError(null);
+      } else {
+        throw new Error('Endpunkt konnte nicht hinzugefügt werden');
+      }
+    } catch (error) {
+      console.error('Fehler beim Hinzufügen des Endpunkts:', error);
+      setError('Fehler beim Hinzufügen: ' + (error.response?.data?.message || error.message));
+    }
   };
 
-  const handleRemoveEndpoint = (index) => {
-    const updatedEndpoints = [...endpoints];
-    updatedEndpoints.splice(index, 1);
-    setEndpoints(updatedEndpoints);
-    setSuccess('Endpunkt entfernt');
+  const handleRemoveEndpoint = async (index) => {
+    try {
+      const endpoint = endpoints[index];
+      const response = await axios.delete(`${WORKER_URL}/settings/endpoints/${endpoint.id}`);
+      if (response.data?.status === 'success') {
+        const updatedEndpoints = [...endpoints];
+        updatedEndpoints.splice(index, 1);
+        setEndpoints(updatedEndpoints);
+        setSuccess('Endpunkt erfolgreich entfernt');
+        setError(null);
+      } else {
+        throw new Error('Endpunkt konnte nicht entfernt werden');
+      }
+    } catch (error) {
+      console.error('Fehler beim Entfernen des Endpunkts:', error);
+      setError('Fehler beim Entfernen: ' + (error.response?.data?.message || error.message));
+    }
   };
 
-  const handleSaveSettings = () => {
-    // In einer echten Anwendung würden die Einstellungen zum Server gesendet werden
-    setSuccess('Einstellungen gespeichert');
-    setTimeout(() => setSuccess(''), 3000);
+  const handleSaveSettings = async () => {
+    try {
+      const response = await axios.put(`${WORKER_URL}/settings/endpoints`, { endpoints });
+      if (response.data?.status === 'success') {
+        setSuccess('Einstellungen erfolgreich gespeichert');
+        setError(null);
+        // Aktualisiere die Endpunkte mit den Serverdaten
+        const updatedEndpoints = response.data?.data || [];
+        setEndpoints(Array.isArray(updatedEndpoints) ? updatedEndpoints : []);
+      } else {
+        throw new Error('Einstellungen konnten nicht gespeichert werden');
+      }
+    } catch (error) {
+      console.error('Fehler beim Speichern der Einstellungen:', error);
+      setError('Fehler beim Speichern: ' + (error.response?.data?.message || error.message));
+    }
   };
 
   return (

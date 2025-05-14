@@ -34,7 +34,7 @@ async function fetchApi(url, options = {}) {
     }
 
     // CORS-Konfiguration für alle Anfragen
-    options.credentials = 'include';
+    options.credentials = 'same-origin';
     options.mode = 'cors';
     
     // Weitere wichtige Headers für komplexe Anfragen
@@ -231,6 +231,10 @@ export const gatewayApi = {
   
   unassigned: async () => {
     return fetchApi(getApiUrl('gateways', 'unassigned'));
+  },
+  
+  latest: async (uuid) => {
+    return fetchApi(getApiUrl('gateways', `${uuid}/latest`));
   }
 };
 
@@ -285,6 +289,10 @@ export const templateApi = {
 
 // Message-API-Endpunkte
 export const messageApi = {
+  list: async () => {
+    return fetchApi(getApiUrl('list-messages', ''));
+  },
+  
   status: async () => {
     return fetchApi(getApiUrl('messages', 'status'));
   },
@@ -298,8 +306,21 @@ export const messageApi = {
   },
   
   retry: async (messageId) => {
-    return fetchApi(getApiUrl('messages', `retry/${messageId}`), {
+    return fetchApi(getApiUrl('messages', `${messageId}/retry`), {
       method: 'POST'
+    });
+  },
+  
+  transform: async (messageId, templateId) => {
+    return fetchApi(getApiUrl('messages', `${messageId}/transform`), {
+      method: 'POST',
+      body: JSON.stringify({ template_id: templateId })
+    });
+  },
+  
+  delete: async (messageId) => {
+    return fetchApi(getApiUrl('messages', messageId), {
+      method: 'DELETE'
     });
   }
 };
@@ -315,11 +336,17 @@ export const systemApi = {
   },
   
   endpoints: async () => {
-    return fetchApi(getApiUrl('endpoints', ''));
+    return fetchApi(getApiUrl('system', 'endpoints'));
   },
 
   gatewayStatus: async () => {
     return fetchApi(getApiUrl('gateway', 'status'));
+  },
+  
+  testMessage: async () => {
+    return fetchApi(getApiUrl('system', 'test-message'), {
+      method: 'POST'
+    });
   }
 };
 

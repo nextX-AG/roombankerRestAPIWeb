@@ -29,10 +29,10 @@ HOSTS = {
         'worker': f'http://localhost:{PORTS["worker"]}'
     },
     'docker': {
-        'api': f'http://api:{PORTS["api"]}',
-        'auth': f'http://auth:{PORTS["auth"]}',
-        'processor': f'http://processor:{PORTS["processor"]}',
-        'worker': f'http://processor:{PORTS["processor"]}' # Worker ist in Processor integriert
+        'api': 'http://api:8080',
+        'auth': 'http://auth:8081',
+        'processor': 'http://processor:8082',
+        'worker': 'http://processor:8082' # Worker ist in Processor integriert
     },
     'production': {
         'api': f'http://localhost:{PORTS["api"]}',
@@ -84,8 +84,8 @@ ENDPOINTS = {
     # Message Worker & Processor Endpunkte
     'messages': {
         'base': f'{API_BASE}/messages',
-        'status': '/status',
-        'detail': '/<message_id>',
+        'status': '/status',      # /api/v1/messages/status - Liste aller Nachrichten
+        'detail': '/<message_id>', # /api/v1/messages/<message_id> - Details einer Nachricht
         'process': '/process',
         'queue_status': '/queue/status',
         'forwarding': '/forwarding',

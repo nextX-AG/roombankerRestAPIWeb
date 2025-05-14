@@ -118,7 +118,7 @@ services:
     networks:
       - evalarm_net
     volumes:
-      - ./processor:/app/processor
+      - ./api:/app/api
       - ./utils:/app/utils
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/api/v1/system/health"]

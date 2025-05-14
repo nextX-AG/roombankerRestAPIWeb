@@ -332,3 +332,129 @@ REDIS_PREFIX=iot_gateway
 4. **Einfache Skalierung**: Einzelne Komponenten können bei Bedarf skaliert werden
 5. **Effiziente Ressourcennutzung**: Bessere Kontrolle über die Ressourcenzuweisung
 6. **Verbesserte Sicherheit**: Jeder Dienst läuft in einer isolierten Umgebung 
+
+## Frontend-Integration und Datensynchronisation
+
+Für eine optimale Integration des Frontends mit den API-Endpunkten sind folgende Praktiken zu beachten:
+
+### Zentrale API-Client-Nutzung
+
+Das Frontend verwendet einen zentralen API-Client in `frontend/src/api.js`, der alle API-Aufrufe vereinheitlicht:
+
+```javascript
+// Import des zentralen API-Clients
+import { gatewayApi, customerApi, templateApi, messageApi, systemApi } from '../api';
+
+// Beispiel für API-Aufrufe in einer Komponente
+async function loadDashboardData() {
+  const healthResponse = await systemApi.health();
+  const templatesResponse = await templateApi.list();
+  const messagesResponse = await messageApi.list();
+  
+  // Verarbeitung der Antworten
+  if (healthResponse.status === 'success') {
+    setSystemStatus('online');
+  }
+}
+```
+
+### Best Practices für Datensynchronisation
+
+1. **Parallele API-Aufrufe:** Verwenden Sie `Promise.all` für das gleichzeitige Laden mehrerer Datenquellen:
+
+   ```javascript
+   async function loadAllData() {
+     try {
+       setLoading(true);
+       await Promise.all([
+         checkApiStatus(),
+         fetchTemplates(),
+         fetchMessages()
+       ]);
+     } catch (error) {
+       handleError(error);
+     } finally {
+       setLoading(false);
+     }
+   }
+   ```
+
+2. **Regelmäßige Aktualisierung:** Implementieren Sie Polling für zeitkritische Daten:
+
+   ```javascript
+   useEffect(() => {
+     // Initial laden
+     loadData();
+     
+     // Polling-Intervall einrichten
+     const interval = setInterval(() => {
+       loadData();
+     }, 10000); // alle 10 Sekunden
+     
+     // Cleanup beim Unmounten
+     return () => clearInterval(interval);
+   }, []);
+   ```
+
+3. **Manuelle Aktualisierung:** Bieten Sie Refresh-Buttons für benutzergesteuerte Aktualisierungen:
+
+   ```jsx
+   <Button 
+     variant="secondary"
+     onClick={handleRefresh}
+     disabled={loading}
+   >
+     <FontAwesomeIcon icon={faSync} />
+     {loading ? 'Wird aktualisiert...' : 'Aktualisieren'}
+   </Button>
+   ```
+
+4. **Loading-States:** Zeigen Sie den Ladezustand an, um das Benutzererlebnis zu verbessern:
+
+   ```jsx
+   {loading ? (
+     <div className="text-center p-5">Daten werden geladen...</div>
+   ) : (
+     <DataDisplay data={data} />
+   )}
+   ```
+
+5. **Einheitliche Fehlerbehandlung:** Verwenden Sie ein konsistentes Fehlerbehandlungsmuster:
+
+   ```javascript
+   try {
+     const response = await api.someAction();
+     if (response.status === 'success') {
+       // Erfolgsfall behandeln
+     } else {
+       throw new Error(response.error?.message || 'Ein Fehler ist aufgetreten');
+     }
+   } catch (error) {
+     console.error('API-Fehler:', error);
+     setError(error.message);
+   }
+   ```
+
+### API-Endpunkt-Verzeichnis
+
+Alle Frontend-Komponenten sollten ausschließlich die folgenden API-Endpunkte verwenden:
+
+| API-Client | Endpunkt | Beschreibung |
+|------------|----------|--------------|
+| `systemApi.health()` | `/api/v1/health` | System-Health-Check |
+| `systemApi.endpoints()` | `/api/v1/system/endpoints` | Verfügbare API-Endpunkte |
+| `systemApi.testMessage()` | `/api/v1/system/test-message` | Testnachricht senden |
+| `templateApi.list()` | `/api/v1/templates` | Liste aller Templates |
+| `messageApi.list()` | `/api/v1/list-messages` | Liste aller Nachrichten |
+| `gatewayApi.list()` | `/api/v1/gateways` | Liste aller Gateways |
+| `gatewayApi.latest(uuid)` | `/api/v1/gateways/{uuid}/latest` | Neueste Telemetriedaten eines Gateways |
+| `gatewayApi.unassigned()` | `/api/v1/gateways/unassigned` | Liste nicht zugeordneter Gateways |
+| `customerApi.list()` | `/api/v1/customers` | Liste aller Kunden |
+
+### Häufige Fehlerquellen bei der API-Integration
+
+1. **Direkte Axios-Aufrufe:** Verwenden Sie niemals direkte `axios.get()` oder `fetch()` Aufrufe, sondern immer den zentralen API-Client
+2. **Inkonsistente URL-Pfade:** Stellen Sie sicher, dass alle Pfade mit `/api/v1/` beginnen
+3. **Fehlende Error-Handling:** Behandeln Sie stets alle möglichen Fehlerfälle
+4. **Unvollständige Response-Verarbeitung:** Überprüfen Sie immer das `status`-Feld und extrahieren Sie Daten aus dem `data`-Feld
+5. **Simultane API-Aufrufe ohne Promise.all:** Bei mehreren Anfragen verwenden Sie `Promise.all` für bessere Performance 

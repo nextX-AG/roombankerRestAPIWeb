@@ -4,8 +4,13 @@ Datenmodelle für das evAlarm-IoT Gateway Management System
 
 import datetime
 import os  # Für Umgebungsvariablen
+import logging
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+
+# Logging konfigurieren
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # MongoDB-Verbindung
 mongo_client = None
@@ -15,21 +20,43 @@ def initialize_db(connection_string=None, db_name=None):
     """Initialisiert die Verbindung zur MongoDB"""
     global mongo_client, db
     
-    # Umgebungsvariablen verwenden, falls parameter nicht angegeben wurden
-    if connection_string is None:
-        connection_string = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/')
+    # Wenn die Verbindung bereits besteht, nichts tun
+    if mongo_client is not None and db is not None:
+        try:
+            # Teste die bestehende Verbindung
+            mongo_client.admin.command('ping')
+            return
+        except Exception as e:
+            logger.warning(f"Bestehende MongoDB-Verbindung fehlgeschlagen: {str(e)}")
+            # Bei Verbindungsfehler weitermachen und neu verbinden
+            mongo_client = None
+            db = None
     
-    if db_name is None:
-        db_name = os.environ.get('MONGODB_DB', 'evalarm_gateway')
-    
-    print(f"MongoDB Verbindung zu: {connection_string}")
-    mongo_client = MongoClient(connection_string)
-    db = mongo_client[db_name]
-    
-    # Indizes für schnellere Abfragen erstellen
-    db.customers.create_index("name", unique=True)
-    db.gateways.create_index("uuid", unique=True)
-    db.devices.create_index([("gateway_uuid", 1), ("device_id", 1)], unique=True)
+    try:
+        # Umgebungsvariablen verwenden, falls parameter nicht angegeben wurden
+        if connection_string is None:
+            connection_string = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/')
+        
+        if db_name is None:
+            db_name = os.environ.get('MONGODB_DB', 'evalarm_gateway')
+        
+        logger.info(f"Verbinde mit MongoDB: {connection_string}")
+        mongo_client = MongoClient(connection_string, serverSelectionTimeoutMS=5000)
+        
+        # Teste die Verbindung
+        mongo_client.admin.command('ping')
+        
+        db = mongo_client[db_name]
+        
+        # Indizes für schnellere Abfragen erstellen
+        db.customers.create_index("name", unique=True)
+        db.gateways.create_index("uuid", unique=True)
+        db.devices.create_index([("gateway_uuid", 1), ("device_id", 1)], unique=True)
+        
+        logger.info("MongoDB-Verbindung erfolgreich hergestellt")
+    except Exception as e:
+        logger.error(f"Fehler beim Verbinden mit MongoDB: {str(e)}")
+        raise
 
 # Kunden-Modell
 class Customer:

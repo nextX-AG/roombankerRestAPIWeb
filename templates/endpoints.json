@@ -1,0 +1,14 @@
+{
+    "evalarm": {
+        "name": "evalarm",
+        "description": "Standard-Endpunkt für evalarm-System",
+        "url": "http://localhost:8080/api/v1/messages",
+        "method": "POST",
+        "headers": {
+            "Content-Type": "application/json"
+        },
+        "auth": {
+            "type": "none"
+        }
+    }
+} 

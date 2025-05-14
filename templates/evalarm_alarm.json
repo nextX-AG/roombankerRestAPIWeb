@@ -1,0 +1,12 @@
+{
+    "name": "evalarm_alarm",
+    "description": "Template für Alarm-Nachrichten",
+    "version": "1.0",
+    "transform": {
+        "type": "alarm",
+        "device_id": "{{ message.subdeviceid }}",
+        "timestamp": "{{ message.ts }}",
+        "code": "{{ message.code }}",
+        "status": "alarm"
+    }
+} 

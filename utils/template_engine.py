@@ -84,13 +84,15 @@ class TemplateEngine:
         """
         return list(self.templates.keys())
     
-    def transform_message(self, message, template_name):
+    def transform_message(self, message, template_name, customer_config=None, gateway_id=None):
         """
         Transformiert eine Nachricht basierend auf einem Template
         
         Args:
             message: Die zu transformierende Nachricht
             template_name: Name des zu verwendenden Templates
+            customer_config: Kundenkonfiguration (optional)
+            gateway_id: ID des Gateways (optional)
             
         Returns:
             Transformierte Nachricht
@@ -158,7 +160,8 @@ class TemplateEngine:
                 'uuid': str(uuid.uuid4()),
                 'timestamp': int(datetime.now().timestamp()),
                 'iso_timestamp': datetime.now().isoformat(),
-                'namespace': 'eva.herford'  # Standardwert, wird vom MessageForwarder überschrieben
+                'namespace': customer_config['api_config']['namespace'] if customer_config and 'api_config' in customer_config and 'namespace' in customer_config['api_config'] else 'eva.herford',
+                'customer_config': customer_config
             }
             
             # Rendere Template
@@ -168,6 +171,10 @@ class TemplateEngine:
             
             # Parse gerenderte Nachricht zurück zu JSON
             transformed_message = json.loads(rendered)
+            
+            # Extrahiere nur den transform-Teil, wenn vorhanden
+            if isinstance(transformed_message, dict) and 'transform' in transformed_message:
+                transformed_message = transformed_message['transform']
             
             logger.info(f"Nachricht mit Template '{template_name}' transformiert")
             return transformed_message
@@ -328,6 +335,42 @@ class MessageForwarder:
             endpoint_name = self.get_endpoint_for_gateway(gateway_uuid)
             logger.info(f"Automatisch Endpunkt '{endpoint_name}' für Gateway {gateway_uuid} ermittelt")
         
+        # Hier laden wir die Kundenkonfiguration aus der Datei
+        import os
+        import json
+        
+        PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(PROJECT_DIR, 'templates', 'customer_config.json')
+        
+        customer_config = None
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                for customer_id, customer in config['customers'].items():
+                    if gateway_uuid in customer.get('gateways', []):
+                        customer_config = customer
+                        break
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Kundenkonfiguration: {str(e)}")
+        
+        if not customer_config:
+            logger.warning(f"Kein Kunde für Gateway {gateway_uuid} gefunden")
+            if 'evalarm_default' in self.endpoints:
+                endpoint_name = 'evalarm_default'
+                logger.info(f"Verwende Standard-Endpunkt '{endpoint_name}'")
+            else:
+                logger.error(f"Kein passender Endpunkt gefunden")
+                return None
+        
+        if endpoint_name not in self.endpoints and customer_config:
+            # Dynamischen Endpunkt erstellen aus customer_config
+            self.endpoints[endpoint_name] = {
+                'url': customer_config['api_config']['url'],
+                'auth': (customer_config['api_config']['username'], customer_config['api_config']['password']),
+                'headers': customer_config['api_config']['headers']
+            }
+            logger.info(f"Dynamischen Endpunkt '{endpoint_name}' für Kunde {customer_config['name']} erstellt")
+        
         if endpoint_name not in self.endpoints:
             logger.error(f"Endpunkt '{endpoint_name}' nicht gefunden")
             return None
@@ -345,13 +388,23 @@ class MessageForwarder:
                         event['namespace'] = customer.evalarm_namespace or event['namespace']
         
         try:
+            # Log request and response
+            logger.info(f"Sende Anfrage an {endpoint['url']}:")
+            logger.info(f"Headers: {endpoint.get('headers', {})}")
+            logger.info(f"Payload: {json.dumps(message)}")
+            
             response = requests.post(
                 endpoint['url'],
                 json=message,
                 headers=endpoint.get('headers', {}),
                 auth=endpoint.get('auth', None),
-                timeout=10
+                timeout=10,
+                verify=False  # SSL-Zertifikat-Verifizierung für Testzwecke deaktivieren
             )
+            
+            # Log response details
+            logger.info(f"Response Status: {response.status_code}")
+            logger.info(f"Response Body: {response.text[:500] if response.text else 'Empty'}")
             
             logger.info(f"Nachricht an '{endpoint_name}' weitergeleitet, Status: {response.status_code}")
             return response

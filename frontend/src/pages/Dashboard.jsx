@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faServer, faExchangeAlt, faCheckCircle, faExclamationTriangle, faBell, faTachometerAlt } from '@fortawesome/free-solid-svg-icons';
-import axios from 'axios';
+import { faServer, faExchangeAlt, faCheckCircle, faExclamationTriangle, faBell, faTachometerAlt, faSync } from '@fortawesome/free-solid-svg-icons';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { Link } from 'react-router-dom';
 import config from '../config';
+import { systemApi, templateApi, messageApi } from '../api';
 
 /**
  * Dashboard-Komponente
@@ -31,122 +31,168 @@ const Dashboard = () => {
   const [creatingMessage, setCreatingMessage] = useState(false);
   const [creationSuccess, setCreationSuccess] = useState(false);
   const [creationError, setCreationError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Zentrale Funktion zum Laden aller Daten
+  const loadAllData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        checkApiStatus(),
+        checkProcessorStatus(),
+        checkWorkerStatus(),
+        fetchMessages(),
+        fetchTemplates(),
+        fetchEndpoints()
+      ]);
+    } catch (error) {
+      console.error('Fehler beim Laden der Dashboard-Daten:', error);
+      setError('Einige Daten konnten nicht geladen werden. Bitte versuchen Sie es später erneut.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // API-Status prüfen
-  useEffect(() => {
-    const checkApiStatus = async () => {
-      try {
-        console.log('Prüfe API-Status:', `${config.apiBaseUrl}/v1/health`);
-        const response = await axios.get(`${config.apiBaseUrl}/v1/health`);
-        console.log('API-Status-Antwort:', response.data);
-        // Überprüfen, ob die Antwort das erwartete Format hat und ob der Status erfolgreich ist
-        if (response.data && response.data.status === 'success') {
-          setApiStatus('online');
-        } else {
-          setApiStatus('offline');
-        }
-      } catch (error) {
-        console.error('Fehler beim Prüfen des API-Status:', error);
+  const checkApiStatus = async () => {
+    try {
+      console.log('Prüfe API-Status');
+      const response = await systemApi.health();
+      console.log('API-Status-Antwort:', response);
+      if (response.status === 'success') {
+        setApiStatus('online');
+      } else {
         setApiStatus('offline');
       }
-    };
+    } catch (error) {
+      console.error('Fehler beim Prüfen des API-Status:', error);
+      setApiStatus('offline');
+    }
+  };
 
-    const checkProcessorStatus = async () => {
-      try {
-        console.log('Prüfe Processor-Status:', `${config.apiBaseUrl}/v1/system/health`);
-        const response = await axios.get(`${config.apiBaseUrl}/v1/system/health`);
-        console.log('Processor-Status-Antwort:', response.data);
-        // Überprüfen, ob die Antwort das erwartete Format hat und ob der Status erfolgreich ist
-        if (response.data && response.data.status === 'success') {
-          setProcessorStatus('online');
-        } else {
-          setProcessorStatus('offline');
-        }
-      } catch (err) {
-        console.error('Fehler beim Prüfen des Processor-Status:', err);
+  const checkProcessorStatus = async () => {
+    try {
+      console.log('Prüfe Processor-Status');
+      const response = await systemApi.health();
+      console.log('Processor-Status-Antwort:', response);
+      if (response.status === 'success') {
+        setProcessorStatus('online');
+      } else {
         setProcessorStatus('offline');
       }
-    };
+    } catch (err) {
+      console.error('Fehler beim Prüfen des Processor-Status:', err);
+      setProcessorStatus('offline');
+    }
+  };
 
-    const checkWorkerStatus = async () => {
-      try {
-        // Worker ist jetzt in Processor integriert, daher greifen wir auf denselben Endpunkt zu
-        console.log('Prüfe Worker-Status (integriert im Processor):', `${config.apiBaseUrl}/v1/system/health`);
-        const response = await axios.get(`${config.apiBaseUrl}/v1/system/health`);
-        console.log('Worker-Status-Antwort:', response.data);
-        
-        if (response.data && response.data.status === 'success') {
-          setWorkerStatus('online');
-          
-          // Wenn Worker erreichbar ist, Templates und Endpoints abrufen
-          try {
-            const templatesResponse = await axios.get(`${config.apiBaseUrl}/v1/templates`);
-            setTemplates(templatesResponse.data.data || []);
-            setTemplateCount((templatesResponse.data.data || []).length);
-          } catch (error) {
-            console.error('Fehler beim Abrufen der Templates:', error);
-            setTemplates([]);
-            setTemplateCount(0);
-          }
-          
-          try {
-            const endpointsResponse = await axios.get(`${config.apiBaseUrl}/v1/system/endpoints`);
-            setEndpoints(endpointsResponse.data.data || []);
-            setEndpointCount((endpointsResponse.data.data || []).length);
-          } catch (error) {
-            console.error('Fehler beim Abrufen der Endpunkte:', error);
-            setEndpoints([]);
-            setEndpointCount(0);
-          }
-        } else {
-          setWorkerStatus('offline');
-        }
-      } catch (err) {
-        console.error('Fehler beim Prüfen des Worker-Status:', err);
+  const checkWorkerStatus = async () => {
+    try {
+      console.log('Prüfe Worker-Status (integriert im Processor)');
+      const response = await systemApi.health();
+      console.log('Worker-Status-Antwort:', response);
+      
+      if (response.status === 'success') {
+        setWorkerStatus('online');
+      } else {
         setWorkerStatus('offline');
       }
-    };
+    } catch (err) {
+      console.error('Fehler beim Prüfen des Worker-Status:', err);
+      setWorkerStatus('offline');
+    }
+  };
 
-    const fetchMessages = async () => {
-      try {
-        const response = await axios.get(`${config.apiBaseUrl}/v1/list-messages`);
-        setMessageCount((response.data.data || []).length);
-        setLatestMessages((response.data.data || []).slice(0, 3));
-      } catch (error) {
-        console.error('Fehler beim Abrufen der Nachrichten:', error);
+  const fetchTemplates = async () => {
+    try {
+      console.log('Lade Templates');
+      const response = await templateApi.list();
+      console.log('Templates-Antwort:', response);
+      if (response.status === 'success') {
+        setTemplates(response.data || []);
+        setTemplateCount((response.data || []).length);
+      } else {
+        setTemplates([]);
+        setTemplateCount(0);
+      }
+    } catch (error) {
+      console.error('Fehler beim Abrufen der Templates:', error);
+      setTemplates([]);
+      setTemplateCount(0);
+    }
+  };
+
+  const fetchEndpoints = async () => {
+    try {
+      console.log('Lade Endpoints');
+      const response = await systemApi.endpoints();
+      console.log('Endpoints-Antwort:', response);
+      if (response.status === 'success') {
+        setEndpoints(response.data || []);
+        setEndpointCount((response.data || []).length);
+      } else {
+        setEndpoints([]);
+        setEndpointCount(0);
+      }
+    } catch (error) {
+      console.error('Fehler beim Abrufen der Endpunkte:', error);
+      setEndpoints([]);
+      setEndpointCount(0);
+    }
+  };
+
+  const fetchMessages = async () => {
+    try {
+      console.log('Lade Nachrichten');
+      const response = await messageApi.list();
+      console.log('Nachrichten-Antwort:', response);
+      if (response.status === 'success') {
+        setMessageCount((response.data || []).length);
+        setLatestMessages((response.data || []).slice(0, 3));
+      } else {
         setMessageCount(0);
         setLatestMessages([]);
       }
-    };
+    } catch (error) {
+      console.error('Fehler beim Abrufen der Nachrichten:', error);
+      setMessageCount(0);
+      setLatestMessages([]);
+    }
+  };
 
-    // Initial und alle 10 Sekunden aktualisieren
-    checkApiStatus();
-    checkProcessorStatus();
-    checkWorkerStatus();
-    fetchMessages();
+  // Initial und alle 10 Sekunden aktualisieren
+  useEffect(() => {
+    // Initial laden
+    loadAllData();
 
+    // Polling-Intervall einrichten
     const interval = setInterval(() => {
-      checkApiStatus();
-      checkProcessorStatus();
-      checkWorkerStatus();
-      fetchMessages();
+      loadAllData();
     }, 10000);
 
+    // Aufräumen beim Unmounten
     return () => clearInterval(interval);
   }, []);
+  
+  // Manuelles Neuladen implementieren
+  const handleRefresh = () => {
+    loadAllData();
+  };
 
   const createTestMessage = async () => {
     try {
       setCreatingMessage(true);
-      const response = await axios.post(`${config.apiBaseUrl}/v1/system/test-message`);
-      setCreationSuccess(true);
-      
-      // Nachrichten aktualisieren
-      const messagesResponse = await axios.get(`${config.apiBaseUrl}/v1/list-messages`);
-      setMessageCount((messagesResponse.data.data || []).length);
-      setLatestMessages((messagesResponse.data.data || []).slice(0, 3));
-      
-      setTimeout(() => setCreationSuccess(false), 3000);
+      const response = await systemApi.testMessage(); // Annahme, dass dies im systemApi implementiert ist
+      if (response.status === 'success') {
+        setCreationSuccess(true);
+        
+        // Nachrichten sofort aktualisieren
+        await fetchMessages();
+        
+        setTimeout(() => setCreationSuccess(false), 3000);
+      } else {
+        throw new Error(response.error?.message || 'Fehler beim Erstellen der Testnachricht');
+      }
     } catch (error) {
       console.error('Fehler beim Erstellen einer Testnachricht:', error);
       setCreationError(true);
@@ -168,6 +214,20 @@ const Dashboard = () => {
       {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
       {creationSuccess && <Alert variant="success" className="mb-4">Testnachricht wurde erfolgreich erstellt!</Alert>}
       {creationError && <Alert variant="danger" className="mb-4">Fehler beim Erstellen der Testnachricht.</Alert>}
+      
+      {/* Manueller Refresh-Button */}
+      <Row className="mb-4">
+        <Col className="d-flex justify-content-end">
+          <Button
+            variant="secondary"
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            <FontAwesomeIcon icon={faSync} className="me-1" />
+            {loading ? 'Wird aktualisiert...' : 'Aktualisieren'}
+          </Button>
+        </Col>
+      </Row>
       
       {/* 3. Inhalt in Karten */}
       <Row className="mb-4">
@@ -245,9 +305,9 @@ const Dashboard = () => {
                 variant="primary" 
                 size="lg" 
                 onClick={createTestMessage}
-                disabled={apiStatus !== 'online'}
+                disabled={apiStatus !== 'online' || creatingMessage}
               >
-                Panic-Button Testnachricht senden
+                {creatingMessage ? 'Sende Testnachricht...' : 'Panic-Button Testnachricht senden'}
               </Button>
             </Card.Body>
           </Card>

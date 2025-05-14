@@ -5,8 +5,10 @@ import { faSync, faSearch, faInfoCircle, faEdit, faNetworkWired, faServer, faDes
 import axios from 'axios';
 import JSONPretty from 'react-json-pretty';
 import 'react-json-pretty/themes/monikai.css';
+import config, { API_VERSION } from '../config';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+// Verwende die konfigurierte API-URL mit Version
+const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
 
 /**
  * Geräteverwaltungs-Komponente
@@ -45,12 +47,18 @@ const Devices = () => {
         axios.get(`${API_URL}/gateways`)
       ]);
       
-      setDevices(devicesResponse.data);
-      setGateways(gatewaysResponse.data);
+      // Extrahiere die Daten aus dem data-Feld der Antworten
+      const devicesList = devicesResponse.data?.data || [];
+      const gatewaysList = gatewaysResponse.data?.data || [];
+      
+      setDevices(Array.isArray(devicesList) ? devicesList : []);
+      setGateways(Array.isArray(gatewaysList) ? gatewaysList : []);
       setError(null);
     } catch (err) {
       console.error('Fehler beim Laden der Daten:', err);
       setError('Daten konnten nicht geladen werden. Bitte versuchen Sie es später erneut.');
+      setDevices([]);
+      setGateways([]);
     } finally {
       setLoading(false);
     }
@@ -69,12 +77,16 @@ const Devices = () => {
   const handleEditDevice = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`${API_URL}/devices/${currentDevice.gateway_uuid}/${currentDevice.device_id}`, formData);
-      setShowEditModal(false);
-      fetchData();
+      const response = await axios.put(`${API_URL}/devices/${currentDevice.gateway_uuid}/${currentDevice.device_id}`, formData);
+      if (response.data?.status === 'success') {
+        setShowEditModal(false);
+        fetchData();
+      } else {
+        throw new Error('Fehler beim Speichern der Änderungen');
+      }
     } catch (err) {
       console.error('Fehler beim Bearbeiten des Geräts:', err);
-      setError('Gerät konnte nicht bearbeitet werden.');
+      setError('Gerät konnte nicht bearbeitet werden: ' + (err.response?.data?.message || err.message));
     }
   };
 

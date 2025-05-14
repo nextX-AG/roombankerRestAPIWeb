@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Table, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faEdit, faTrash, faSync, faUsers, faEye, faNetworkWired, faServer, faDesktop, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import GatewayStatusIcons from '../components/GatewayStatusIcons';
-import config from '../config';
+import config, { API_VERSION } from '../config';
+import { gatewayApi, customerApi, templateApi } from '../api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+// Verwende die konfigurierte Gateway-URL mit API-Version
+const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
 
 /**
  * Gateways-Verwaltungskomponente
@@ -55,42 +56,67 @@ const Gateways = () => {
       console.log('Fetching data from API endpoints...');
       
       try {
-        const gatewaysResponse = await axios.get(`${API_URL}/gateways`);
-        console.log('Gateways response:', gatewaysResponse.data);
-        setGateways(gatewaysResponse.data);
+        // Gateways abrufen
+        const gatewaysResponse = await gatewayApi.list();
+        console.log('Gateways response:', gatewaysResponse);
         
-        // Lade die neuesten Telemetriedaten für alle Gateways
-        const latestDataMap = {};
-        await Promise.all(
-          gatewaysResponse.data.map(async (gateway) => {
-            try {
-              const response = await axios.get(`${API_URL}/gateways/${gateway.uuid}/latest`);
-              latestDataMap[gateway.uuid] = response.data;
-            } catch (err) {
-              console.warn(`Keine aktuellen Telemetriedaten für Gateway ${gateway.uuid}`, err);
-            }
-          })
-        );
-        setGatewayLatestData(latestDataMap);
+        if (gatewaysResponse.status === 'success') {
+          const gatewaysList = gatewaysResponse.data || [];
+          setGateways(Array.isArray(gatewaysList) ? gatewaysList : []);
+          
+          // Lade die neuesten Telemetriedaten für alle Gateways
+          const latestDataMap = {};
+          await Promise.all(
+            gatewaysList.map(async (gateway) => {
+              try {
+                const response = await gatewayApi.latest(gateway.uuid);
+                if (response.status === 'success') {
+                  latestDataMap[gateway.uuid] = response.data || {};
+                }
+              } catch (err) {
+                console.warn(`Keine aktuellen Telemetriedaten für Gateway ${gateway.uuid}`, err);
+              }
+            })
+          );
+          setGatewayLatestData(latestDataMap);
+        } else {
+          throw new Error(gatewaysResponse.error?.message || 'Fehler beim Laden der Gateways');
+        }
       } catch (err) {
         console.error('Error fetching gateways:', err);
         setError(`Fehler beim Laden der Gateways: ${err.message}`);
+        setGateways([]);
       }
       
       try {
-        const customersResponse = await axios.get(`${API_URL}/customers`);
-        console.log('Customers response:', customersResponse.data);
-        setCustomers(customersResponse.data);
+        // Kunden abrufen
+        const customersResponse = await customerApi.list();
+        console.log('Customers response:', customersResponse);
+        
+        if (customersResponse.status === 'success') {
+          const customersList = customersResponse.data || [];
+          setCustomers(Array.isArray(customersList) ? customersList : []);
+        } else {
+          throw new Error(customersResponse.error?.message || 'Fehler beim Laden der Kunden');
+        }
       } catch (err) {
         console.error('Error fetching customers:', err);
         setError(`Fehler beim Laden der Kunden: ${err.message}`);
+        setCustomers([]);
       }
       
       try {
-        console.log('Fetching unassigned gateways from:', `${API_URL}/gateways/unassigned`);
-        const unassignedResponse = await axios.get(`${API_URL}/gateways/unassigned`);
-        console.log('Unassigned gateways response:', unassignedResponse.data);
-        setUnassignedGateways(unassignedResponse.data);
+        // Nicht zugeordnete Gateways abrufen
+        console.log('Fetching unassigned gateways');
+        const unassignedResponse = await gatewayApi.unassigned();
+        console.log('Unassigned gateways response:', unassignedResponse);
+        
+        if (unassignedResponse.status === 'success') {
+          const unassignedList = unassignedResponse.data || [];
+          setUnassignedGateways(Array.isArray(unassignedList) ? unassignedList : []);
+        } else {
+          throw new Error(unassignedResponse.error?.message || 'Fehler beim Laden der unregistrierten Gateways');
+        }
       } catch (err) {
         console.error('Error fetching unassigned gateways:', err);
         console.error('Error details:', {
@@ -99,6 +125,7 @@ const Gateways = () => {
           data: err.response?.data
         });
         setError(`Fehler beim Laden der unregistrierten Gateways: ${err.message}`);
+        setUnassignedGateways([]);
       }
     } catch (err) {
       console.error('General error in fetchData:', err);
@@ -111,11 +138,19 @@ const Gateways = () => {
   // Lade alle verfügbaren Templates
   const fetchTemplates = async () => {
     try {
-      const response = await axios.get(`${config.workerUrl}/templates`);
-      setAvailableTemplates(response.data);
+      const response = await templateApi.list();
+      console.log('Templates response:', response);
+      
+      if (response.status === 'success') {
+        const templates = response.data || [];
+        setAvailableTemplates(Array.isArray(templates) ? templates : []);
+      } else {
+        throw new Error(response.error?.message || 'Fehler beim Laden der Templates');
+      }
     } catch (err) {
       console.error('Fehler beim Laden der Templates:', err);
       setError('Templates konnten nicht geladen werden.');
+      setAvailableTemplates([]);
     }
   };
 
@@ -148,10 +183,14 @@ const Gateways = () => {
   const handleAddGateway = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_URL}/gateways`, formData);
-      setShowAddModal(false);
-      resetForm();
-      fetchData();
+      const response = await gatewayApi.create(formData);
+      if (response.status === 'success') {
+        setShowAddModal(false);
+        resetForm();
+        fetchData();
+      } else {
+        throw new Error(response.error?.message || 'Fehler beim Hinzufügen des Gateways');
+      }
     } catch (err) {
       console.error('Fehler beim Hinzufügen des Gateways:', err);
       setError('Gateway konnte nicht hinzugefügt werden.');
@@ -162,10 +201,14 @@ const Gateways = () => {
   const handleEditGateway = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`${API_URL}/gateways/${currentGateway.uuid}`, formData);
-      setShowEditModal(false);
-      resetForm();
-      fetchData();
+      const response = await gatewayApi.update(currentGateway.uuid, formData);
+      if (response.status === 'success') {
+        setShowEditModal(false);
+        resetForm();
+        fetchData();
+      } else {
+        throw new Error(response.error?.message || 'Fehler beim Bearbeiten des Gateways');
+      }
     } catch (err) {
       console.error('Fehler beim Bearbeiten des Gateways:', err);
       setError('Gateway konnte nicht bearbeitet werden.');
@@ -175,9 +218,13 @@ const Gateways = () => {
   // Gateway löschen
   const handleDeleteGateway = async () => {
     try {
-      await axios.delete(`${API_URL}/gateways/${currentGateway.uuid}`);
-      setShowDeleteConfirm(false);
-      fetchData();
+      const response = await gatewayApi.delete(currentGateway.uuid);
+      if (response.status === 'success') {
+        setShowDeleteConfirm(false);
+        fetchData();
+      } else {
+        throw new Error(response.error?.message || 'Fehler beim Löschen des Gateways');
+      }
     } catch (err) {
       console.error('Fehler beim Löschen des Gateways:', err);
       setError('Gateway konnte nicht gelöscht werden.');
@@ -189,12 +236,21 @@ const Gateways = () => {
     setLoadingDevices(true);
     setCurrentGateway(gateway);
     try {
-      const response = await axios.get(`${API_URL}/devices?gateway_uuid=${gateway.uuid}`);
-      setCurrentDevices(response.data);
+      // Annahme: Es gibt einen devices-Endpunkt in der API
+      const response = await fetch(`${API_URL}/devices?gateway_uuid=${gateway.uuid}`);
+      const data = await response.json();
+      
+      if (data && data.status === 'success') {
+        const devicesList = data.data || [];
+        setCurrentDevices(Array.isArray(devicesList) ? devicesList : []);
+      } else {
+        throw new Error(data.error?.message || 'Fehler beim Laden der Geräte');
+      }
       setShowDevicesList(true);
     } catch (err) {
       console.error('Fehler beim Laden der Geräte:', err);
       setError('Geräte konnten nicht geladen werden.');
+      setCurrentDevices([]);
     } finally {
       setLoadingDevices(false);
     }
@@ -480,8 +536,8 @@ const Gateways = () => {
                   >
                     <option value="">Bitte auswählen</option>
                     {availableTemplates.map((template) => (
-                      <option key={template} value={template}>
-                        {template}
+                      <option key={template.id || template} value={template.id || template}>
+                        {template.name || template}
                       </option>
                     ))}
                   </Form.Select>
@@ -593,8 +649,8 @@ const Gateways = () => {
                   >
                     <option value="">Bitte auswählen</option>
                     {availableTemplates.map((template) => (
-                      <option key={template} value={template}>
-                        {template}
+                      <option key={template.id || template} value={template.id || template}>
+                        {template.name || template}
                       </option>
                     ))}
                   </Form.Select>

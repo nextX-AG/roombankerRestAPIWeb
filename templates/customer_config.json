@@ -1,0 +1,45 @@
+{
+    "customers": {
+        "test": {
+            "name": "Test Kunde",
+            "api_config": {
+                "url": "https://tas.dev.evalarm.de/api/v1/espa",
+                "username": "eva.herford",
+                "password": "GWB0oLZE",
+                "namespace": "eva.herford",
+                "headers": {
+                    "Content-Type": "application/json",
+                    "X-EVALARM-API-VERSION": "2.1.5"
+                }
+            },
+            "gateways": [
+            ],
+            "forwarding": {
+                "type": "instant",
+                "retry_count": 3,
+                "retry_delay": 5
+            }
+        },
+        "test_christian": {
+            "name": "Christian Test",
+            "api_config": {
+                "url": "https://tas01.evalarm.de/api/v1/espa",
+                "username": "test.christian",
+                "password": "h54mY9eBsp",
+                "namespace": "test.christian",
+                "headers": {
+                    "Content-Type": "application/json",
+                    "X-EVALARM-API-VERSION": "2.1.5"
+                }
+            },
+            "gateways": [
+                "gw-c490b022-cc18-407e-a07e-a355747a8fdd"
+            ],
+            "forwarding": {
+                "type": "instant",
+                "retry_count": 3,
+                "retry_delay": 5
+            }
+        }
+    }
+} 

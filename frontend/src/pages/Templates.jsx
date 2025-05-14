@@ -6,7 +6,10 @@ import axios from 'axios';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import SimpleCodeEditor from '../components/CodeEditor';
-import config from '../config';
+import config, { API_VERSION } from '../config';
+
+// Verwende die konfigurierte API-URL mit Version
+const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
 
 /**
  * Template-Verwaltungskomponente
@@ -104,14 +107,16 @@ const Templates = () => {
     const fetchTemplates = async () => {
       try {
         setError(null);
-        const response = await axios.get(`${config.workerUrl}/templates`);
-          setTemplates(response.data);
-          if (response.data.length > 0) {
-            setSelectedTemplate(response.data[0]);
-          }
+        const response = await axios.get(`${API_URL}/templates`);
+        const templatesList = response.data?.data || [];
+        setTemplates(Array.isArray(templatesList) ? templatesList : []);
+        if (templatesList.length > 0) {
+          setSelectedTemplate(templatesList[0]);
+        }
       } catch (error) {
         console.error('Fehler beim Abrufen der Templates:', error);
         setError('Fehler beim Laden der Templates: ' + (error.response?.data?.message || error.message));
+        setTemplates([]);
       }
     };
 
@@ -185,52 +190,59 @@ const Templates = () => {
         return;
       }
 
+      const templateData = {
+        name: tempName,
+        template_code: templateCode,
+        provider_type: providerType
+      };
+
+      let response;
       if (newTemplate) {
         // Neues Template erstellen
-        const response = await axios.post(`${config.workerUrl}/templates`, {
-          name: tempName,
-          template_code: templateCode,
-          provider_type: providerType
-        });
-        setTemplates([...templates, response.data]);
-        setSelectedTemplate(response.data);
-        setSuccess('Template erfolgreich erstellt');
+        response = await axios.post(`${API_URL}/templates`, templateData);
+        if (response.data?.status === 'success') {
+          const newTemplateData = response.data?.data;
+          setTemplates([...templates, newTemplateData]);
+          setSelectedTemplate(newTemplateData);
+          setSuccess('Template erfolgreich erstellt');
+        } else {
+          throw new Error('Template konnte nicht erstellt werden');
+        }
       } else {
         // Bestehendes Template aktualisieren
-        const response = await axios.put(`${config.workerUrl}/templates/${selectedTemplate.id}`, {
-          name: tempName,
-          template_code: templateCode,
-          provider_type: providerType
-        });
-        setTemplates(templates.map(t => t.id === selectedTemplate.id ? response.data : t));
-        setSelectedTemplate(response.data);
-        setSuccess('Template erfolgreich aktualisiert');
+        response = await axios.put(`${API_URL}/templates/${selectedTemplate.id}`, templateData);
+        if (response.data?.status === 'success') {
+          const updatedTemplateData = response.data?.data;
+          setTemplates(templates.map(t => t.id === selectedTemplate.id ? updatedTemplateData : t));
+          setSelectedTemplate(updatedTemplateData);
+          setSuccess('Template erfolgreich aktualisiert');
+        } else {
+          throw new Error('Template konnte nicht aktualisiert werden');
+        }
       }
-      
-      setNewTemplate(false);
       setIsEditing(false);
-      setError(null);
-    } catch (err) {
-      setError('Fehler beim Speichern des Templates: ' + err.message);
+      setNewTemplate(false);
+    } catch (error) {
+      console.error('Fehler beim Speichern des Templates:', error);
+      setError('Fehler beim Speichern: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const handleDeleteTemplate = async () => {
     if (!selectedTemplate) return;
     
-    if (!window.confirm(`Möchten Sie das Template "${selectedTemplate.name}" wirklich löschen?`)) {
-      return;
-    }
-
     try {
-      await axios.delete(`${config.workerUrl}/templates/${selectedTemplate.id}`);
-      setTemplates(templates.filter(t => t.id !== selectedTemplate.id));
-      setSelectedTemplate(null);
-      setTemplateCode('');
-      setTempName('');
-      setSuccess('Template erfolgreich gelöscht');
-    } catch (err) {
-      setError('Fehler beim Löschen des Templates: ' + err.message);
+      const response = await axios.delete(`${API_URL}/templates/${selectedTemplate.id}`);
+      if (response.data?.status === 'success') {
+        setTemplates(templates.filter(t => t.id !== selectedTemplate.id));
+        setSelectedTemplate(templates[0] || null);
+        setSuccess('Template erfolgreich gelöscht');
+      } else {
+        throw new Error('Template konnte nicht gelöscht werden');
+      }
+    } catch (error) {
+      console.error('Fehler beim Löschen des Templates:', error);
+      setError('Fehler beim Löschen: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -278,16 +290,21 @@ const Templates = () => {
 
   const handleTestTransform = async () => {
     if (!selectedTemplate) return;
-      
+    
     try {
-      const response = await axios.post(`${config.workerUrl}/test-transform`, {
-        template_id: selectedTemplate.id,
+      const response = await axios.post(`${API_URL}/templates/${selectedTemplate.id}/test`, {
         message: testMessage
       });
-      setTransformedMessage(response.data);
-      setError(null);
-    } catch (err) {
-      setError('Fehler bei der Transformation: ' + err.message);
+      
+      if (response.data?.status === 'success') {
+        setTransformedMessage(response.data?.data);
+        setError(null);
+      } else {
+        throw new Error('Transformation fehlgeschlagen');
+      }
+    } catch (error) {
+      console.error('Fehler bei der Transformation:', error);
+      setError('Fehler bei der Transformation: ' + (error.response?.data?.message || error.message));
       setTransformedMessage(null);
     }
   };

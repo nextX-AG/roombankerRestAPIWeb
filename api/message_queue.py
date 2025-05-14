@@ -54,40 +54,51 @@ class RedisMessageQueue:
         
         logger.info(f"Redis Message Queue initialisiert: {host}:{port}, DB: {db}")
     
-    def enqueue_message(self, message: Dict[str, Any], template_name: str, endpoint_name: str) -> str:
+    def enqueue_message(self, message: Dict[str, Any], template_name: str, endpoint_name: str, customer_config: Dict[str, Any] = None, gateway_id: str = None) -> str:
         """
         Füge eine Nachricht in die Queue ein
         
         Args:
             message: Die zu verarbeitende Nachricht
             template_name: Name des zu verwendenden Templates
-            endpoint_name: Name des Zielsystems
-            
+            endpoint_name: Name des Ziel-Endpunkts
+            customer_config: Optionale Kundenkonfiguration
+            gateway_id: Gateway-ID
+        
         Returns:
             Die Message-ID
         """
-        # Erstelle eine eindeutige ID für die Nachricht
+        # Generiere eine eindeutige Message-ID
         message_id = str(uuid.uuid4())
         
-        # Erstelle ein Job-Objekt mit Metadaten
-        job = {
+        # Erstelle Job-Daten
+        job_data = {
             'id': message_id,
             'message': message,
             'template': template_name,
             'endpoint': endpoint_name,
-            'created_at': time.time(),
-            'status': 'pending',
-            'retry_count': 0
+            'created_at': int(time.time()),
+            'status': 'pending'
         }
         
-        # Serialisiere das Job-Objekt und füge es in die Queue ein
-        job_json = json.dumps(job)
-        self.redis_client.rpush(self.main_queue, job_json)
+        # Füge Kundenkonfiguration hinzu, wenn vorhanden
+        if customer_config:
+            job_data['customer_config'] = customer_config
+        
+        # Füge Gateway-ID hinzu, wenn vorhanden
+        if gateway_id:
+            job_data['gateway_id'] = gateway_id
+        
+        # Konvertiere in JSON
+        job_json = json.dumps(job_data)
+        
+        # Füge in die Haupt-Queue ein
+        self.redis_client.lpush(self.main_queue, job_json)
         
         # Aktualisiere Statistiken
-        self.redis_client.hincrby(self.stats_key, 'total_received', 1)
+        self.redis_client.hincrby(self.stats_key, 'total_enqueued', 1)
         
-        logger.info(f"Nachricht in Queue eingefügt: {message_id}")
+        logger.info(f"Nachricht {message_id} in Queue eingefügt")
         return message_id
     
     def get_next_message(self) -> Optional[Dict[str, Any]]:

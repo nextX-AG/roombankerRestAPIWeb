@@ -36,31 +36,40 @@ logger = logging.getLogger('api-gateway')
 
 app = Flask(__name__)
 
-# CORS-Konfiguration über Umgebungsvariablen
-ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
-if ALLOWED_ORIGINS == '*':
-    # Wildcard-Modus: Alle Origins erlauben
-    logger.info("CORS konfiguriert für alle Origins (*)")
+# Environment-Konfiguration
+ENV = os.environ.get('FLASK_ENV', 'development')
+
+# Vereinfachte CORS-Konfiguration für Docker
+if ENV == 'docker':
+    logger.info("Docker-Umgebung erkannt: Aktiviere CORS für alle Origins")
     CORS(app, resources={r"/api/*": {
         "origins": "*",
         "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
         "expose_headers": ["Content-Type", "Authorization"],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "supports_credentials": True
     }})
 else:
-    # Spezifische Origins erlauben (komma-separierte Liste)
-    allowed_origins_list = [origin.strip() for origin in ALLOWED_ORIGINS.split(',')]
-    logger.info(f"CORS konfiguriert für spezifische Origins: {allowed_origins_list}")
+    # Standard CORS-Konfiguration für Entwicklung
+    default_origins = [
+        'http://localhost',
+        'http://localhost:80',
+        'http://localhost:5173',
+        'http://127.0.0.1',
+        'http://127.0.0.1:80',
+        'http://127.0.0.1:5173'
+    ]
+    ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', ','.join(default_origins))
+    allowed_origins = [origin.strip() for origin in ALLOWED_ORIGINS.split(',')]
+    logger.info(f"Entwicklungsumgebung: CORS konfiguriert für Origins: {allowed_origins}")
     CORS(app, resources={r"/api/*": {
-        "origins": allowed_origins_list,
+        "origins": allowed_origins,
         "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
         "expose_headers": ["Content-Type", "Authorization"],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "supports_credentials": True
     }})
 
-# Environment-Konfiguration
-ENV = os.environ.get('FLASK_ENV', 'development')
 SERVICE_HOSTS = HOSTS[ENV]
 
 # Debug-Ausgabe der Host-Konfiguration ins Log
@@ -299,26 +308,24 @@ def gateway_status():
         mimetype='application/json'
     )
 
-# Hinzufügen eines CORS-Preflight-Handlers mit dynamischem Origin
+# Hinzufügen eines vereinfachten CORS-Preflight-Handlers
 @app.route('/api/login', methods=['OPTIONS'])
 @app.route(f'{API_BASE}/<path:path>', methods=['OPTIONS'])
 def handle_options(path=""):
     """
-    Handler für OPTIONS-Anfragen (CORS-Preflight)
+    Vereinfachter Handler für OPTIONS-Anfragen (CORS-Preflight)
     """
     resp = Response()
     
-    # Origin-Header aus der Anfrage extrahieren
-    origin = request.headers.get('Origin')
-    if origin:
-        # Origin validieren, bevor wir ihn zurückgeben
-        if ALLOWED_ORIGINS == '*' or origin in ALLOWED_ORIGINS.split(','):
-            # Nur einmal setzen, nicht mehrfach
+    # In Docker-Umgebung erlauben wir alle Origins
+    if ENV == 'docker':
+        resp.headers.add('Access-Control-Allow-Origin', '*')
+    else:
+        # In Entwicklung prüfen wir den Origin
+        origin = request.headers.get('Origin')
+        if origin and origin in allowed_origins:
             resp.headers.add('Access-Control-Allow-Origin', origin)
             resp.headers.add('Access-Control-Allow-Credentials', 'true')
-    else:
-        # Fallback: Wildcard, wenn kein Origin in der Anfrage
-        resp.headers.add('Access-Control-Allow-Origin', '*')
     
     resp.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     resp.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
