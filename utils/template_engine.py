@@ -244,15 +244,8 @@ class MessageForwarder:
         """
         Lädt die konfigurierten Endpunkte
         """
-        # Standardendpunkt für evAlarm als Fallback
-        self.endpoints['evalarm_default'] = {
-            'url': 'https://tas.dev.evalarm.de/api/v1/espa',
-            'auth': ('eva.herford', 'GW8OoLZE'),
-            'headers': {
-                'Content-Type': 'application/json',
-                'X-EVALARM-API-VERSION': '2.1.5'
-            }
-        }
+        # Entferne den Standardendpunkt für evAlarm (Sicherheitsrisiko)
+        self.endpoints = {}
         
         # Kunden mit evAlarm-Konfiguration aus der Datenbank laden
         try:
@@ -269,7 +262,7 @@ class MessageForwarder:
                         },
                         'customer': customer
                     }
-            logger.info(f"Endpunkte für {len(self.endpoints) - 1} Kunden geladen")
+            logger.info(f"Endpunkte für {len(self.endpoints)} Kunden geladen")
         except Exception as e:
             logger.error(f"Fehler beim Laden der Kundenendpunkte: {str(e)}")
     
@@ -308,15 +301,56 @@ class MessageForwarder:
             gateway_uuid: UUID des Gateways
             
         Returns:
-            Name des Endpunkts oder 'evalarm_default'
+            Name des Endpunkts oder None, wenn kein passender Endpunkt gefunden wurde
         """
-        customer = self.get_customer_by_gateway(gateway_uuid)
-        if customer:
+        try:
+            # Prüfe zunächst, ob das Gateway überhaupt existiert
+            gateway = self.Gateway.find_by_uuid(gateway_uuid)
+            if not gateway:
+                logger.error(f"Weiterleitung blockiert: Gateway {gateway_uuid} existiert nicht in der Datenbank")
+                return None
+            
+            # Prüfe ob das Gateway einem Kunden zugeordnet ist
+            if not gateway.customer_id:
+                logger.error(f"Weiterleitung blockiert: Gateway {gateway_uuid} ist keinem Kunden zugeordnet")
+                return None
+            
+            # Hole den Kunden
+            customer = self.Customer.find_by_id(gateway.customer_id)
+            if not customer:
+                logger.error(f"Weiterleitung blockiert: Kunde für Gateway {gateway_uuid} nicht gefunden")
+                return None
+            
+            # Prüfe ob der Kunde aktiv ist
+            if customer.status != "active":
+                logger.error(f"Weiterleitung blockiert: Kunde {customer.name} ist nicht aktiv")
+                return None
+            
+            # Prüfe ob der Kunde evAlarm-Zugangsdaten hat
+            if not customer.evalarm_username or not customer.evalarm_password:
+                logger.error(f"Weiterleitung blockiert: Kunde {customer.name} hat keine evAlarm-Zugangsdaten")
+                return None
+            
+            # Wenn alle Prüfungen bestanden wurden, gib den Endpunkt zurück
             customer_id = str(customer._id)
             endpoint_name = f'customer_{customer_id}'
             if endpoint_name in self.endpoints:
                 return endpoint_name
-        return 'evalarm_default'
+                
+            # Wenn der Endpunkt nicht gefunden wurde, lade die Endpunkte neu
+            logger.warning(f"Endpunkt für Kunde {customer.name} nicht gefunden, lade Endpunkte neu")
+            self.load_endpoints()
+            
+            # Prüfe erneut, ob der Endpunkt jetzt existiert
+            if endpoint_name in self.endpoints:
+                return endpoint_name
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Ermitteln des Endpunkts für Gateway {gateway_uuid}: {str(e)}")
+        
+        # Wenn keine der Prüfungen erfolgreich war, blockiere die Weiterleitung
+        logger.error(f"Weiterleitung blockiert: Kein gültiger Endpunkt für Gateway {gateway_uuid} gefunden")
+        return None
     
     def forward_message(self, message, endpoint_name, gateway_uuid=None):
         """
@@ -333,8 +367,21 @@ class MessageForwarder:
         # Bei 'auto' den Endpunkt basierend auf dem Gateway-UUID ermitteln
         if endpoint_name == 'auto' and gateway_uuid:
             endpoint_name = self.get_endpoint_for_gateway(gateway_uuid)
-            logger.info(f"Automatisch Endpunkt '{endpoint_name}' für Gateway {gateway_uuid} ermittelt")
+            if endpoint_name:
+                logger.info(f"Automatisch Endpunkt '{endpoint_name}' für Gateway {gateway_uuid} ermittelt")
+            else:
+                # Speichere blockierte Nachrichten für spätere Analyse
+                self._save_blocked_message(message, gateway_uuid, "Kein gültiger Endpunkt gefunden")
+                logger.error(f"SICHERHEITSWARNUNG: Kein Endpunkt für Gateway {gateway_uuid} gefunden - Weiterleitung verweigert")
+                return None
         
+        # Prüfe ob ein gültiger Endpunkt vorliegt
+        if not endpoint_name or endpoint_name not in self.endpoints:
+            # Speichere blockierte Nachrichten für spätere Analyse
+            self._save_blocked_message(message, gateway_uuid, f"Endpunkt '{endpoint_name}' nicht gefunden oder ungültig")
+            logger.error(f"Endpunkt '{endpoint_name}' nicht gefunden oder ungültig - Weiterleitung nicht möglich")
+            return None
+            
         # Hier laden wir die Kundenkonfiguration aus der Datei
         import os
         import json
@@ -353,7 +400,7 @@ class MessageForwarder:
         except Exception as e:
             logger.error(f"Fehler beim Laden der Kundenkonfiguration: {str(e)}")
         
-        if not customer_config:
+        if not customer_config and gateway_uuid:
             logger.warning(f"Kein Kunde für Gateway {gateway_uuid} gefunden")
             # SICHERHEITSÄNDERUNG: Blockiere Weiterleitung für nicht zugeordnete Gateways
             logger.error(f"SICHERHEITSWARNUNG: Weiterleitung für nicht zugeordnetes Gateway {gateway_uuid} blockiert")
@@ -409,3 +456,43 @@ class MessageForwarder:
         except Exception as e:
             logger.error(f"Fehler bei der Weiterleitung an '{endpoint_name}': {str(e)}")
             return None
+
+    def _save_blocked_message(self, message, gateway_uuid, reason):
+        """
+        Speichert blockierte Nachrichten in einem speziellen Verzeichnis zur späteren Analyse
+        
+        Args:
+            message: Die blockierte Nachricht
+            gateway_uuid: UUID des Gateways
+            reason: Grund für die Blockierung
+        """
+        try:
+            import os
+            import json
+            from datetime import datetime
+            
+            # Stelle sicher, dass das Verzeichnis existiert
+            PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            blocked_dir = os.path.join(PROJECT_DIR, 'data', 'security_logs')
+            os.makedirs(blocked_dir, exist_ok=True)
+            
+            # Erstelle einen eindeutigen Dateinamen
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"blocked_{timestamp}_{gateway_uuid}_{hash(str(message))}.json"
+            file_path = os.path.join(blocked_dir, filename)
+            
+            # Speichere die Nachricht mit Metadaten
+            log_data = {
+                "timestamp": datetime.now().isoformat(),
+                "gateway_uuid": gateway_uuid,
+                "reason": reason,
+                "message": message
+            }
+            
+            with open(file_path, 'w') as f:
+                json.dump(log_data, f, indent=2)
+                
+            logger.info(f"Blockierte Nachricht gespeichert in {file_path}")
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Speichern der blockierten Nachricht: {str(e)}")

@@ -27,13 +27,12 @@ tcpdump -A -l -i "$INTERFACE" port 1883 2>/dev/null | while read line; do
         echo "$json"
         echo "$json" > "$TMP_FILE"
 
-        # JSON mit Gateway-ID erweitern und in message-Objekt verpacken
-        # Wichtig: Hier fügen wir die geschweiften Klammern für das message-Objekt korrekt ein
-        payload='{"gateway_id":"'$UUID'","message":'$json'}'
+        # JSON mit Gateway-ID erweitern (korrigierte Version)
+        payload=$(echo '{ "gateway_uuid": "'"$UUID"'", "message": '"$json"' }')
 
         # Debug-Ausgabe vor dem Senden
         echo "[*] Sende Payload:"
-        echo "$payload" | python3 -m json.tool || echo "$payload"
+        echo "$payload" | python3 -m json.tool 2>/dev/null || echo "$payload"
 
         # Senden mit erweitertem Error-Handling
         response=$(curl -s -X POST "$SERVER_URL" \

@@ -148,7 +148,12 @@ def api_error_handler(f):
     """
     def decorated_function(*args, **kwargs):
         try:
-            return f(*args, **kwargs)
+            # Führe die dekorierte Funktion aus
+            response = f(*args, **kwargs)
+            # Protokolliere erfolgreiche Anfrage mit Statuscode
+            if isinstance(response, tuple) and len(response) == 2:
+                logger.info(f"Erfolgreiche Anfrage an {f.__name__}: Statuscode {response[1]}")
+            return response
         except Exception as e:
             logger.error(f"Unbehandelter Fehler in {f.__name__}: {str(e)}", exc_info=True)
             return server_error_response(e)

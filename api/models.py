@@ -198,7 +198,18 @@ class Gateway:
     
     def delete(self):
         """Löscht das Gateway aus der Datenbank"""
+        # Zuerst alle zugehörigen Geräte löschen (Kaskadenlöschung)
+        try:
+            devices = Device.find_by_gateway(self.uuid)
+            for device in devices:
+                device.delete()
+            logger.info(f"Alle {len(devices)} Geräte des Gateways {self.uuid} gelöscht")
+        except Exception as e:
+            logger.error(f"Fehler beim Löschen der Geräte für Gateway {self.uuid}: {str(e)}")
+        
+        # Dann das Gateway selbst löschen
         db[self.collection].delete_one({"_id": self._id})
+        logger.info(f"Gateway {self.uuid} gelöscht")
     
     def to_dict(self):
         """Konvertiert das Objekt in ein Dictionary"""

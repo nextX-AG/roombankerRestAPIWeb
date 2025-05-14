@@ -274,11 +274,25 @@ def delete_gateway(uuid):
     """Löscht ein Gateway"""
     gateway = Gateway.find_by_uuid(uuid)
     if not gateway:
+        logger.warning(f"Löschversuch für nicht existierendes Gateway: UUID {uuid}")
         return not_found_response("gateway", uuid)
     
+    # Speichere Informationen über das Gateway vor dem Löschen
+    gateway_name = gateway.name
+    customer_id = gateway.customer_id
+    
+    # Kaskadenlöschung in der Gateway-Klasse ruft nun auch device.delete() für jedes Gerät auf
     gateway.delete()
-    logger.info(f"Gateway gelöscht: UUID {uuid}")
-    return success_response({"result": "Gateway erfolgreich gelöscht"})
+    
+    # Protokolliere den erfolgreichen Löschvorgang
+    logger.info(f"Gateway erfolgreich gelöscht: UUID {uuid}, Name: {gateway_name}, Kunde: {customer_id}")
+    
+    return success_response({
+        "uuid": uuid,
+        "name": gateway_name,
+        "customer_id": str(customer_id) if customer_id else None,
+        "result": "Gateway und alle zugehörigen Geräte erfolgreich gelöscht"
+    })
 
 @api_bp.route('/api/v1/gateways/<uuid>/status', methods=['PUT'])
 @api_error_handler
@@ -666,4 +680,19 @@ def retry_message(message_id):
     return success_response({
         'message_id': message_id,
         'status': 'requeued'
-    }) 
+    })
+
+# Weiterleitung von altem zu neuem API-Endpunkt
+@api_bp.route('/api/v1/messages/process', methods=['POST'])
+@api_error_handler
+def redirect_message_process():
+    """
+    Verarbeitet Nachrichten vom alten API-Endpunkt (/api/v1/messages/process)
+    Verwendet den gleichen Code wie /api/v1/process-message
+    """
+    # Der alte Endpunkt verwendet die gleiche Funktionalität wie der neue
+    logger.info("Nachricht über /api/v1/messages/process empfangen")
+    
+    # Direkt die process_message Funktion aufrufen statt einen HTTP-Request zu machen
+    # Das vermeidet den 500-Fehler bei internen Weiterleitungen
+    return process_message() 

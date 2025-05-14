@@ -3,7 +3,7 @@ cat > /usr/bin/mqtt-sniffer-relay.sh << 'EOF'
 
 # Konfiguration
 INTERFACE="eth0"
-SERVER_URL="http://192.168.178.44/api/test"
+SERVER_URL="http://192.168.178.44:8000/api/v1/messages/process"
 TMP_FILE="/tmp/mqtt-sniff-last.json"
 UUID_FILE="/etc/gateway-uuid"
 
@@ -27,11 +27,22 @@ tcpdump -A -l -i "$INTERFACE" port 1883 2>/dev/null | while read line; do
         echo "$json"
         echo "$json" > "$TMP_FILE"
 
-        # JSON mit Gateway-ID erweitern
-        payload=$(echo "$json" | sed 's/^{/{ "gateway_id": "'"$UUID"'", /')
+        # JSON mit Gateway-ID erweitern (korrigierte Version)
+        payload=$(echo '{ "gateway_uuid": "'"$UUID"'", "message": '"$json"' }')
 
-        curl -s -X POST "$SERVER_URL" -H "Content-Type: application/json" -d "$payload"
-        echo
+        # Debug-Ausgabe vor dem Senden
+        echo "[*] Sende Payload:"
+        echo "$payload" | python3 -m json.tool 2>/dev/null || echo "$payload"
+
+        # Senden mit erweitertem Error-Handling
+        response=$(curl -s -X POST "$SERVER_URL" \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            -w "\nHTTP-Status: %{http_code}")
+        
+        echo "[*] Server-Antwort:"
+        echo "$response"
+        echo "----------------------------------------"
     done
 done
 EOF
