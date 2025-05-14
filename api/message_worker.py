@@ -186,8 +186,17 @@ class MessageWorker:
                 gateway_uuid=gateway_id
             )
             
-            if not response or response.status_code >= 400:
-                error_msg = f'Fehler bei der Weiterleitung an evAlarm API: {response.text if response else "Keine Antwort"}'
+            if not response:
+                # Differenzierte Fehlermeldung je nach Ursache
+                if not self.message_forwarder.get_customer_by_gateway(gateway_id):
+                    error_msg = f'Weiterleitung blockiert: Gateway {gateway_id} ist keinem Kunden zugeordnet'
+                else:
+                    error_msg = 'Fehler bei der Weiterleitung an evAlarm API: Keine Antwort'
+                logger.error(error_msg)
+                self.queue.mark_as_failed(job['id'], error_msg)
+                return
+            elif response.status_code >= 400:
+                error_msg = f'Fehler bei der Weiterleitung an evAlarm API: HTTP {response.status_code} - {response.text}'
                 logger.error(error_msg)
                 self.queue.mark_as_failed(job['id'], error_msg)
                 return
