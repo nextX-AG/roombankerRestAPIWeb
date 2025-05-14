@@ -4,6 +4,7 @@ import json
 import logging
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
+from datetime import datetime
 
 # Füge das Projektverzeichnis zum Python-Pfad hinzu
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -138,7 +139,57 @@ def process_message():
     
     if not customer_config:
         logger.warning(f"Kein Kunde für Gateway {gateway_id} gefunden")
-        return validation_error_response({"gateway_id": "Gateway ist keinem Kunden zugeordnet"})
+        # Speichere die Nachricht zur späteren manuellen Bearbeitung
+        try:
+            security_log_dir = os.path.join(PROJECT_DIR, 'data', 'unassigned_messages')
+            os.makedirs(security_log_dir, exist_ok=True)
+            
+            filename = f"unassigned_{gateway_id}_{int(datetime.now().timestamp())}.json"
+            filepath = os.path.join(security_log_dir, filename)
+            
+            with open(filepath, 'w') as f:
+                json.dump({
+                    'timestamp': datetime.now().isoformat(),
+                    'gateway_id': gateway_id,
+                    'message': message,
+                    'headers': dict(request.headers),
+                    'remote_addr': request.remote_addr
+                }, f, indent=2)
+            
+            logger.info(f"Nachricht von nicht zugeordnetem Gateway in {filepath} gespeichert")
+            
+            # Registriere Gateway in der Datenbank, falls noch nicht vorhanden
+            if Gateway and gateway_id:
+                gateway = Gateway.find_by_uuid(gateway_id)
+                if not gateway:
+                    logger.info(f"Registriere neues unbekanntes Gateway: {gateway_id}")
+                    try:
+                        Gateway.create(uuid=gateway_id, customer_id=None, status="unassigned")
+                        logger.info(f"Gateway {gateway_id} als 'unassigned' registriert")
+                    except Exception as e:
+                        logger.error(f"Fehler bei Gateway-Registrierung: {str(e)}")
+            
+            # Gerät registrieren, falls in der Nachricht enthalten
+            if Device and isinstance(message, dict) and 'subdevicelist' in message:
+                for device_data in message.get('subdevicelist', []):
+                    try:
+                        device = register_device_from_message(gateway_id, device_data)
+                        if device:
+                            logger.info(f"Gerät für Gateway {gateway_id} registriert: {device.device_id}")
+                    except Exception as e:
+                        logger.error(f"Fehler bei Geräteregistrierung: {str(e)}")
+            
+            # SICHERHEITSWARNUNG zurückgeben statt eines Fehlers
+            return success_response({
+                'status': 'unassigned',
+                'gateway_id': gateway_id,
+                'message': 'Gateway ist keinem Kunden zugeordnet. Nachricht wurde zur manuellen Überprüfung gespeichert.',
+                'filepath': filepath
+            }, status_code=202)  # 202 Accepted
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Speichern der unzugeordneten Nachricht: {str(e)}")
+            return validation_error_response({"gateway_id": "Gateway ist keinem Kunden zugeordnet, und die Nachricht konnte nicht gespeichert werden."})
     
     # Template automatisch auswählen basierend auf dem Nachrichtentyp
     # Prüfen auf Panic-Alarm
@@ -161,7 +212,7 @@ def process_message():
     message_id = queue.enqueue_message(
         message=message,
         template_name=template_name,
-        endpoint_name='evalarm',
+        endpoint_name='auto',  # Verwende 'auto' statt 'evalarm' für dynamische Endpunktauswahl
         customer_config=customer_config,
         gateway_id=gateway_id
     )

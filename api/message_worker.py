@@ -129,18 +129,40 @@ class MessageWorker:
             template_name = job['template']
             customer_config = job.get('customer_config')
             
-            if not customer_config:
-                error_msg = "Keine Kundenkonfiguration gefunden"
-                logger.error(error_msg)
-                self.queue.mark_as_failed(job['id'], error_msg)
-                return
-            
             # Gateway-ID aus der Job-Daten extrahieren
             gateway_id = job.get('gateway_id')
             if not gateway_id:
                 error_msg = "Keine Gateway-ID in den Job-Daten gefunden"
                 logger.error(error_msg)
                 self.queue.mark_as_failed(job['id'], error_msg)
+                return
+            
+            # Sicherheitscheck: Prüfe, ob ein Kundenkontext vorhanden ist
+            if not customer_config:
+                error_msg = "SICHERHEITSWARNUNG: Nachricht von nicht zugeordnetem Gateway - Weiterleitung blockiert"
+                logger.error(f"{error_msg} - Gateway-ID: {gateway_id}")
+                self.queue.mark_as_failed(job['id'], error_msg)
+                # Speichere die blockierte Nachricht für spätere Überprüfung
+                try:
+                    import os
+                    import json
+                    from datetime import datetime
+                    
+                    security_log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'security_logs')
+                    os.makedirs(security_log_dir, exist_ok=True)
+                    
+                    log_file = os.path.join(security_log_dir, f"blocked_message_{datetime.now().strftime('%Y%m%d-%H%M%S')}_{job['id']}.json")
+                    with open(log_file, 'w') as f:
+                        json.dump({
+                            'timestamp': datetime.now().isoformat(),
+                            'gateway_id': gateway_id,
+                            'message': message,
+                            'reason': 'Gateway ist keinem Kunden zugeordnet'
+                        }, f, indent=2)
+                    
+                    logger.info(f"Blockierte Nachricht in {log_file} protokolliert")
+                except Exception as e:
+                    logger.error(f"Fehler beim Protokollieren der blockierten Nachricht: {str(e)}")
                 return
             
             # Transformiere Nachricht mit dem Template und Kundenkonfiguration
@@ -160,7 +182,7 @@ class MessageWorker:
             # Leite transformierte Nachricht weiter
             response = self.message_forwarder.forward_message(
                 transformed_message,
-                'evalarm',
+                'auto',  # 'evalarm' durch 'auto' ersetzt für automatische Endpunktauswahl
                 gateway_uuid=gateway_id
             )
             

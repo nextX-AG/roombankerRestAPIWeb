@@ -355,12 +355,9 @@ class MessageForwarder:
         
         if not customer_config:
             logger.warning(f"Kein Kunde für Gateway {gateway_uuid} gefunden")
-            if 'evalarm_default' in self.endpoints:
-                endpoint_name = 'evalarm_default'
-                logger.info(f"Verwende Standard-Endpunkt '{endpoint_name}'")
-            else:
-                logger.error(f"Kein passender Endpunkt gefunden")
-                return None
+            # SICHERHEITSÄNDERUNG: Blockiere Weiterleitung für nicht zugeordnete Gateways
+            logger.error(f"SICHERHEITSWARNUNG: Weiterleitung für nicht zugeordnetes Gateway {gateway_uuid} blockiert")
+            return None
         
         if endpoint_name not in self.endpoints and customer_config:
             # Dynamischen Endpunkt erstellen aus customer_config

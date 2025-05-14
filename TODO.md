@@ -743,3 +743,57 @@ Das System hat ein persistentes Problem mit der Anzeige von aktuellen Daten in d
 - [x] evAlarm API integration
 - [x] Customer-specific configuration system
 - [x] Basic template engine implementation
+
+## 11. Sicherheit bei der Nachrichtenweiterleitung (HÖCHSTE PRIORITÄT)
+
+Ein kritisches Sicherheitsproblem wurde identifiziert: Nachrichten von nicht zugeordneten Gateways ohne Kundenzuordnung werden dennoch an evAlarm weitergeleitet. Dies ist ein signifikantes Sicherheitsrisiko, da:
+1. Jeder Kunde eine eigene evAlarm API-Adresse besitzt
+2. Nur registrierte und einem Kunden zugeordnete Gateways sollten Nachrichten weiterleiten dürfen
+3. Die korrekten Kundenzugangsdaten müssen für die Weiterleitung verwendet werden
+
+### API-Weiterleitungsvalidierung
+
+- [x] **Gateway-Zuordnungsprüfung implementieren**
+  - [x] Überprüfen, ob Gateway einem Kunden zugeordnet ist, bevor Nachrichten weitergeleitet werden
+  - [x] Bei nicht zugeordneten Gateways die Weiterleitung blockieren
+  - [x] Nachrichten von nicht zugeordneten Gateways in separatem Queue/Speicher ablegen
+  - [x] Warn-Logs generieren, wenn nicht zugeordnete Gateways Nachrichten senden
+
+- [x] **Kundenspezifische evAlarm-API-Konfiguration**
+  - [x] Dynamische Verwendung der korrekten API-URL basierend auf Kundendaten
+  - [x] Kundenspezifische Zugangsdaten (Benutzername/Passwort) für evAlarm verwenden
+  - [x] Validierung der Kundenkonfiguration vor Weiterleitung
+
+- [x] **Sicherheitsprotokollierung**
+  - [x] Detaillierte Logs aller Weiterleitungsversuche
+  - [x] Tracking blockierter Weiterleitungen für Sicherheitsaudit
+  - [ ] Benachrichtigung bei verdächtigen Aktivitäten (z.B. viele Nachrichten von nicht zugeordneten Gateways)
+
+### Architekturanpassungen
+
+- [ ] **Routing-System überarbeiten**
+  - [ ] Zentrale Routing-Komponente implementieren
+  - [ ] Prüfung der Gateway → Kunde → evAlarm-Zuordnung vor jeder Weiterleitung
+  - [ ] Fehlerhafte oder nicht zugeordnete Weiterleitungen blockieren und protokollieren
+
+- [ ] **Warteschlangenmanagement**
+  - [ ] Separate Warteschlangen für zugeordnete und nicht zugeordnete Gateways
+  - [ ] Priorisierung von Nachrichten zugeordneter Gateways
+  - [ ] Optionale manuelle Freigabe von Nachrichten nicht zugeordneter Gateways nach Kundenzuordnung
+
+### Implementierungsplan
+
+- [x] **Phase 1: Sofortige Sicherheitsmaßnahmen**
+  - [x] Blockieren der Weiterleitung für nicht zugeordnete Gateways
+  - [x] Implementierung der Gateway-Zuordnungsprüfung
+  - [x] Erweitertes Logging für alle Weiterleitungsversuche
+
+- [ ] **Phase 2: Erweiterte Funktionen**
+  - [ ] UI-Komponente für die Anzeige blockierter Nachrichten
+  - [ ] Dashboard-Benachrichtigungen für Administratoren
+  - [ ] Möglichkeit zur manuellen Freigabe nach Zuordnung
+
+- [ ] **Phase 3: Langfristige Architekturverbesserungen**
+  - [ ] Vollständige Überarbeitung des Routing-Systems
+  - [ ] Implementierung eines Audit-Trails für alle Nachrichtenweiterleitungen
+  - [ ] Automatisierte Sicherheitstests und -validierungen
