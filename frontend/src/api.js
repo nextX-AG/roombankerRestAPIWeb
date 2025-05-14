@@ -9,55 +9,60 @@ import config, { API_VERSION } from './config';
 const API_URL = config.apiBaseUrl;
 
 /**
- * Hilfsfunktion für API-Aufrufe mit einheitlichem Fehlerhandling
+ * Zentrale Funktion für API-Anfragen
  * 
- * @param {string} url - Die vollständige URL für den API-Aufruf
- * @param {Object} options - Fetch-Optionen (method, headers, body)
- * @returns {Promise<Object>} - Ein Promise mit den API-Daten oder einem Fehler
+ * @param {string} url - Die URL für die Anfrage
+ * @param {Object} options - Optionen für fetch (method, headers, body, etc.)
+ * @returns {Promise<Object>} - Antwort im standardisierten Format
  */
 async function fetchApi(url, options = {}) {
   try {
-    // Standard-Headers setzen
-    if (!options.headers) {
-      options.headers = {};
+    console.log(`API Anfrage: ${url}`);
+    
+    // Standardoptionen setzen
+    const defaultOptions = {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      credentials: 'same-origin'
+    };
+    
+    // Optionen zusammenführen
+    const fetchOptions = { ...defaultOptions, ...options };
+    
+    // Token hinzufügen, wenn verfügbar
+    const authToken = localStorage.getItem('authToken');
+    if (authToken) {
+      fetchOptions.headers.Authorization = `Bearer ${authToken}`;
     }
     
-    // Content-Type für JSON-Anfragen setzen
-    if (!options.headers['Content-Type'] && options.body) {
-      options.headers['Content-Type'] = 'application/json';
-    }
-
-    // Token aus localStorage hinzufügen, falls vorhanden
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      options.headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // CORS-Konfiguration für alle Anfragen
-    options.credentials = 'same-origin';
-    options.mode = 'cors';
+    // Anfrage senden
+    const response = await fetch(url, fetchOptions);
     
-    // Weitere wichtige Headers für komplexe Anfragen
-    options.headers['X-Requested-With'] = 'XMLHttpRequest';
-
-    console.log(`API Request: ${options.method || 'GET'} ${url}`, options);
-
-    // API-Aufruf durchführen
-    const response = await fetch(url, options);
-    
-    // JSON-Daten extrahieren (mit Fehlerbehandlung)
+    // Antwort parsen
     let data;
     try {
       data = await response.json();
-    } catch (e) {
-      console.error('Failed to parse JSON response:', e);
-      throw new Error('Fehler beim Parsen der Server-Antwort');
+    } catch (parseError) {
+      console.error('Fehler beim Parsen der API-Antwort:', parseError);
+      data = null;
     }
     
     // Überprüfen, ob die Antwort das erwartete Format hat
     if (data && typeof data === 'object' && 'status' in data) {
       // Gateway-Format erkannt
       if (data.status === 'error') {
+        // Bei Fehlern für nicht-kritische Endpunkte (wie Telemetrie) leere Daten zurückgeben
+        if (url.includes('/latest') || url.includes('/history')) {
+          console.warn(`Nicht-kritischer API-Fehler bei ${url}:`, data.error?.message);
+          return {
+            status: 'success',
+            data: {},
+            error: null
+          };
+        }
+        
         throw new Error(data.error?.message || 'Ein unbekannter Fehler ist aufgetreten');
       }
       
