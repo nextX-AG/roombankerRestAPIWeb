@@ -243,54 +243,10 @@ def list_all_messages():
     """
     Endpunkt zum Abfragen aller Nachrichten für das Dashboard
     """
-    from datetime import datetime, timedelta
-    import time
-    
     logger.info("Liste alle Nachrichten auf für Dashboard")
     
-    # Für Demonstrationszwecke liefern wir Beispieldaten
-    now = datetime.now()
-    
-    messages = [
-        {
-            "id": "msg-1234567890",
-            "status": "processed",
-            "received_at": (now - timedelta(minutes=5)).isoformat(),
-            "processed_at": (now - timedelta(minutes=4, seconds=50)).isoformat(),
-            "data": {
-                "gateway_id": "gw-abcdef123456",
-                "ts": int(time.time()) - 300,
-                "subdevicelist": [
-                    {
-                        "id": 12345678,
-                        "value": {
-                            "alarmstatus": "normal",
-                            "batterystatus": "ok"
-                        }
-                    }
-                ]
-            }
-        },
-        {
-            "id": "msg-0987654321",
-            "status": "processed",
-            "received_at": (now - timedelta(minutes=2)).isoformat(),
-            "processed_at": (now - timedelta(minutes=1, seconds=55)).isoformat(),
-            "data": {
-                "gateway_id": "gw-abcdef123456",
-                "ts": int(time.time()) - 120,
-                "subdevicelist": [
-                    {
-                        "id": 87654321,
-                        "value": {
-                            "alarmstatus": "alarm",
-                            "alarmtype": "panic"
-                        }
-                    }
-                ]
-            }
-        }
-    ]
+    # Leeres Array zurückgeben statt Beispieldaten
+    messages = []
     
     return success_response(messages)
 
@@ -300,54 +256,10 @@ def get_messages_status():
     """
     Endpunkt zum Abfragen des Status aller Nachrichten
     """
-    from datetime import datetime, timedelta
-    import time
-    
     logger.info("Statusabfrage für alle Nachrichten")
     
-    # Für Demonstrationszwecke liefern wir Beispieldaten
-    now = datetime.now()
-    
-    messages = [
-        {
-            "id": "msg-1234567890",
-            "status": "processed",
-            "received_at": (now - timedelta(minutes=5)).isoformat(),
-            "processed_at": (now - timedelta(minutes=4, seconds=50)).isoformat(),
-            "data": {
-                "gateway_id": "gw-abcdef123456",
-                "ts": int(time.time()) - 300,
-                "subdevicelist": [
-                    {
-                        "id": 12345678,
-                        "value": {
-                            "alarmstatus": "normal",
-                            "batterystatus": "ok"
-                        }
-                    }
-                ]
-            }
-        },
-        {
-            "id": "msg-0987654321",
-            "status": "processed",
-            "received_at": (now - timedelta(minutes=2)).isoformat(),
-            "processed_at": (now - timedelta(minutes=1, seconds=55)).isoformat(),
-            "data": {
-                "gateway_id": "gw-abcdef123456",
-                "ts": int(time.time()) - 120,
-                "subdevicelist": [
-                    {
-                        "id": 87654321,
-                        "value": {
-                            "alarmstatus": "alarm",
-                            "alarmtype": "panic"
-                        }
-                    }
-                ]
-            }
-        }
-    ]
+    # Leeres Array zurückgeben statt Beispieldaten
+    messages = []
     
     return success_response(messages)
 
