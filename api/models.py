@@ -39,9 +39,9 @@ def initialize_db(connection_string=None, db_name=None):
             connection_string = os.environ.get('MONGODB_URI', 'mongodb://mongo:27017/')
         
         if db_name is None:
-            db_name = os.environ.get('MONGODB_DB', 'evalarm_gateway')
+            db_name = os.environ.get('MONGODB_DB', 'evalarm_iot')
         
-        logger.info(f"Verbinde mit MongoDB: {connection_string}")
+        logger.info(f"Verbinde mit MongoDB: {connection_string}, DB: {db_name}")
         mongo_client = MongoClient(connection_string, serverSelectionTimeoutMS=5000)
         
         # Teste die Verbindung
@@ -54,7 +54,7 @@ def initialize_db(connection_string=None, db_name=None):
         db.gateways.create_index("uuid", unique=True)
         db.devices.create_index([("gateway_uuid", 1), ("device_id", 1)], unique=True)
         
-        logger.info("MongoDB-Verbindung erfolgreich hergestellt")
+        logger.info(f"MongoDB-Verbindung erfolgreich hergestellt, Datenbank: {db_name}")
     except Exception as e:
         logger.error(f"Fehler beim Verbinden mit MongoDB: {str(e)}")
         raise
