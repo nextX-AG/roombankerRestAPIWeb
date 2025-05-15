@@ -838,3 +838,79 @@ Ein kritisches Problem mit der Gateway-Nachrichtenroute wurde identifiziert: Akt
    - [ ] Implementierung von detailliertem Logging für die Nachrichtenverarbeitung
    - [ ] Tracking des Gateway-Status für Diagnose
    - [ ] Benachrichtigungssystem für fehlgeschlagene Registrierungen
+
+## 13. Systematische Validierung des Nachrichtensystems (HÖCHSTE PRIORITÄT)
+
+Die vollständige Ende-zu-Ende-Validierung des Nachrichtenflusses ist notwendig, um alle potenziellen Fehlerquellen zu identifizieren und zu beheben.
+
+### End-to-End Nachrichtenfluss-Test
+
+- [ ] **Gateway-Nachrichtenerzeugung**
+  - [ ] Test mit echter Hardware (RoomBanker Panic-Button)
+  - [ ] Test mit Gateway-Simulator für verschiedene Nachrichtenformate
+  - [ ] Validierung der Gateway-ID-Extraktion aus verschiedenen Nachrichtenformaten
+  - [ ] Überprüfung der Nachrichtenstruktur beim Empfang
+
+- [ ] **Nachrichtenverarbeitung und -routing**
+  - [ ] Verifikation der korrekten Endpunkterreichbarkeit (`/api/v1/messages/process`)
+  - [ ] Bestätigung der erfolgreichen Nachrichtenverarbeitung in den Logs
+  - [ ] Überprüfung der Redis-Queues auf korrekte Nachrichtenspeicherung
+  - [ ] Validierung des Message-Forwarding-Prozesses
+  - [ ] Bestätigung der korrekten Template-Auswahl basierend auf dem Nachrichtentyp
+
+- [ ] **Geräteregistrierung und -erkennung**
+  - [ ] Verifizierung der Geräteregistrierung bei der ersten Nachricht
+  - [ ] Test der korrekten Gerätetypbestimmung für verschiedene Nachrichten
+  - [ ] Überprüfung der Gerätezuordnung zum Gateway
+  - [ ] Validierung der Gerätestatusänderungen bei neuen Nachrichten
+  - [ ] Test der MongoDB-Speicherung von Gerätedaten
+
+- [ ] **Frontend-Anzeige**
+  - [ ] Bestätigung der Gateway-Anzeige im Dashboard
+  - [ ] Überprüfung der korrekten Geräteanzeige in der Geräteliste
+  - [ ] Verifikation der Nachrichtenanzeige in der Nachrichtenliste
+  - [ ] Test der automatischen UI-Aktualisierung bei neuen Nachrichten
+
+### Fehlerfall-Szenarien
+
+- [ ] **Verbindungs- und Erreichbarkeitsprobleme**
+  - [ ] Test des Verhaltens bei fehlender Verbindung zum Gateway
+  - [ ] Verifikation der Verarbeitung von Nachrichten im Offline-Modus
+  - [ ] Test des Verhaltens bei MongoDB-Ausfällen
+  - [ ] Überprüfung des Verhaltens bei Redis-Ausfällen
+  - [ ] Validierung der Fehlerbehandlung bei evAlarm-API-Ausfällen
+
+- [ ] **Fehlerhafte Nachrichten**
+  - [ ] Test mit unvollständigen Nachrichtenformaten
+  - [ ] Validierung der Fehlerbehandlung bei fehlenden Pflichtfeldern
+  - [ ] Überprüfung der Reaktion auf ungültige Gateway-IDs
+  - [ ] Test der Behandlung von nicht konformen JSON-Formaten
+  - [ ] Validierung der Sicherheitsmaßnahmen bei verdächtigen Nachrichtenformaten
+
+### Leistungs- und Belastungstests
+
+- [ ] **Durchsatzprüfung**
+  - [ ] Test mit hohem Nachrichtenaufkommen (100+ Nachrichten pro Minute)
+  - [ ] Überprüfung der Verarbeitungsgeschwindigkeit unter Last
+  - [ ] Validierung des Verhaltens bei Queue-Überlastung
+  - [ ] Test der MongoDB-Leistung bei hoher Schreiblast
+
+- [ ] **Langzeittests**
+  - [ ] 24-Stunden-Test mit kontinuierlicher Nachrichtengenerierung
+  - [ ] Überwachung auf Memory-Leaks oder Ressourcenerschöpfung
+  - [ ] Validierung der System-Stabilität über längere Zeiträume
+  - [ ] Überprüfung der Log-Rotation und -Größe
+
+### Implementierung und Dokumentation
+
+- [ ] **Testprotokoll erstellen**
+  - [ ] Detaillierte Testszenarien und -schritte dokumentieren
+  - [ ] Ergebnisse systematisch erfassen und kategorisieren
+  - [ ] Probleme und Lösungen dokumentieren
+  - [ ] Vergleich mit erwarteten Ergebnissen
+
+- [ ] **Testumgebung einrichten**
+  - [ ] Dedizierte Testinstanz mit isolierter Datenbank
+  - [ ] Monitoring-Tools für alle Systemkomponenten
+  - [ ] Automatisierte Testskripte für wiederholbare Tests
+  - [ ] Geräte-Simulatoren für verschiedene Nachrichtentypen
