@@ -196,6 +196,39 @@ def unified_process_endpoint():
                                     logger.info(f"Gerät {registered_device.device_id} für Gateway {gateway_id} registriert/aktualisiert")
                         except Exception as e:
                             logger.error(f"Fehler bei der Registrierung des Geräts: {str(e)}")
+                # Format 2: Nachricht mit subdeviceid (ohne subdevicelist)
+                elif 'subdeviceid' in message:
+                    try:
+                        # Erstelle ein synthetisches device_data im Format, das register_device_from_message erwartet
+                        device_data = {
+                            "id": str(message['subdeviceid']),
+                            "value": {}
+                        }
+                        
+                        # Übertrage relevante Werte in das value-Objekt
+                        for key in ['alarmstatus', 'alarmtype', 'currenttemperature', 'currenthumidity', 
+                                   'batterystatus', 'onlinestatus', 'electricity', 'armstatus']:
+                            if key in message:
+                                device_data['value'][key] = message[key]
+                                
+                        # Code-basierte Alarmtypen
+                        if 'code' in message:
+                            if message['code'] == 2030:  # Panic-Button-Code
+                                device_data['value']['alarmstatus'] = 'alarm'
+                                device_data['value']['alarmtype'] = 'panic'
+                        
+                        logger.info(f"Gerät aus subdeviceid extrahiert: {device_data}")
+                        
+                        if register_device_from_message:
+                            registered_device = register_device_from_message(gateway_id, device_data)
+                            if registered_device:
+                                registered_devices.append(registered_device.to_dict())
+                                logger.info(f"Gerät {registered_device.device_id} für Gateway {gateway_id} registriert/aktualisiert")
+                    except Exception as e:
+                        logger.error(f"Fehler bei der Registrierung des Geräts mit subdeviceid: {str(e)}")
+                        logger.error(f"Exception Typ: {type(e).__name__}")
+                        import traceback
+                        logger.error(f"Stacktrace: {traceback.format_exc()}")
                 
                 logger.info(f"{len(registered_devices)} Geräte für Gateway {gateway_id} registriert/aktualisiert")
                 logger.info(f"=== GATEWAY PROCESSING COMPLETE ===")

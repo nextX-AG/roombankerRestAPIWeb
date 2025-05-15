@@ -980,6 +980,12 @@ Die vollständige Ende-zu-Ende-Validierung des Nachrichtenflusses ist notwendig,
   - [x] Gateway-Skripte auf den funktionierenden Endpunkt `/api/v1/messages/process` umgestellt
   - [x] Feststellung: Trotz interner Bezeichnung als "Legacy" funktioniert nur der Endpunkt `/api/v1/messages/process`
 
+- [x] **Geräteerkennung für unterschiedliche Nachrichtenformate**
+  - [x] Problem identifiziert: Geräteerkennung funktonierte nur für `subdevicelist`-Format
+  - [x] Erweiterung implementiert für Nachrichten mit `subdeviceid`-Feld (Code 2030)
+  - [x] Spezielle Behandlung für Panic-Button-Nachrichten mit Code 2030 hinzugefügt
+  - [x] Verbesserte Fehlerprotokollierung für Geräteregistrierungsprobleme
+
 ### Verbleibende Aufgaben
 
 - [ ] **Code-Dokumentation**
