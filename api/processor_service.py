@@ -14,6 +14,19 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_dir = os.path.dirname(current_dir)
 sys.path.append(project_dir)
 
+# Importiere Gateway und Device Models
+try:
+    from models import Gateway, Device, determine_device_type, register_device_from_message
+    MODELS_AVAILABLE = True
+    logger.info("Models erfolgreich importiert")
+except ImportError as e:
+    logger.warning(f"Models konnten nicht importiert werden: {str(e)}")
+    MODELS_AVAILABLE = False
+    Gateway = None
+    Device = None
+    determine_device_type = None
+    register_device_from_message = None
+
 app = Flask(__name__)
 
 # Template-Auswahl basierend auf Nachrichteninhalt
@@ -75,20 +88,15 @@ except (ImportError, redis.ConnectionError) as e:
 
 # Endpunkte für Message Processor
 
-@app.route('/api/v1/messages/process', methods=['POST'])
-def process_message():
+@app.route('/api/v1/process', methods=['POST'])
+def unified_process_endpoint():
     """
-    Verarbeitet eine eingehende Nachricht und leitet sie weiter.
+    Vereinheitlichter Endpunkt für Gateway-Nachrichten:
+    1. Empfängt Nachrichten von Gateways
+    2. Registriert oder aktualisiert das Gateway
+    3. Erkennt und registriert Geräte
+    4. Transformiert und leitet Nachrichten weiter (wenn Gateway einem Kunden zugeordnet ist)
     """
-    if not REDIS_AVAILABLE:
-        return jsonify({
-            'status': 'error',
-            'error': {
-                'message': 'Redis ist nicht verfügbar. Nachrichten können nicht verarbeitet werden.',
-                'code': 'redis_unavailable'
-            }
-        }), 503
-    
     data = request.json
     
     if not data:
@@ -101,47 +109,194 @@ def process_message():
         }), 400
 
     try:
-        # Gateway-ID aus der Nachricht extrahieren
-        gateway_id = data.get('gateway_id')
+        # 1. Gateway-ID aus der Nachricht extrahieren
+        gateway_id = None
+        
+        # Verschiedene Möglichkeiten für die Gateway-ID
+        if 'gateway_id' in data:
+            gateway_id = data['gateway_id']
+        elif 'gateway' in data and isinstance(data['gateway'], dict) and 'uuid' in data['gateway']:
+            gateway_id = data['gateway']['uuid']
+        elif 'gateway_uuid' in data:
+            gateway_id = data['gateway_uuid']
+        elif 'gatewayId' in data:
+            gateway_id = data['gatewayId']
+        elif 'uuid' in data:
+            gateway_id = data['uuid']
+        elif 'id' in data:
+            gateway_id = data['id']
+            
         if not gateway_id:
             return jsonify({
                 'status': 'error',
                 'error': {
-                    'message': 'Gateway-ID fehlt',
+                    'message': 'Gateway-ID konnte nicht gefunden werden',
                     'code': 'missing_gateway_id'
                 }
             }), 400
-
-        # Originalnachricht extrahieren
-        message = data.get('message', data)
-
-        # Template automatisch auswählen
-        template = select_template(message)
+            
+        logger.info(f"Gateway-ID aus Nachricht extrahiert: {gateway_id}")
         
-        # Erweiterte Nachricht erstellen
-        processed_data = {
-            'gateway_id': gateway_id,
-            'endpoint': 'evalarm',  # Standard-Endpunkt
-            'template': template,
-            'message': message,
-            'timestamp': int(time.time())
-        }
-        
-        # Nachricht in Redis Queue speichern
-        message_id = int(time.time() * 1000)
-        redis_client.set(f"message:{message_id}", json.dumps(processed_data))
-        redis_client.lpush("message_queue", message_id)
-        
-        logger.info(f"Nachricht {message_id} in Queue gespeichert (Template: {template})")
-        
-        return jsonify({
-            'status': 'success',
-            'data': {
-                'message_id': message_id,
-                'template': template,
-                'status': 'queued'
-            }
-        })
+        # 2. Gateway registrieren oder aktualisieren
+        if MODELS_AVAILABLE and Gateway:
+            try:
+                current_time = time.time()
+                formatted_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
+                
+                # Entferne mögliche Whitespaces oder Newlines
+                gateway_id = gateway_id.strip() if isinstance(gateway_id, str) else gateway_id
+                logger.info(f"Suche Gateway mit UUID: '{gateway_id}'")
+                
+                gateway = Gateway.find_by_uuid(gateway_id)
+                if gateway:
+                    logger.info(f"Gateway {gateway_id} gefunden, aktualisiere Status")
+                    # Aktualisiere den Status UND den last_contact-Zeitstempel
+                    gateway.update(status='online', last_contact=formatted_time)
+                    logger.info(f"Gateway {gateway_id} Status auf 'online' aktualisiert, last_contact={formatted_time}")
+                else:
+                    logger.info(f"Gateway {gateway_id} nicht gefunden, erstelle neuen Eintrag")
+                    Gateway.create(uuid=gateway_id, customer_id=None, status='online', last_contact=formatted_time)
+                    logger.info(f"Neues Gateway {gateway_id} ohne Kundenzuordnung erstellt, last_contact={formatted_time}")
+                
+                # Prüfe, ob das Gateway einem Kunden zugeordnet ist
+                customer_id = None
+                if gateway:
+                    customer_id = gateway.customer_id
+                
+                # 3. Geräte erkennen und registrieren
+                registered_devices = []
+                
+                # Originalnachricht extrahieren
+                message = data.get('message', data)
+                
+                # Verschiedene Nachrichtenformate verarbeiten
+                if 'subdevicelist' in message and isinstance(message['subdevicelist'], list):
+                    # Format 1: Nachricht mit subdevicelist
+                    subdevices = message['subdevicelist']
+                    for device_data in subdevices:
+                        try:
+                            if register_device_from_message:
+                                registered_device = register_device_from_message(gateway_id, device_data)
+                                if registered_device:
+                                    registered_devices.append(registered_device.to_dict())
+                                    logger.info(f"Gerät {registered_device.device_id} für Gateway {gateway_id} registriert/aktualisiert")
+                        except Exception as e:
+                            logger.error(f"Fehler bei der Registrierung des Geräts: {str(e)}")
+                
+                logger.info(f"{len(registered_devices)} Geräte für Gateway {gateway_id} registriert/aktualisiert")
+                
+                # 4. Nachrichtenweiterleitung (nur wenn Gateway einem Kunden zugeordnet ist)
+                if not REDIS_AVAILABLE:
+                    logger.warning("Redis nicht verfügbar. Nachricht wird nicht weitergeleitet.")
+                    return jsonify({
+                        'status': 'success',
+                        'data': {
+                            'gateway_id': gateway_id,
+                            'devices': registered_devices,
+                            'message': 'Gateway und Geräte aktualisiert, Nachricht kann nicht weitergeleitet werden (Redis nicht verfügbar)'
+                        }
+                    })
+                
+                # Prüfe, ob das Gateway einem Kunden zugeordnet ist
+                if not customer_id:
+                    logger.warning(f"Gateway {gateway_id} ist keinem Kunden zugeordnet. Nachricht wird nicht weitergeleitet.")
+                    return jsonify({
+                        'status': 'success',
+                        'data': {
+                            'gateway_id': gateway_id,
+                            'devices': registered_devices,
+                            'message': 'Gateway und Geräte aktualisiert, Nachricht wird nicht weitergeleitet (Gateway keinem Kunden zugeordnet)'
+                        }
+                    })
+                
+                # Template automatisch auswählen
+                # Prüfen auf Panic-Alarm
+                is_panic = False
+                if isinstance(message, dict) and 'subdevicelist' in message:
+                    for device in message.get('subdevicelist', []):
+                        if isinstance(device, dict) and 'value' in device:
+                            value = device.get('value', {})
+                            if value.get('alarmstatus') == 'alarm' and value.get('alarmtype') == 'panic':
+                                is_panic = True
+                                break
+                
+                # Template auswählen
+                template_name = 'evalarm_panic' if is_panic else 'evalarm'
+                
+                # Nachricht in die Queue stellen
+                message_id = int(time.time() * 1000)
+                processed_data = {
+                    'gateway_id': gateway_id,
+                    'endpoint': 'auto',  # Automatische Endpunktwahl basierend auf Gateway-ID
+                    'template': template_name,
+                    'message': message,
+                    'timestamp': int(time.time())
+                }
+                
+                redis_client.set(f"message:{message_id}", json.dumps(processed_data))
+                redis_client.lpush("message_queue", message_id)
+                
+                logger.info(f"Nachricht {message_id} in Queue gespeichert (Template: {template_name})")
+                
+                return jsonify({
+                    'status': 'success',
+                    'data': {
+                        'message_id': message_id,
+                        'gateway_id': gateway_id,
+                        'devices': registered_devices,
+                        'template': template_name,
+                        'status': 'queued'
+                    }
+                })
+                
+            except Exception as e:
+                logger.error(f"Fehler beim Verarbeiten des Gateways {gateway_id}: {str(e)}")
+                logger.error(f"Exception Typ: {type(e).__name__}")
+                import traceback
+                logger.error(f"Stacktrace: {traceback.format_exc()}")
+                return jsonify({
+                    'status': 'error',
+                    'error': {
+                        'message': f'Fehler bei der Gateway-Verarbeitung: {str(e)}',
+                        'code': 'gateway_processing_error'
+                    }
+                }), 500
+        else:
+            logger.warning(f"Models nicht verfügbar. Gateway {gateway_id} kann nicht registriert werden.")
+            
+            # Auch ohne verfügbare Models können wir die Nachricht in die Queue stellen
+            if REDIS_AVAILABLE:
+                message = data.get('message', data)
+                message_id = int(time.time() * 1000)
+                processed_data = {
+                    'gateway_id': gateway_id,
+                    'endpoint': 'evalarm',  # Standard-Endpunkt
+                    'template': 'evalarm',  # Standard-Template
+                    'message': message,
+                    'timestamp': int(time.time())
+                }
+                
+                redis_client.set(f"message:{message_id}", json.dumps(processed_data))
+                redis_client.lpush("message_queue", message_id)
+                
+                logger.info(f"Nachricht {message_id} in Queue gespeichert (Standard-Verarbeitung)")
+                
+                return jsonify({
+                    'status': 'success',
+                    'data': {
+                        'message_id': message_id,
+                        'gateway_id': gateway_id,
+                        'status': 'queued'
+                    }
+                })
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'error': {
+                        'message': 'Modelle und Redis nicht verfügbar. Nachricht kann nicht verarbeitet werden.',
+                        'code': 'services_unavailable'
+                    }
+                }), 503
 
     except Exception as e:
         logger.error(f"Fehler bei der Nachrichtenverarbeitung: {str(e)}")
@@ -247,7 +402,8 @@ def list_endpoints():
     Listet alle verfügbaren Endpunkte des Processor-Service auf
     """
     endpoints = [
-        {'path': '/api/v1/messages/process', 'method': 'POST', 'description': 'Verarbeitet eine eingehende Nachricht'},
+        {'path': '/api/v1/process', 'method': 'POST', 'description': 'Vereinheitlichter Endpunkt für Gateway-Nachrichten'},
+        {'path': '/api/v1/messages/process', 'method': 'POST', 'description': 'Verarbeitet eine eingehende Nachricht (Legacy)'},
         {'path': '/api/v1/messages/queue_status', 'method': 'GET', 'description': 'Status der Nachrichtenqueue'},
         {'path': '/api/v1/health', 'method': 'GET', 'description': 'Processor Health-Status'},
         {'path': '/api/v1/system/health', 'method': 'GET', 'description': 'Systemweiter Gesundheitsstatus'},
@@ -404,6 +560,15 @@ def create_test_message():
         },
         'message': 'Test-Nachricht erfolgreich erstellt'
     })
+
+@app.route('/api/v1/messages/process', methods=['POST'])
+def legacy_process_endpoint():
+    """
+    Legacy-Endpunkt, der Anfragen an den neuen vereinheitlichten Endpunkt weiterleitet.
+    VERALTET: Bitte verwenden Sie stattdessen /api/v1/process
+    """
+    logger.warning(f"VERALTET: /api/v1/messages/process wurde aufgerufen. Bitte verwenden Sie stattdessen /api/v1/process.")
+    return unified_process_endpoint()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PROCESSOR_PORT', 8082))

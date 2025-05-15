@@ -797,3 +797,109 @@ Ein kritisches Sicherheitsproblem wurde identifiziert: Nachrichten von nicht zug
   - [ ] Vollständige Überarbeitung des Routing-Systems
   - [ ] Implementierung eines Audit-Trails für alle Nachrichtenweiterleitungen
   - [ ] Automatisierte Sicherheitstests und -validierungen
+
+## 12. Standardisierung der Gateway-Nachrichtenroute (HÖCHSTE PRIORITÄT)
+
+Ein kritisches Problem mit der Gateway-Nachrichtenroute wurde identifiziert: Aktuell wird die URL `http://192.168.178.44:8000/api/v1/messages/process` für die Weiterleitung verwendet, was die Geräteregistrierung verhindert. Um dieses Problem systematisch zu lösen, ist eine Vereinheitlichung des Nachrichteneingangs mit einem neuen eindeutigen Endpunkt notwendig.
+
+### Aktueller Status der Nachrichtenrouten
+
+- [x] **Problem identifiziert**: 
+  - [x] Gateway sendet Nachrichten an `http://192.168.178.44:8000/api/v1/messages/process`
+  - [x] Nachrichten kommen zwar an, aber Geräteregistrierung funktioniert nicht
+  - [x] Unterschiedliche Endpunkte verursachen Inkonsistenzen
+
+- [x] **Betroffene Endpunkte analysiert**:
+  - [x] `/api/test` - Legacy-Eingangspunkt in `api/app.py` (empfängt Nachrichten, registriert Geräte)
+  - [x] `/api/process-message` - In `api/routes.py` (verarbeitet und registriert Geräte)
+  - [x] `/api/process` - Leitet an die Template-Engine weiter
+  - [x] `/api/v1/messages/process` - In `api/processor_service.py` und `api/message_processor.py` (beide haben unterschiedliche Implementierungen)
+
+### Standardisierung der Nachrichtenroute
+
+- [ ] **Neuen Endpunkt `/api/v1/process` implementieren**
+  - [ ] Eindeutiger Endpunkt für einfachere Migration und Nachvollziehbarkeit
+  - [ ] Klare Trennung vom bestehenden `/api/v1/messages/process`
+
+- [ ] **Konsolidierung der Geräteregistrierungslogik**
+  - [ ] Die Funktion `register_device_from_message` aus `api/models.py` als zentrale Funktion nutzen
+  - [ ] Sicherstellen, dass diese Funktion im neuen Endpunkt konsistent verwendet wird
+  - [ ] Optimierung der Gerätetypenerkennung für verschiedene Nachrichtenformate
+
+- [ ] **Implementierung des `/api/v1/process`-Endpunkts**
+  - [ ] Integration aller notwendigen Funktionen in diesem Endpunkt:
+    - [ ] Gateway-Extraktion aus der Nachricht (aktuell in `processor_service.py` implementiert)
+    - [ ] Gateway-Registrierung/Update wie in `/api/test` implementiert
+    - [ ] Geräteerkennung und -registrierung aus `/api/process-message` übernehmen
+    - [ ] Nachrichtentransformation und Weiterleitung wie in `message_processor.py`
+  - [ ] Konsistentes Antwortformat und Fehlerbehandlung implementieren
+  - [ ] Ausführliche Protokollierung aller Verarbeitungsschritte
+
+- [ ] **Sicherheitsüberprüfungen implementieren**
+  - [ ] Kunden-/Gateway-Zuordnungsprüfung wie in `forward_message` der `MessageForwarder`-Klasse
+  - [ ] Validierung der Gateway-ID und Nachrichtenformat
+  - [ ] Speicherung von Nachrichten nicht zugeordneter Gateways für spätere Überprüfung
+
+- [ ] **Alte Routen auf den neuen Endpunkt umleiten**
+  - [ ] Temporäre Weiterleitungen für `/api/test` und `/api/process-message` einrichten
+  - [ ] Warnung-Logs erstellen, wenn alte Endpunkte verwendet werden
+  - [ ] Plan für das schrittweise Entfernen alter Endpunkte entwickeln
+
+### Implementierung im Processor-Service
+
+- [ ] **Neue `process`-Funktion implementieren**
+  - [ ] Gemeinsame Funktion basierend auf den Implementierungen in `processor_service.py` und `message_processor.py` erstellen
+  - [ ] Integration der Geräteregistrierung direkt im Prozess
+  - [ ] Sicherstellen, dass sowohl synchrone als auch asynchrone (Queue-basierte) Verarbeitung unterstützt wird
+
+- [ ] **Optimierung der Nachrichtenweiterleitung**
+  - [ ] Nutzung der bestehenden `MessageForwarder`-Klasse für alle Weiterleitungen
+  - [ ] Verbesserung der Gateway → Kunde → evAlarm-API-Zuordnung
+  - [ ] Sicherstellen, dass kundenspezifische Zugangsdaten korrekt verwendet werden
+
+### Gateway-Konfiguration und Dokumentation
+
+- [ ] **Dokumentation und Konfigurationsanleitung**
+  - [ ] Detaillierte API-Dokumentation für den neuen `/api/v1/process`-Endpunkt erstellen
+  - [ ] Unterstützte Nachrichtenformate und Beispiele dokumentieren
+  - [ ] Anleitung zur Gateway-Konfiguration erstellen
+  - [ ] Testverfahren für korrekte Gateway-Einrichtung definieren
+
+- [ ] **Interne Dokumentation aktualisieren**
+  - [ ] ARCHITECTURE.md mit dem aktualisierten Nachrichtenfluss aktualisieren
+  - [ ] API-DOKUMENTATION.md mit dem neuen vereinheitlichten Endpunkt aktualisieren
+
+### Monitoring und Fehlerbehebung
+
+- [ ] **Verbesserte Diagnosetools**
+  - [ ] Dashboard-Komponente für Gateway-Nachrichtenverarbeitung erweitern
+  - [ ] Monitoring der Nachrichtenverarbeitung durch jede Phase (Empfang, Registrierung, Transformation, Weiterleitung)
+  - [ ] Logging-Framework für detaillierte Verfolgung der Nachrichtenverarbeitung
+
+- [ ] **Test-Suite entwickeln**
+  - [ ] Simulierte Gateway-Nachrichten für verschiedene Szenarien
+  - [ ] Automatisierte Tests für den gesamten Nachrichtenverarbeitungsweg
+  - [ ] Tests für die Geräteregistrierung bei verschiedenen Nachrichtenformaten
+
+### Implementierungsplan
+
+- [ ] **Phase 1: Refactoring und Konsolidierung**
+  - [ ] Entwicklung des neuen `/api/v1/process`-Endpunkts
+  - [ ] Analyse und Zusammenführung der Geräteregistrierungslogik
+  - [ ] Erstellung von Tests für die grundlegenden Funktionen
+
+- [ ] **Phase 2: Erweiterte Implementierung**
+  - [ ] Sicherheitsprüfungen und Gateway-Zuordnungsvalidierung implementieren
+  - [ ] Weiterleitungsmechanismus verbessern
+  - [ ] Temporäre Weiterleitungen für alte Endpunkte einrichten
+
+- [ ] **Phase 3: Tests und Dokumentation**
+  - [ ] End-to-End-Tests mit echten und simulierten Gateways
+  - [ ] Ausführliche Dokumentation erstellen
+  - [ ] API-Dokumentation und ARCHITECTURE.md mit dem neuen Endpunkt aktualisieren
+
+- [ ] **Phase 4: Produktionseinführung und Überwachung**
+  - [ ] Gateway auf den neuen Endpunkt `/api/v1/process` umstellen
+  - [ ] Schrittweise Einführung mit intensiver Überwachung
+  - [ ] Sammlung von Metriken und Leistungsdaten
+  - [ ] Optimierung basierend auf Produktionserfahrungen
