@@ -819,7 +819,7 @@ Ein kritisches Problem mit der Gateway-Nachrichtenroute wurde identifiziert: Akt
 
 - [x] **Konsolidierung auf einen Hauptendpunkt**
   - [x] `/api/v1/messages/process` soll als zentraler Endpunkt für alle Gateway-Nachrichten dienen
-  - [x] Gateway-Skripts auf den Standardendpunkt umgestellt
+  - [x] Gateway-Skripte auf den Standardendpunkt umgestellt
   - [x] API-Dokumentation aktualisiert
 
 - [ ] **Vereinheitlichung der Nachrichtenverarbeitung**
@@ -943,55 +943,56 @@ Die vollständige Ende-zu-Ende-Validierung des Nachrichtenflusses ist notwendig,
   - Speichert als `uuid` in der Datenbank
 
 #### Gateway-Skripte
-- [x] **Inkonsistenz in Gateway-Skripten entdeckt:**
-  - `mqtt-sniffer-relay.sh`: Sendet `gateway_id`
-  - `mqtt-sniffer-relay.dev.sh`: Sendet `gateway_uuid`
-  - `mqtt-sniffer-localhost.sh`: Sendet `gateway_id`
+- [x] **Skripte standardisiert auf `gateway_id`**
+  - `mqtt-sniffer-relay.sh`: Sendet `gateway_id` ✓
+  - `mqtt-sniffer-relay.dev.sh`: Geändert von `gateway_uuid` zu `gateway_id` ✓
+  - `mqtt-sniffer-localhost.sh`: Sendet `gateway_id` ✓
 
 #### Templates
 - [x] **Template-Engine (`utils/template_engine.py`)**
   - Verwendet `gateway_id` in Templates
   - Alle evalarm Templates verwenden `gateway_id`
 
-### Lösungsstrategie
+### Durchgeführte Änderungen
 
-#### Phase 1: Standardisierung der API-Kommunikation
-- [ ] **Entscheidung: `gateway_id` als Standard für API-Kommunikation**
-  - Begründung: Bereits in den meisten Skripten und Templates verwendet
-  - Datenbank behält intern `uuid` bei
-  - API akzeptiert beide Varianten für Abwärtskompatibilität
+- [x] **Standardisierung der API-Kommunikation**
+  - [x] Entscheidung: `gateway_id` als Standard für API-Kommunikation festgelegt
+  - [x] Datenbank behält intern `uuid` bei
+  - [x] API akzeptiert beide Varianten für Abwärtskompatibilität
 
-#### Phase 2: Gateway-Skript Vereinheitlichung
-- [ ] **Development-Skript anpassen**
-  - [ ] In `mqtt-sniffer-relay.dev.sh`: `gateway_uuid` zu `gateway_id` ändern
-  - [ ] Payload-Generierung vereinheitlichen
-  - [ ] Debug-Ausgaben aktualisieren
+- [x] **Gateway-Skript Vereinheitlichung**
+  - [x] Development-Skript `mqtt-sniffer-relay.dev.sh` angepasst: `gateway_uuid` zu `gateway_id` geändert
+  - [x] Payload-Generierung vereinheitlicht
+  - [x] Debug-Ausgaben aktualisiert
 
-#### Phase 3: Code-Dokumentation
-- [ ] **API-Dokumentation aktualisieren**
+- [x] **Verbesserte Fehlerbehandlung**
+  - [x] Erweiterte Dokumentation in der `register_device_from_message`-Funktion
+  - [x] Robustere Typenprüfung für Gateway-ID/UUID implementiert
+  - [x] Umfangreiche Logging-Erweiterungen für bessere Diagnose
+
+- [x] **Verbesserte Debug-Logging**
+  - [x] Gerätediagnose-Logging in `models.py` erweitert
+  - [x] Gateway-Identifikations-Logging in `processor_service.py` erweitert
+  - [x] Klare Debug-Markierungen für relevante Logabschnitte
+
+- [x] **API-Endpunkt-Korrektur**
+  - [x] API-Dokumentation aktualisiert, um klarzustellen, dass `/api/v1/messages/process` der korrekte Hauptendpunkt ist
+  - [x] Gateway-Skripte auf den funktionierenden Endpunkt `/api/v1/messages/process` umgestellt
+  - [x] Feststellung: Trotz interner Bezeichnung als "Legacy" funktioniert nur der Endpunkt `/api/v1/messages/process`
+
+### Verbleibende Aufgaben
+
+- [ ] **Code-Dokumentation**
+  - [ ] API-Dokumentation aktualisieren
   - [ ] Klare Dokumentation der Namenskonvention
   - [ ] Beispiele für korrekte API-Nutzung
-  - [ ] Hinweise zur internen UUID-Verwendung
 
-#### Phase 4: Processor Service Optimierung
-- [ ] **Message Processor überarbeiten**
-  - [ ] Variablennamen konsistent machen
-  - [ ] Kommentare zur Namenskonvention hinzufügen
-  - [ ] Logging verbessern
+- [ ] **Tests**
+  - [ ] Gateway-Kommunikation mit angepasstem Skript testen
+  - [ ] Geräteregistrierung validieren
+  - [ ] Backward-Kompatibilität prüfen
 
-### Implementierungsplan
-
-1. [ ] **Sofortige Änderungen**
-   - [ ] Development-Skript anpassen
-   - [ ] API-Dokumentation aktualisieren
-   - [ ] Logging erweitern für bessere Nachverfolgbarkeit
-
-2. [ ] **Tests**
-   - [ ] Gateway-Kommunikation mit angepasstem Skript testen
-   - [ ] Geräteregistrierung validieren
-   - [ ] Backward-Kompatibilität prüfen
-
-3. [ ] **Dokumentation**
-   - [ ] Interne Entwicklerdokumentation aktualisieren
-   - [ ] Kommentare im Code anpassen
-   - [ ] Beispiele für API-Nutzung erstellen
+- [ ] **Dokumentation**
+  - [ ] Interne Entwicklerdokumentation aktualisieren
+  - [ ] Kommentare im Code anpassen
+  - [ ] Beispiele für API-Nutzung erstellen
