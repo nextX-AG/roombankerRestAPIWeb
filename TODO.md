@@ -914,3 +914,84 @@ Die vollständige Ende-zu-Ende-Validierung des Nachrichtenflusses ist notwendig,
   - [ ] Monitoring-Tools für alle Systemkomponenten
   - [ ] Automatisierte Testskripte für wiederholbare Tests
   - [ ] Geräte-Simulatoren für verschiedene Nachrichtentypen
+
+## 14. Gateway-ID vs Gateway-UUID Analyse (HÖCHSTE PRIORITÄT)
+
+### Aktueller Status der Gateway-Identifikation
+
+#### Datenbankstruktur (MongoDB)
+- [x] **Gateway Collection**
+  - Verwendet durchgängig `uuid` als Primärschlüssel
+  - Schema in der Datenbank ist konsistent
+  - Alle Referenzen (z.B. in Devices) nutzen `gateway_uuid`
+  - ENTSCHEIDUNG: Datenbankstruktur bleibt unverändert
+
+#### Backend (API & Processor)
+- [x] **Datenbank-Modell (`api/models.py`)**
+  - Verwendet durchgängig `uuid` als Feldname
+  - Alle Methoden wie `find_by_uuid()` nutzen konsistent `uuid`
+  - Gateway-Objekt speichert intern als `self.uuid`
+
+- [x] **API-Routen (`api/routes.py`)**
+  - Alle Endpunkte verwenden `uuid` als Parameter
+  - Bei der Nachrichtenverarbeitung wird sowohl `gateway_uuid` als auch `gateway_id` akzeptiert
+  - Neue Geräte werden mit `gateway_uuid` erstellt
+
+- [x] **Message Processor (`api/processor_service.py`)**
+  - Verwendet intern `gateway_id` als Variable
+  - Sucht aber korrekt mit `find_by_uuid`
+  - Speichert als `uuid` in der Datenbank
+
+#### Gateway-Skripte
+- [x] **Inkonsistenz in Gateway-Skripten entdeckt:**
+  - `mqtt-sniffer-relay.sh`: Sendet `gateway_id`
+  - `mqtt-sniffer-relay.dev.sh`: Sendet `gateway_uuid`
+  - `mqtt-sniffer-localhost.sh`: Sendet `gateway_id`
+
+#### Templates
+- [x] **Template-Engine (`utils/template_engine.py`)**
+  - Verwendet `gateway_id` in Templates
+  - Alle evalarm Templates verwenden `gateway_id`
+
+### Lösungsstrategie
+
+#### Phase 1: Standardisierung der API-Kommunikation
+- [ ] **Entscheidung: `gateway_id` als Standard für API-Kommunikation**
+  - Begründung: Bereits in den meisten Skripten und Templates verwendet
+  - Datenbank behält intern `uuid` bei
+  - API akzeptiert beide Varianten für Abwärtskompatibilität
+
+#### Phase 2: Gateway-Skript Vereinheitlichung
+- [ ] **Development-Skript anpassen**
+  - [ ] In `mqtt-sniffer-relay.dev.sh`: `gateway_uuid` zu `gateway_id` ändern
+  - [ ] Payload-Generierung vereinheitlichen
+  - [ ] Debug-Ausgaben aktualisieren
+
+#### Phase 3: Code-Dokumentation
+- [ ] **API-Dokumentation aktualisieren**
+  - [ ] Klare Dokumentation der Namenskonvention
+  - [ ] Beispiele für korrekte API-Nutzung
+  - [ ] Hinweise zur internen UUID-Verwendung
+
+#### Phase 4: Processor Service Optimierung
+- [ ] **Message Processor überarbeiten**
+  - [ ] Variablennamen konsistent machen
+  - [ ] Kommentare zur Namenskonvention hinzufügen
+  - [ ] Logging verbessern
+
+### Implementierungsplan
+
+1. [ ] **Sofortige Änderungen**
+   - [ ] Development-Skript anpassen
+   - [ ] API-Dokumentation aktualisieren
+   - [ ] Logging erweitern für bessere Nachverfolgbarkeit
+
+2. [ ] **Tests**
+   - [ ] Gateway-Kommunikation mit angepasstem Skript testen
+   - [ ] Geräteregistrierung validieren
+   - [ ] Backward-Kompatibilität prüfen
+
+3. [ ] **Dokumentation**
+   - [ ] Interne Entwicklerdokumentation aktualisieren
+   - [ ] Kommentare im Code anpassen
+   - [ ] Beispiele für API-Nutzung erstellen
