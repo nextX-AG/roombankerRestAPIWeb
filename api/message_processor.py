@@ -189,6 +189,37 @@ def process_message():
                             logger.info(f"Gerät für Gateway {gateway_id} registriert: {device.device_id}")
                     except Exception as e:
                         logger.error(f"Fehler bei Geräteregistrierung: {str(e)}")
+            # Format 2: Nachricht mit subdeviceid (ohne subdevicelist)
+            elif Device and isinstance(message, dict) and 'subdeviceid' in message:
+                try:
+                    # Erstelle ein synthetisches device_data im Format, das register_device_from_message erwartet
+                    device_data = {
+                        "id": str(message['subdeviceid']),
+                        "value": {}
+                    }
+                    
+                    # Übertrage relevante Werte in das value-Objekt
+                    for key in ['alarmstatus', 'alarmtype', 'currenttemperature', 'currenthumidity', 
+                               'batterystatus', 'onlinestatus', 'electricity', 'armstatus']:
+                        if key in message:
+                            device_data['value'][key] = message[key]
+                            
+                    # Code-basierte Alarmtypen
+                    if 'code' in message:
+                        if message['code'] == 2030:  # Panic-Button-Code
+                            device_data['value']['alarmstatus'] = 'alarm'
+                            device_data['value']['alarmtype'] = 'panic'
+                    
+                    logger.info(f"Gerät aus subdeviceid extrahiert: {device_data}")
+                    
+                    device = register_device_from_message(gateway_id, device_data)
+                    if device:
+                        logger.info(f"Gerät aus subdeviceid für Gateway {gateway_id} registriert: {device.device_id}")
+                except Exception as e:
+                    logger.error(f"Fehler bei der Registrierung des Geräts mit subdeviceid: {str(e)}")
+                    logger.error(f"Exception Typ: {type(e).__name__}")
+                    import traceback
+                    logger.error(f"Stacktrace: {traceback.format_exc()}")
             
             # SICHERHEITSWARNUNG zurückgeben statt eines Fehlers
             return success_response({
@@ -205,13 +236,21 @@ def process_message():
     # Template automatisch auswählen basierend auf dem Nachrichtentyp
     # Prüfen auf Panic-Alarm
     is_panic = False
-    if isinstance(message, dict) and 'subdevicelist' in message:
-        for device in message.get('subdevicelist', []):
-            if isinstance(device, dict) and 'value' in device:
-                value = device.get('value', {})
-                if value.get('alarmstatus') == 'alarm' and value.get('alarmtype') == 'panic':
-                    is_panic = True
-                    break
+    if isinstance(message, dict):
+        # Format 1: Prüfung für subdevicelist
+        if 'subdevicelist' in message:
+            for device in message.get('subdevicelist', []):
+                if isinstance(device, dict) and 'value' in device:
+                    value = device.get('value', {})
+                    if value.get('alarmstatus') == 'alarm' and value.get('alarmtype') == 'panic':
+                        is_panic = True
+                        break
+        # Format 2: Direkte Code-Prüfung
+        elif 'code' in message and message['code'] == 2030:
+            is_panic = True
+        # Format 3: Prüfung auf subdeviceid mit alarmtype
+        elif 'subdeviceid' in message and 'alarmtype' in message and message['alarmtype'] == 'panic':
+            is_panic = True
     
     # Template auswählen
     if is_panic:
