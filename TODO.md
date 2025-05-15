@@ -800,123 +800,41 @@ Ein kritisches Sicherheitsproblem wurde identifiziert: Nachrichten von nicht zug
 
 ## 12. Standardisierung der Gateway-Nachrichtenroute (HÖCHSTE PRIORITÄT)
 
-Ein kritisches Problem mit der Gateway-Nachrichtenroute wurde identifiziert: Aktuell wird die URL `http://192.168.178.44:8000/api/v1/messages/process` für die Weiterleitung verwendet, was die Geräteregistrierung verhindert. Um dieses Problem systematisch zu lösen, ist eine Vereinheitlichung des Nachrichteneingangs mit einem neuen eindeutigen Endpunkt notwendig.
+Ein kritisches Problem mit der Gateway-Nachrichtenroute wurde identifiziert: Aktuell werden verschiedene Endpunkte für die Verarbeitung von Gateway-Nachrichten verwendet. Um dieses Problem systematisch zu lösen, ist eine Vereinheitlichung des Nachrichteneingangs notwendig.
 
 ### Aktueller Status der Nachrichtenrouten
 
 - [x] **Problem identifiziert**: 
-  - [x] Gateway sendet Nachrichten an `http://192.168.178.44:8000/api/v1/messages/process`
-  - [x] Nachrichten kommen zwar an, aber Geräteregistrierung funktioniert nicht
+  - [x] Gateway sendet Nachrichten an unterschiedliche Endpunkte
+  - [x] Nachrichten kommen zwar an, aber Geräteregistrierung funktioniert nicht vollständig
   - [x] Unterschiedliche Endpunkte verursachen Inkonsistenzen
 
 - [x] **Betroffene Endpunkte analysiert**:
-  - [x] `/api/test` - Legacy-Eingangspunkt in `api/app.py` (empfängt Nachrichten, registriert Geräte)
-  - [x] `/api/process-message` - In `api/routes.py` (verarbeitet und registriert Geräte)
-  - [x] `/api/process` - Leitet an die Template-Engine weiter
-  - [x] `/api/v1/messages/process` - In `api/processor_service.py` und `api/message_processor.py` (beide haben unterschiedliche Implementierungen)
+  - [x] `/api/v1/messages/process` (Hauptendpunkt für Nachrichtenverarbeitung)
+  - [x] `/api/test` (Legacy-Endpunkt für einfache Tests)
+  - [x] `/api/process-message` (Legacy-Endpunkt)
+  - [x] `/api/process` (Legacy-Endpunkt)
 
 ### Standardisierung der Nachrichtenroute
 
-- [x] **Neuen Endpunkt `/api/v1/process` implementieren**
-  - [x] Eindeutiger Endpunkt für einfachere Migration und Nachvollziehbarkeit
-  - [x] Klare Trennung vom bestehenden `/api/v1/messages/process`
+- [x] **Konsolidierung auf einen Hauptendpunkt**
+  - [x] `/api/v1/messages/process` soll als zentraler Endpunkt für alle Gateway-Nachrichten dienen
+  - [x] Gateway-Skripts auf den Standardendpunkt umgestellt
+  - [x] API-Dokumentation aktualisiert
 
-- [x] **Konsolidierung der Geräteregistrierungslogik**
-  - [x] Die Funktion `register_device_from_message` aus `api/models.py` als zentrale Funktion nutzen
-  - [x] Sicherstellen, dass diese Funktion im neuen Endpunkt konsistent verwendet wird
-  - [x] Optimierung der Gerätetypenerkennung für verschiedene Nachrichtenformate
+- [ ] **Vereinheitlichung der Nachrichtenverarbeitung**
+  - [ ] Sicherstellen, dass Geräteregistrierung korrekt funktioniert
+  - [ ] Überprüfen der Nachrichtenformate und Parameter
+  - [ ] Implementierung von besserer Fehlerbehandlung
 
-- [x] **Implementierung des `/api/v1/process`-Endpunkts**
-  - [x] Integration aller notwendigen Funktionen in diesem Endpunkt:
-    - [x] Gateway-Extraktion aus der Nachricht (aktuell in `processor_service.py` implementiert)
-    - [x] Gateway-Registrierung/Update wie in `/api/test` implementiert
-    - [x] Geräteerkennung und -registrierung aus `/api/process-message` übernehmen
-    - [x] Nachrichtentransformation und Weiterleitung wie in `message_processor.py`
-  - [x] Konsistentes Antwortformat und Fehlerbehandlung implementieren
-  - [x] Ausführliche Protokollierung aller Verarbeitungsschritte
+### Nächste Schritte
 
-- [x] **Sicherheitsüberprüfungen implementieren**
-  - [x] Kunden-/Gateway-Zuordnungsprüfung wie in `forward_message` der `MessageForwarder`-Klasse
-  - [x] Validierung der Gateway-ID und Nachrichtenformat
-  - [x] Speicherung von Nachrichten nicht zugeordneter Gateways für spätere Überprüfung
+1. [ ] **Geräteregistrierungsprobleme beheben**
+   - [ ] Analysieren, warum die Geräteregistrierung nicht korrekt funktioniert
+   - [ ] Code-Review der `register_device_from_message`-Funktion
+   - [ ] Testen mit verschiedenen Gateway- und Gerätetypen
 
-- [x] **Alte Routen auf den neuen Endpunkt umleiten**
-  - [x] Temporäre Weiterleitungen für alte Endpunkte einrichten
-  - [x] Warnung-Logs erstellen, wenn alte Endpunkte verwendet werden
-  - [x] Plan für das schrittweise Entfernen alter Endpunkte entwickeln
-
-### Implementierung im Processor-Service
-
-- [x] **Neue `process`-Funktion implementieren**
-  - [x] Gemeinsame Funktion basierend auf den Implementierungen in `processor_service.py` und `message_processor.py` erstellen
-  - [x] Integration der Geräteregistrierung direkt im Prozess
-  - [x] Sicherstellen, dass sowohl synchrone als auch asynchrone (Queue-basierte) Verarbeitung unterstützt wird
-
-- [x] **Optimierung der Nachrichtenweiterleitung**
-  - [x] Nutzung der bestehenden `MessageForwarder`-Klasse für alle Weiterleitungen
-  - [x] Verbesserung der Gateway → Kunde → evAlarm-API-Zuordnung
-  - [x] Sicherstellen, dass kundenspezifische Zugangsdaten korrekt verwendet werden
-
-### Gateway-Konfiguration und Dokumentation
-
-- [x] **Dokumentation und Konfigurationsanleitung**
-  - [x] Detaillierte API-Dokumentation für den neuen `/api/v1/process`-Endpunkt erstellen
-  - [x] Unterstützte Nachrichtenformate und Beispiele dokumentieren
-  - [x] Anleitung zur Gateway-Konfiguration erstellen
-  - [x] Testverfahren für korrekte Gateway-Einrichtung definieren
-
-- [x] **Interne Dokumentation aktualisieren**
-  - [x] API-DOKUMENTATION.md mit dem neuen vereinheitlichten Endpunkt aktualisieren
-
-### Monitoring und Fehlerbehebung
-
-- [ ] **Verbesserte Diagnosetools**
-  - [ ] Dashboard-Komponente für Gateway-Nachrichtenverarbeitung erweitern
-  - [ ] Monitoring der Nachrichtenverarbeitung durch jede Phase (Empfang, Registrierung, Transformation, Weiterleitung)
-  - [ ] Logging-Framework für detaillierte Verfolgung der Nachrichtenverarbeitung
-
-- [ ] **Test-Suite entwickeln**
-  - [ ] Simulierte Gateway-Nachrichten für verschiedene Szenarien
-  - [ ] Automatisierte Tests für den gesamten Nachrichtenverarbeitungsweg
-  - [ ] Tests für die Geräteregistrierung bei verschiedenen Nachrichtenformaten
-
-### Implementierungsplan
-
-- [x] **Phase 1: Refactoring und Konsolidierung**
-  - [x] Entwicklung des neuen `/api/v1/process`-Endpunkts
-  - [x] Analyse und Zusammenführung der Geräteregistrierungslogik
-  - [x] Erstellung von Tests für die grundlegenden Funktionen
-
-- [x] **Phase 2: Erweiterte Implementierung**
-  - [x] Sicherheitsprüfungen und Gateway-Zuordnungsvalidierung implementieren
-  - [x] Weiterleitungsmechanismus verbessern
-  - [x] Temporäre Weiterleitungen für alte Endpunkte einrichten
-
-- [ ] **Phase 3: Tests und Dokumentation**
-  - [x] API-Dokumentation aktualisieren
-  - [ ] End-to-End-Tests mit echten und simulierten Gateways
-  - [ ] Ausführliche Dokumentation erstellen
-  - [ ] ARCHITECTURE.md mit dem neuen Endpunkt aktualisieren
-
-- [ ] **Phase 4: Produktionseinführung und Überwachung**
-  - [x] Gateway-Skript auf den neuen Endpunkt `/api/v1/process` umstellen
-  - [ ] Schrittweise Einführung mit intensiver Überwachung
-  - [ ] Sammlung von Metriken und Leistungsdaten
-  - [ ] Optimierung basierend auf Produktionserfahrungen
-
-### Nächste Schritte (WICHTIG)
-
-- [ ] **Container neu bauen und starten**
-  - [ ] Docker-Images neu bauen: `docker-compose build processor gateway`
-  - [ ] Betroffene Container neu starten: `docker-compose restart processor gateway`
-  - [ ] Funktionalität testen mit realen Gateway-Nachrichten
-
-- [ ] **Überwachung der Produktion**
-  - [ ] Logs überwachen für erfolgreiche Geräteerkennung
-  - [ ] Sicherstellen, dass Gateways korrekt erkannt und registriert werden
-  - [ ] Fehler protokollieren und analysieren
-
-- [ ] **Übergang abschließen**
-  - [ ] Verbleibende Legacy-Endpunkte identifizieren
-  - [ ] Zeitplan für die vollständige Entfernung der Legacy-Endpunkte erstellen
-  - [ ] Dokumentation für zukünftige Entwicklung aktualisieren
+2. [ ] **Verbesserte Logging-Mechanismen**
+   - [ ] Implementierung von detailliertem Logging für die Nachrichtenverarbeitung
+   - [ ] Tracking des Gateway-Status für Diagnose
+   - [ ] Benachrichtigungssystem für fehlgeschlagene Registrierungen
