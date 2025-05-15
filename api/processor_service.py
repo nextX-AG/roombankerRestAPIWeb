@@ -112,21 +112,33 @@ def unified_process_endpoint():
         # 1. Gateway-ID aus der Nachricht extrahieren
         gateway_id = None
         
+        logger.info(f"=== GATEWAY IDENTIFICATION DEBUG ===")
+        logger.info(f"Empfangene Daten: {json.dumps(data, indent=2)}")
+        
         # Verschiedene Möglichkeiten für die Gateway-ID
         if 'gateway_id' in data:
             gateway_id = data['gateway_id']
+            logger.info(f"Gateway-ID aus 'gateway_id' gefunden: '{gateway_id}'")
         elif 'gateway' in data and isinstance(data['gateway'], dict) and 'uuid' in data['gateway']:
             gateway_id = data['gateway']['uuid']
+            logger.info(f"Gateway-ID aus 'gateway.uuid' gefunden: '{gateway_id}'")
         elif 'gateway_uuid' in data:
             gateway_id = data['gateway_uuid']
+            logger.info(f"Gateway-ID aus 'gateway_uuid' gefunden: '{gateway_id}'")
         elif 'gatewayId' in data:
             gateway_id = data['gatewayId']
+            logger.info(f"Gateway-ID aus 'gatewayId' gefunden: '{gateway_id}'")
         elif 'uuid' in data:
             gateway_id = data['uuid']
+            logger.info(f"Gateway-ID aus 'uuid' gefunden: '{gateway_id}'")
         elif 'id' in data:
             gateway_id = data['id']
+            logger.info(f"Gateway-ID aus 'id' gefunden: '{gateway_id}'")
+        else:
+            logger.warning(f"Keine bekannten Gateway-ID-Felder in den Daten gefunden.")
             
         if not gateway_id:
+            logger.error(f"Konnte Gateway-ID nicht extrahieren. Vollständige Daten: {json.dumps(data, indent=2)}")
             return jsonify({
                 'status': 'error',
                 'error': {
@@ -135,7 +147,7 @@ def unified_process_endpoint():
                 }
             }), 400
             
-        logger.info(f"Gateway-ID aus Nachricht extrahiert: {gateway_id}")
+        logger.info(f"Gateway-ID aus Nachricht extrahiert: '{gateway_id}' (Typ: {type(gateway_id).__name__})")
         
         # 2. Gateway registrieren oder aktualisieren
         if MODELS_AVAILABLE and Gateway:
@@ -149,19 +161,20 @@ def unified_process_endpoint():
                 
                 gateway = Gateway.find_by_uuid(gateway_id)
                 if gateway:
-                    logger.info(f"Gateway {gateway_id} gefunden, aktualisiere Status")
+                    logger.info(f"Gateway '{gateway_id}' gefunden, aktualisiere Status")
                     # Aktualisiere den Status UND den last_contact-Zeitstempel
                     gateway.update(status='online', last_contact=formatted_time)
-                    logger.info(f"Gateway {gateway_id} Status auf 'online' aktualisiert, last_contact={formatted_time}")
+                    logger.info(f"Gateway '{gateway_id}' Status auf 'online' aktualisiert, last_contact={formatted_time}")
                 else:
-                    logger.info(f"Gateway {gateway_id} nicht gefunden, erstelle neuen Eintrag")
+                    logger.info(f"Gateway '{gateway_id}' nicht gefunden, erstelle neuen Eintrag")
                     Gateway.create(uuid=gateway_id, customer_id=None, status='online', last_contact=formatted_time)
-                    logger.info(f"Neues Gateway {gateway_id} ohne Kundenzuordnung erstellt, last_contact={formatted_time}")
+                    logger.info(f"Neues Gateway '{gateway_id}' ohne Kundenzuordnung erstellt, last_contact={formatted_time}")
                 
                 # Prüfe, ob das Gateway einem Kunden zugeordnet ist
                 customer_id = None
                 if gateway:
                     customer_id = gateway.customer_id
+                    logger.info(f"Gateway '{gateway_id}' ist" + (" einem Kunden zugeordnet" if customer_id else " KEINEM Kunden zugeordnet"))
                 
                 # 3. Geräte erkennen und registrieren
                 registered_devices = []
@@ -173,6 +186,7 @@ def unified_process_endpoint():
                 if 'subdevicelist' in message and isinstance(message['subdevicelist'], list):
                     # Format 1: Nachricht mit subdevicelist
                     subdevices = message['subdevicelist']
+                    logger.info(f"Gefundene subdevicelist mit {len(subdevices)} Geräten")
                     for device_data in subdevices:
                         try:
                             if register_device_from_message:
@@ -184,6 +198,7 @@ def unified_process_endpoint():
                             logger.error(f"Fehler bei der Registrierung des Geräts: {str(e)}")
                 
                 logger.info(f"{len(registered_devices)} Geräte für Gateway {gateway_id} registriert/aktualisiert")
+                logger.info(f"=== GATEWAY PROCESSING COMPLETE ===")
                 
                 # 4. Nachrichtenweiterleitung (nur wenn Gateway einem Kunden zugeordnet ist)
                 if not REDIS_AVAILABLE:

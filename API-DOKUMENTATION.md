@@ -43,14 +43,15 @@ Eingehende Nachrichten von IoT-Gateways können über verschiedene Wege ins Syst
 
 | Endpunkt | Methode | Beschreibung | Implementierung |
 |----------|---------|--------------|-----------------|
-| `/api/v1/messages/process` | POST | Hauptendpunkt für Gateway-Nachrichten, der Gateway-Registrierung, Geräteerkennung und Weiterleitung kombiniert | `processor_service.py` |
+| `/api/v1/process` | POST | **Hauptendpunkt** für Gateway-Nachrichten, der Gateway-Registrierung, Geräteerkennung und Weiterleitung kombiniert | `processor_service.py` |
+| `/api/v1/messages/process` | POST | Legacy-Eingangspunkt, der zum Hauptendpunkt (`/api/v1/process`) weiterleitet | `processor_service.py` |
 | `/api/test` | POST | Legacy-Eingangspunkt für Gateway-Nachrichten | `app.py` |
 | `/api/process-message` | POST | Legacy-Endpunkt: Verarbeitet Nachrichten und registriert Geräte | `routes.py` |
 | `/api/process` | POST | Legacy-Endpunkt: Verarbeitet und leitet Nachrichten an Template-Engine weiter | `message_processor.py` |
 
-**Hinweis**: Der Endpunkt `/api/v1/messages/process` sollte für alle Gateway-Kommunikation verwendet werden. Die Legacy-Endpunkte werden aus Gründen der Abwärtskompatibilität beibehalten, bieten jedoch nicht alle Funktionen und werden in Zukunft nicht mehr unterstützt.
+**Hinweis**: Der Endpunkt `/api/v1/process` sollte für alle Gateway-Kommunikation verwendet werden. Die Legacy-Endpunkte werden aus Gründen der Abwärtskompatibilität beibehalten, bieten jedoch nicht alle Funktionen und werden in Zukunft nicht mehr unterstützt.
 
-### Nachrichtenformat für `/api/v1/messages/process`
+### Nachrichtenformat für `/api/v1/process`
 
 Der neue vereinheitlichte Endpunkt unterstützt verschiedene Nachrichtenformate:
 

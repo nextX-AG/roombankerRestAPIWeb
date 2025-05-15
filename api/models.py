@@ -309,7 +309,35 @@ def determine_device_type(values):
     return "unknown"
 
 def register_device_from_message(gateway_uuid, device_data):
-    """Registriert oder aktualisiert ein Gerät basierend auf empfangenen Nachrichten"""
+    """
+    Registriert oder aktualisiert ein Gerät basierend auf empfangenen Nachrichten
+    
+    Parameters:
+    -----------
+    gateway_uuid : str
+        Die UUID des Gateways, zu dem das Gerät gehört.
+        WICHTIG: Diese Funktion erwartet die Gateway-UUID/ID genau so, wie sie in der Datenbank 
+        im 'uuid'-Feld des Gateway-Dokuments gespeichert ist.
+    device_data : dict
+        Die Gerätedaten aus der Nachricht
+    """
+    logger.info(f"=== DEVICE REGISTRATION DEBUG ===")
+    logger.info(f"register_device_from_message aufgerufen mit gateway_uuid: '{gateway_uuid}' (Typ: {type(gateway_uuid).__name__})")
+    logger.info(f"device_data: {device_data}")
+    
+    # Sicherstellen, dass gateway_uuid als String vorliegt
+    if gateway_uuid is None:
+        logger.error("Gateway UUID ist None - Geräteregistrierung abgebrochen")
+        return None
+    
+    if not isinstance(gateway_uuid, str):
+        try:
+            gateway_uuid = str(gateway_uuid)
+            logger.warning(f"Gateway UUID war kein String - konvertiert zu: '{gateway_uuid}'")
+        except Exception as e:
+            logger.error(f"Konnte Gateway UUID nicht in String konvertieren: {e}")
+            return None
+    
     if not device_data:
         logger.warning(f"Keine Gerätedaten für Gateway {gateway_uuid}")
         return None
@@ -345,6 +373,7 @@ def register_device_from_message(gateway_uuid, device_data):
     logger.info(f"Verarbeite Gerät mit ID {device_id} für Gateway {gateway_uuid}")
     logger.info(f"Geräte-Werte: {values}")
     
+    # Suche nach bestehendem Gerät in der Datenbank
     device = Device.find_by_gateway_and_id(gateway_uuid, device_id)
     
     if device:
@@ -364,6 +393,7 @@ def register_device_from_message(gateway_uuid, device_data):
                 status=values
             )
             logger.info(f"Gerät {device_id} erfolgreich angelegt")
+            logger.info(f"=== DEVICE REGISTRATION COMPLETE ===")
             return new_device
         except Exception as e:
             logger.error(f"Fehler beim Anlegen des Geräts {device_id}: {str(e)}")
