@@ -69,11 +69,22 @@ worker = init_worker(
     auto_start=True
 )
 
-# Initialisiere MongoDB-Verbindung
-initialize_db(
-    connection_string=os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/'),
-    db_name=os.environ.get('MONGODB_DB', 'evalarm_gateway')
-)
+# Initialisiere Datenbank-Verbindung für Message Processor
+def init_db():
+    """Initialisiere die Datenbankverbindung"""
+    if initialize_db:
+        try:
+            # Wichtig: Hier wurde der Standardname der Datenbank geändert
+            initialize_db(
+                connection_string=os.environ.get('MONGODB_URI', 'mongodb://mongo:27017/'),
+                db_name=os.environ.get('MONGODB_DB', 'evalarm_iot')
+            )
+            logger.info("Datenbankverbindung für Message Processor initialisiert")
+        except Exception as e:
+            logger.error(f"Fehler beim Initialisieren der Datenbankverbindung: {str(e)}")
+
+# Initialisiere die Datenbank
+init_db()
 
 @app.route(get_route('messages', 'process'), methods=['POST'])
 @api_error_handler
