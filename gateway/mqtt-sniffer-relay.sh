@@ -28,7 +28,7 @@ tcpdump -A -l -i "$INTERFACE" port 1883 2>/dev/null | while read line; do
         echo "$json" > "$TMP_FILE"
 
         # JSON mit Gateway-ID erweitern (korrigierte Version)
-        payload=$(echo '{ "gateway_uuid": "'"$UUID"'", "message": '"$json"' }')
+        payload=$(echo '{ "gateway_id": "'"$UUID"'", "message": '"$json"' }')
 
         # Debug-Ausgabe vor dem Senden
         echo "[*] Sende Payload:"
