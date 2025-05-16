@@ -1183,15 +1183,17 @@ Ein architektonisches Problem wurde identifiziert: Das System verwendet parallel
 
 ### Migration zu zentraler Datenbankarchitektur
 
-- [ ] **Phase 1: Kundenspezifische Gateway-Konfiguration migrieren**
-  - [ ] Code-Analyse aller Zugriffe auf `customer_config.json`
-  - [ ] Initialen Migration-Skript für die Übertragung aller Daten von JSON in die Datenbank erstellen
-  - [ ] Code-Stellen identifizieren, die auf die JSON-Datei zugreifen
+- [x] **Phase 1: Kundenspezifische Gateway-Konfiguration migrieren**
+  - [x] Code-Analyse aller Zugriffe auf `customer_config.json`
+  - [x] Initialen Migration-Skript für die Übertragung aller Daten von JSON in die Datenbank erstellen (`utils/migrate_customer_config.py`)
+  - [x] Code-Stellen identifizieren, die auf die JSON-Datei zugreifen
+  - [x] Gateway-Zuordnungen erfolgreich migriert und getestet
 
-- [ ] **Phase 2: Code-Refactoring**
-  - [ ] Alle JSON-Datei-Zugriffe entfernen und durch Datenbankzugriffe ersetzen
-  - [ ] Insbesondere den Nachrichtenverarbeitungsprozess in `message_processor.py` aktualisieren
-  - [ ] Überprüfung der Kundenzuordnung aus der Datenbank statt aus der JSON-Datei
+- [x] **Phase 2: Code-Refactoring für Gateway-Zuordnungen**
+  - [x] Message-Processor aktualisiert, um Kundenzuordnungen aus der Datenbank zu lesen
+  - [x] Prüfung der korrekten Gateway-Registrierung und -Zuordnung
+  - [x] Tests zur Sicherstellung der korrekten Funktionalität
+  - [x] Überprüfung der Kundenzuordnung aus der Datenbank statt aus der JSON-Datei
 
 - [ ] **Phase 3: Administrative Funktionen hinzufügen**
   - [ ] UI-Komponente zum Import/Export der Konfiguration für Backup-Zwecke
