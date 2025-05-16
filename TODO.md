@@ -965,7 +965,8 @@ Die UI soll modernisiert werden, orientiert an modernen Server-Management-Konsol
   - [x] `<Offcanvas placement="end">` als Basis-Komponente
   - [x] URL-basierte Detail-Drawer mit Deep-Linking
   - [x] Gateway-Detail als erstes Implementierungsbeispiel
-  - [ ] Bestehende Modals schrittweise migrieren
+  - [x] Kunden-Detail als zweites Implementierungsbeispiel
+  - [ ] Restliche Modals schrittweise migrieren
 
 ### Phase 2: Erweiterte Komponenten (Sprint 3-4)
 

@@ -868,3 +868,84 @@ Das System wurde von einer Mischung aus JSON-Konfigurationsdateien und Datenbank
 - Vollständige Integration aller Template-Definitionen in die Datenbank
 - UI-Komponenten für Datenbank-Backup und -Wiederherstellung
 - Erweiterte Validierung und Konsistenzprüfung für Datenbankoperationen 
+
+## 13. UI-Modernisierung und Standardisierung (NEU)
+
+Das Frontend wurde umfassend modernisiert, um eine konsistentere und benutzerfreundlichere Oberfläche zu schaffen. Die UI-Modernisierung orientiert sich an modernen Server-Management-Konsolen und behält gleichzeitig den bestehenden React/Bootstrap-Stack bei.
+
+### 13.1 Side-Navigation
+
+Die Navigation wurde grundlegend überarbeitet:
+
+- Implementierung einer permanenten seitlichen Navigation (240px breit)
+- Responsive Anpassung: Offcanvas-Menü bei kleineren Bildschirmen (<lg Breakpoint)
+- Hierarchische Menüstruktur nach modernem Design-Pattern
+- Reduzierung der Top-Bar auf Logo, User-Menü und Command Palette
+- Integration von Breadcrumbs für verbesserte Navigation
+
+### 13.2 Drawer-Pattern statt Modals
+
+Ein zentrales Element der UI-Modernisierung ist die Umstellung von modalen Dialogen auf Drawer-Komponenten:
+
+```javascript
+// Basiskomponente für alle Detail-Drawer
+const Drawer = ({ show, onClose, title, children }) => (
+  <Offcanvas 
+    show={show} 
+    onHide={onClose} 
+    placement="end" 
+    backdrop={false} 
+    scroll
+    className="drawer"
+  >
+    <Offcanvas.Header className="border-bottom">
+      <Offcanvas.Title>{title}</Offcanvas.Title>
+      <button className="btn btn-sm btn-close" onClick={onClose} />
+    </Offcanvas.Header>
+    <Offcanvas.Body className="p-0">
+      <div className="drawer-content p-4">{children}</div>
+    </Offcanvas.Body>
+  </Offcanvas>
+);
+```
+
+Vorteile des Drawer-Patterns:
+- Größere Fläche für komplexe Inhalte
+- Deep-Linking durch URL-Parameter möglich
+- Verbesserte Navigation durch Beibehaltung des Kontexts
+- Konsistentes UX-Pattern in der gesamten Anwendung
+
+Implementierte Drawer-Komponenten:
+- `GatewayDetailDrawer` für Gateway-Details
+- `CustomerDetailDrawer` für Kundendetails
+
+Diese Komponenten wurden in die bestehende Routing-Struktur als verschachtelte Routen integriert:
+
+```javascript
+<Route path="/customers" element={<Customers />}>
+  <Route path=":id" element={<CustomerDetailDrawer />} />
+</Route>
+<Route path="/gateways" element={<Gateways />}>
+  <Route path=":uuid" element={<GatewayDetailDrawer />} />
+</Route>
+```
+
+### 13.3 Einheitliches Styling
+
+Zur Verbesserung der visuellen Konsistenz wurden folgende Maßnahmen umgesetzt:
+
+- Reduzierung auf drei zentrale CSS-Dateien (global.css, App.css, index.css)
+- Konsequente Verwendung von Bootstrap-Klassen für Layouts
+- Einheitliches Seitenlayout nach PageTemplate.jsx-Muster
+- Standardisierte Icon-Verwendung mit lucide-react (18px Standardgröße)
+- Konsistente Verwendung von Status-Badges und Spacing
+
+### 13.4 Geplante Erweiterungen
+
+Folgende UI-Verbesserungen sind für kommende Iterationen geplant:
+
+- TanStack Table für verbesserte Tabellenfunktionalität
+- Command Palette für schnelle Keyboard-Navigation
+- Toast-Notification-System für einheitliches Feedback
+- Dark-Mode für verbesserte Benutzerfreundlichkeit
+- CSS-Variablen-System für einheitliche Designsprache 

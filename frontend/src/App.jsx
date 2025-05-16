@@ -7,6 +7,7 @@ import './App.css';
 // Components
 import AppShell from './components/AppShell';
 import GatewayDetailDrawer from './components/GatewayDetailDrawer';
+import CustomerDetailDrawer from './components/CustomerDetailDrawer';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -58,7 +59,10 @@ function AppContent() {
         {/* Alle geschützten Routen innerhalb des AppShell */}
         <Route element={<ProtectedAppShell />}>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/customers" element={<Customers />} />
+          <Route path="/customers" element={<Customers />}>
+            {/* Verschachtelte Route für Kunden-Detail als Drawer */}
+            <Route path=":id" element={<CustomerDetailDrawer />} />
+          </Route>
           <Route path="/gateways" element={<Gateways />}>
             {/* Verschachtelte Route für Gateway-Detail als Drawer */}
             <Route path=":uuid" element={<GatewayDetailDrawer />} />

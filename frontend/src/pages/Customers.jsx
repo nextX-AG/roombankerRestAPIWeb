@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Table, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faEdit, faTrash, faSync, faUsers, faEye, faBuilding } from '@fortawesome/free-solid-svg-icons';
-import { customerApi } from '../api';
+import { faPlus, faTrash, faSync, faBuilding } from '@fortawesome/free-solid-svg-icons';
+import { Building, Plus, Trash, RefreshCw, Edit } from 'lucide-react';
+import { Outlet, useNavigate } from 'react-router-dom';
+import { customerApi, gatewayApi } from '../api';
 
 /**
  * Kundenverwaltungs-Komponente
@@ -13,11 +15,11 @@ import { customerApi } from '../api';
  * 3. Inhalt in Karten mit konsistenten Headers
  */
 const Customers = () => {
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentCustomer, setCurrentCustomer] = useState(null);
   const [formData, setFormData] = useState({
@@ -44,14 +46,33 @@ const Customers = () => {
     try {
       const response = await customerApi.list();
       if (response.status === 'success') {
-        setCustomers(response.data || []);
+        // Bereichere Kundendaten mit Gateway-Anzahl
+        const customersWithGatewayCounts = await Promise.all(
+          response.data.map(async customer => {
+            try {
+              // Gateways für diesen Kunden laden
+              const gatewayResponse = await gatewayApi.list({ customer_id: customer.id });
+              if (gatewayResponse.status === 'success') {
+                return {
+                  ...customer,
+                  gateway_count: gatewayResponse.data?.length || 0
+                };
+              }
+              return customer;
+            } catch (err) {
+              console.error(`Fehler beim Laden der Gateways für Kunde ${customer.id}:`, err);
+              return customer;
+            }
+          })
+        );
+        setCustomers(customersWithGatewayCounts);
         setError(null);
       } else {
-        throw new Error(response.error?.message || 'Fehler beim Laden der Kundendaten');
+        throw new Error(response.error?.message || 'Kunden konnten nicht geladen werden');
       }
     } catch (err) {
       console.error('Fehler beim Laden der Kunden:', err);
-      setError('Kundendaten konnten nicht geladen werden. Bitte versuchen Sie es später erneut.');
+      setError('Kunden konnten nicht geladen werden: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -60,10 +81,10 @@ const Customers = () => {
   // Handler für Formularänderungen
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    });
+    setFormData(prevData => ({
+      ...prevData,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
   };
 
   // Kunde hinzufügen
@@ -73,83 +94,49 @@ const Customers = () => {
       const response = await customerApi.create(formData);
       if (response.status === 'success') {
         setShowAddModal(false);
-        resetForm();
+        setFormData({
+          name: '',
+          contact_person: '',
+          email: '',
+          phone: '',
+          evalarm_username: '',
+          evalarm_password: '',
+          evalarm_namespace: '',
+          status: 'active',
+          immediate_forwarding: true
+        });
         fetchCustomers();
       } else {
-        throw new Error(response.error?.message || 'Kunde konnte nicht hinzugefügt werden.');
+        throw new Error(response.error?.message || 'Kunde konnte nicht erstellt werden');
       }
     } catch (err) {
-      console.error('Fehler beim Hinzufügen des Kunden:', err);
-      setError('Kunde konnte nicht hinzugefügt werden.');
-    }
-  };
-
-  // Kunde bearbeiten
-  const handleEditCustomer = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await customerApi.update(currentCustomer.id, formData);
-      if (response.status === 'success') {
-        setShowEditModal(false);
-        resetForm();
-        fetchCustomers();
-      } else {
-        throw new Error(response.error?.message || 'Kunde konnte nicht bearbeitet werden.');
-      }
-    } catch (err) {
-      console.error('Fehler beim Bearbeiten des Kunden:', err);
-      setError('Kunde konnte nicht bearbeitet werden.');
+      console.error('Fehler beim Erstellen des Kunden:', err);
+      setError('Kunde konnte nicht erstellt werden: ' + err.message);
     }
   };
 
   // Kunde löschen
   const handleDeleteCustomer = async () => {
+    if (!currentCustomer) return;
+    
     try {
       const response = await customerApi.delete(currentCustomer.id);
       if (response.status === 'success') {
         setShowDeleteConfirm(false);
         fetchCustomers();
       } else {
-        throw new Error(response.error?.message || 'Kunde konnte nicht gelöscht werden.');
+        throw new Error(response.error?.message || 'Kunde konnte nicht gelöscht werden');
       }
     } catch (err) {
       console.error('Fehler beim Löschen des Kunden:', err);
-      setError('Kunde konnte nicht gelöscht werden.');
+      setError('Kunde konnte nicht gelöscht werden: ' + err.message);
+      setShowDeleteConfirm(false);
     }
   };
 
-  // Formular zurücksetzen
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      contact_person: '',
-      email: '',
-      phone: '',
-      evalarm_username: '',
-      evalarm_password: '',
-      evalarm_namespace: '',
-      evalarm_url: '',
-      status: 'active',
-      immediate_forwarding: true
-    });
-  };
-
-  // Modal zum Bearbeiten öffnen
-  const openEditModal = (customer) => {
-    setCurrentCustomer(customer);
-    setFormData({
-      name: customer.name || '',
-      contact_person: customer.contact_person || '',
-      email: customer.email || '',
-      phone: customer.phone || '',
-      evalarm_username: customer.evalarm_username || '',
-      evalarm_password: customer.evalarm_password || '',
-      evalarm_namespace: customer.evalarm_namespace || '',
-      evalarm_url: customer.evalarm_url || '',
-      status: customer.status || 'active',
-      immediate_forwarding: customer.immediate_forwarding !== false
-    });
-    setShowEditModal(true);
+  // Öffne Kundendetails im Drawer statt im Modal
+  const openCustomerDetail = (customer) => {
+    navigate(`/customers/${customer.id}`);
   };
 
   // Löschbestätigung öffnen
@@ -171,12 +158,12 @@ const Customers = () => {
     <>
       {/* 1. Seiten-Titel */}
       <h1 className="page-title mb-4">
-        <FontAwesomeIcon icon={faBuilding} className="icon" />
+        <Building size={24} className="me-2" />
         Kundenverwaltung
       </h1>
 
       {/* 2. Fehler/Erfolgs-Anzeigen */}
-      {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
+      {error && <Alert variant="danger" className="mb-4" onClose={() => setError(null)} dismissible>{error}</Alert>}
 
       {/* 3. Aktions-Buttons */}
       <Row className="mb-4">
@@ -186,13 +173,13 @@ const Customers = () => {
             className="me-2" 
             onClick={() => setShowAddModal(true)}
           >
-            <FontAwesomeIcon icon={faPlus} className="me-1" /> Kunde hinzufügen
+            <Plus size={16} className="me-1" /> Kunde hinzufügen
           </Button>
           <Button 
             variant="secondary" 
             onClick={fetchCustomers}
           >
-            <FontAwesomeIcon icon={faSync} className="me-1" /> Aktualisieren
+            <RefreshCw size={16} className="me-1" /> Aktualisieren
           </Button>
         </Col>
       </Row>
@@ -210,10 +197,9 @@ const Customers = () => {
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Kontaktperson</th>
-                  <th>E-Mail</th>
-                  <th>evAlarm-Namespace</th>
+                  <th>Kontakt</th>
                   <th>Status</th>
+                  <th>Gateways</th>
                   <th>Weiterleitung</th>
                   <th>Aktionen</th>
                 </tr>
@@ -223,9 +209,8 @@ const Customers = () => {
                   <tr key={customer.id}>
                     <td>{customer.name}</td>
                     <td>{customer.contact_person || '-'}</td>
-                    <td>{customer.email || '-'}</td>
-                    <td>{customer.evalarm_namespace || '-'}</td>
                     <td>{renderStatusBadge(customer.status)}</td>
+                    <td>{customer.gateway_count || 0}</td>
                     <td>
                       {customer.immediate_forwarding !== false ? 'Sofort' : 'Intervall'}
                     </td>
@@ -234,16 +219,16 @@ const Customers = () => {
                         variant="outline-primary" 
                         size="sm" 
                         className="me-1"
-                        onClick={() => openEditModal(customer)}
+                        onClick={() => openCustomerDetail(customer)}
                       >
-                        <FontAwesomeIcon icon={faEdit} />
+                        <Edit size={16} />
                       </Button>
                       <Button 
                         variant="outline-danger" 
                         size="sm"
                         onClick={() => openDeleteConfirm(customer)}
                       >
-                        <FontAwesomeIcon icon={faTrash} />
+                        <Trash size={16} />
                       </Button>
                     </td>
                   </tr>
@@ -406,162 +391,6 @@ const Customers = () => {
         </Form>
       </Modal>
 
-      {/* Modal: Kunde bearbeiten */}
-      <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Kunde bearbeiten</Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleEditCustomer}>
-          <Modal.Body>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Name *</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Kontaktperson</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="contact_person"
-                    value={formData.contact_person}
-                    onChange={handleChange}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>E-Mail</Form.Label>
-                  <Form.Control
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Telefon</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-            
-            <hr />
-            <h6>evAlarm API-Konfiguration</h6>
-            
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Benutzername</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="evalarm_username"
-                    value={formData.evalarm_username}
-                    onChange={handleChange}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Passwort</Form.Label>
-                  <Form.Control
-                    type="password"
-                    name="evalarm_password"
-                    value={formData.evalarm_password}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                  />
-                  <Form.Text className="text-muted">
-                    Leer lassen, um das aktuelle Passwort beizubehalten
-                  </Form.Text>
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Namespace</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="evalarm_namespace"
-                    value={formData.evalarm_namespace}
-                    onChange={handleChange}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Status</Form.Label>
-                  <Form.Select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                  >
-                    <option value="active">Aktiv</option>
-                    <option value="inactive">Inaktiv</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Form.Label>evAlarm API URL</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="evalarm_url"
-                    value={formData.evalarm_url}
-                    onChange={handleChange}
-                    placeholder="https://tas.dev.evalarm.de/api/v1/espa"
-                  />
-                  <Form.Text className="text-muted">
-                    Standard: https://tas.dev.evalarm.de/api/v1/espa
-                  </Form.Text>
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Form.Check
-                    type="checkbox"
-                    name="immediate_forwarding"
-                    label="Sofortige Weiterleitung (andernfalls intervallbasiert)"
-                    checked={formData.immediate_forwarding}
-                    onChange={handleChange}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-              Abbrechen
-            </Button>
-            <Button variant="primary" type="submit">
-              Speichern
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
-
       {/* Modal: Kunde löschen */}
       <Modal show={showDeleteConfirm} onHide={() => setShowDeleteConfirm(false)}>
         <Modal.Header closeButton>
@@ -581,6 +410,9 @@ const Customers = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+      
+      {/* Outlet für verschachtelte Routen (CustomerDetailDrawer) */}
+      <Outlet />
     </>
   );
 };
