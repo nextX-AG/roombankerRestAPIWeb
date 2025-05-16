@@ -207,29 +207,42 @@ const Messages = () => {
   // Formatiere Zeitstempel für bessere Lesbarkeit
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'Unbekannt';
+    
     try {
-      // DIREKTE LÖSUNG: Wenn der Timestamp ein Unix-Zeitstempel ist (etwa < 10^10),
-      // dann multipliziere mit 1000, um Millisekunden zu erhalten
-      if (typeof timestamp === 'number' || !isNaN(Number(timestamp))) {
+      console.log('Formatiere Zeitstempel:', timestamp, typeof timestamp);
+      
+      // 1. Wenn es ein Unix-Zeitstempel als Zahl ist (Sekunden seit 1970)
+      if (typeof timestamp === 'number' || (!isNaN(Number(timestamp)) && String(timestamp).length <= 10)) {
         const numericTimestamp = Number(timestamp);
-        if (numericTimestamp < 10000000000) {
-          const date = new Date(numericTimestamp * 1000);
-          return date.toLocaleString('de-DE');
-        } else {
-          const date = new Date(numericTimestamp);
+        const date = new Date(numericTimestamp * 1000);
+        return date.toLocaleString('de-DE');
+      }
+      
+      // 2. Wenn es eine große Zahl ist (Millisekunden seit 1970)
+      if (!isNaN(Number(timestamp)) && String(timestamp).length > 10) {
+        const date = new Date(Number(timestamp));
+        return date.toLocaleString('de-DE');
+      }
+      
+      // 3. ISO-String (mit T und optional Z/Zeitzone)
+      if (typeof timestamp === 'string' && timestamp.includes('T')) {
+        // Ersetze Z durch +00:00 für bessere Kompatibilität
+        const normalizedTimestamp = timestamp.replace('Z', '+00:00');
+        const date = new Date(normalizedTimestamp);
+        if (!isNaN(date.getTime())) { // Prüfe, ob das Datum gültig ist
           return date.toLocaleString('de-DE');
         }
       }
       
-      // ISO-String Format verarbeiten
-      if (typeof timestamp === 'string' && timestamp.includes('T')) {
-        const date = new Date(timestamp);
+      // 4. Standard-Fallback für andere Formate
+      const date = new Date(timestamp);
+      if (!isNaN(date.getTime())) { // Prüfe, ob das Datum gültig ist
         return date.toLocaleString('de-DE');
       }
       
-      // Fallback
-      const date = new Date(timestamp);
-      return date.toLocaleString('de-DE');
+      // 5. Wenn alles fehlschlägt, gib den Rohwert zurück
+      console.warn('Ungültiges Datumsformat:', timestamp);
+      return String(timestamp);
     } catch (e) {
       console.error("Fehler beim Formatieren des Zeitstempels:", e, timestamp);
       return String(timestamp);
