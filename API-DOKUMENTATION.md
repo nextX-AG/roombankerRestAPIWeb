@@ -480,7 +480,7 @@ async function loadDashboardData() {
    ```
 
 2. **Regelmäßige Aktualisierung:** Implementieren Sie Polling für zeitkritische Daten:
-
+c
    ```javascript
    useEffect(() => {
      // Initial laden
