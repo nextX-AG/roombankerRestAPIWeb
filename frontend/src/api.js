@@ -330,6 +330,21 @@ export const messageApi = {
   },
   
   debugMessage: async (message) => {
+    // Stelle sicher, dass wir ein gültiges Message-Objekt haben
+    if (!message) {
+      console.error('Keine gültige Nachricht zum Debuggen');
+      return {
+        status: 'error',
+        error: { message: 'Keine gültige Nachricht zum Debuggen' }
+      };
+    }
+
+    // Stelle sicher, dass wir eine gateway_id haben, da der Server diese erwartet
+    if (!message.gateway_id) {
+      console.warn('Nachricht hat keine gateway_id, füge eine Test-ID hinzu');
+      message.gateway_id = 'debug-gateway';
+    }
+
     return fetchApi(getApiUrl('messages', 'debug'), {
       method: 'POST',
       body: JSON.stringify(message)

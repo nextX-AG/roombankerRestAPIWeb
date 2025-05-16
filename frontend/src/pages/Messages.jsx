@@ -345,27 +345,37 @@ const Messages = () => {
 
   // Funktion zum Debuggen der ausgewählten Nachricht
   const handleDebugMessage = async () => {
-    if (!selectedMessage) return;
-    
     try {
       setDebugLoading(true);
       
-      // Extrahiere die tatsächliche Nachricht aus der ausgewählten Nachricht
-      const messageToDebug = selectedMessage.content || selectedMessage;
+      // Prüfe, ob eine gültige Nachricht ausgewählt ist
+      if (!selectedMessage) {
+        throw new Error('Keine Nachricht ausgewählt');
+      }
       
-      // Sende die Nachricht an den Debug-Endpunkt
-      const response = await messageApi.debugMessage(messageToDebug);
+      // Der Netzwerk-Call muss eine msg.gateway_id und eine msg.message haben
+      const debugPayload = {
+        gateway_id: getGatewayId(selectedMessage),
+        message: selectedMessage.content || selectedMessage
+      };
+      
+      console.log('Debug-Anfrage-Payload:', debugPayload);
+      
+      // API-Aufruf zum Debugging der Nachricht
+      const response = await messageApi.debugMessage(debugPayload);
+      
+      console.log('Debug-Antwort:', response);
       
       if (response.status === 'success') {
+        // Setze die Debug-Ergebnisse
         setDebugResult(response.data);
         setShowDebugModal(true);
-        setError(null);
       } else {
-        throw new Error(response.error?.message || 'Ein Fehler ist beim Debuggen der Nachricht aufgetreten');
+        throw new Error(response.error?.message || 'Ein Fehler ist aufgetreten');
       }
     } catch (error) {
-      console.error('Fehler beim Debuggen der Nachricht:', error);
-      setError('Fehler beim Debuggen der Nachricht: ' + error.message);
+      console.error('Fehler beim Debugging der Nachricht:', error);
+      alert(`Fehler beim Debugging: ${error.message}`);
     } finally {
       setDebugLoading(false);
     }
@@ -1110,6 +1120,11 @@ const Messages = () => {
                           </>
                         )}
                       </>
+                    ) : debugResult.filter_result && !debugResult.filter_result.should_forward ? (
+                      <Alert variant="warning">
+                        <FontAwesomeIcon icon={faTimes} className="me-2" />
+                        Keine Weiterleitung durchgeführt, da die Nachricht von den Filterregeln blockiert wurde.
+                      </Alert>
                     ) : (
                       <Alert variant="info">Keine Weiterleitungsdaten verfügbar</Alert>
                     )}
