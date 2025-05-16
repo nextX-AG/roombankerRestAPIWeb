@@ -27,6 +27,17 @@ except ImportError as e:
     determine_device_type = None
     register_device_from_message = None
 
+# Importiere den MessageNormalizer
+try:
+    from utils.message_normalizer import MessageNormalizer
+    NORMALIZER_AVAILABLE = True
+    logger.info("MessageNormalizer erfolgreich importiert")
+    normalizer = MessageNormalizer()
+except ImportError as e:
+    logger.warning(f"MessageNormalizer konnte nicht importiert werden: {str(e)}")
+    NORMALIZER_AVAILABLE = False
+    normalizer = None
+
 app = Flask(__name__)
 
 # Template-Auswahl basierend auf Nachrichteninhalt
@@ -93,9 +104,11 @@ def process_message_endpoint():
     """
     Hauptendpunkt für die Verarbeitung von Gateway-Nachrichten:
     1. Empfängt Nachrichten von Gateways
-    2. Registriert oder aktualisiert das Gateway
-    3. Erkennt und registriert Geräte
-    4. Transformiert und leitet Nachrichten weiter (wenn Gateway einem Kunden zugeordnet ist)
+    2. Normalisiert die Nachricht in ein einheitliches Format
+    3. Registriert oder aktualisiert das Gateway
+    4. Erkennt und registriert Geräte
+    5. Filtert Nachrichten basierend auf konfigurierbaren Regeln
+    6. Transformiert und leitet Nachrichten weiter (wenn Gateway einem Kunden zugeordnet ist)
     """
     data = request.json
     
@@ -109,7 +122,157 @@ def process_message_endpoint():
         }), 400
 
     try:
+        # Quell-IP für Diagnosezwecke speichern
+        source_ip = request.remote_addr
+        
+        # NEUE IMPLEMENTIERUNG: Nachricht normalisieren
+        if NORMALIZER_AVAILABLE and normalizer:
+            try:
+                logger.info("Verwende neue Nachrichtenverarbeitungsarchitektur")
+                normalized_data = normalizer.normalize(data, source_ip)
+                
+                # Gateway-ID aus der normalisierten Nachricht extrahieren
+                gateway_id = normalized_data['gateway']['id']
+                logger.info(f"Normalisierte Nachricht für Gateway {gateway_id}")
+                
+                # Gateway registrieren oder aktualisieren
+                if MODELS_AVAILABLE and Gateway:
+                    try:
+                        current_time = time.time()
+                        formatted_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
+                        
+                        gateway = Gateway.find_by_uuid(gateway_id)
+                        if gateway:
+                            logger.info(f"Gateway '{gateway_id}' gefunden, aktualisiere Status")
+                            gateway.update(status='online', last_contact=formatted_time)
+                        else:
+                            logger.info(f"Gateway '{gateway_id}' nicht gefunden, erstelle neuen Eintrag")
+                            Gateway.create(uuid=gateway_id, customer_id=None, status='online', last_contact=formatted_time)
+                        
+                        # Prüfe, ob das Gateway einem Kunden zugeordnet ist
+                        customer_id = None
+                        if gateway:
+                            customer_id = gateway.customer_id
+                            logger.info(f"Gateway '{gateway_id}' ist" + (" einem Kunden zugeordnet" if customer_id else " KEINEM Kunden zugeordnet"))
+                        
+                        # Geräte aus der normalisierten Nachricht registrieren
+                        registered_devices = []
+                        for device in normalized_data.get('devices', []):
+                            try:
+                                device_id = device['id']
+                                device_type = device['type']
+                                
+                                # Synthetisches device_data für die bestehende register_device_from_message-Funktion erstellen
+                                device_data = {
+                                    "id": device_id,
+                                    "value": device['values']
+                                }
+                                
+                                if register_device_from_message:
+                                    registered_device = register_device_from_message(gateway_id, device_data)
+                                    if registered_device:
+                                        registered_devices.append(registered_device.to_dict())
+                                        logger.info(f"Gerät {registered_device.device_id} für Gateway {gateway_id} registriert/aktualisiert")
+                            except Exception as e:
+                                logger.error(f"Fehler bei der Registrierung des Geräts: {str(e)}")
+                        
+                        logger.info(f"{len(registered_devices)} Geräte für Gateway {gateway_id} registriert/aktualisiert")
+                        
+                        # Filterschritt (wird in zukünftigen Versionen implementiert)
+                        should_forward = True
+                        forward_reason = "Standardverhalten: Weiterleitung aktiviert"
+                        
+                        # Prüfen, ob Gateway einem Kunden zugeordnet ist (grundlegende Filterregel)
+                        if not customer_id:
+                            should_forward = False
+                            forward_reason = "Gateway ist keinem Kunden zugeordnet"
+                        
+                        # Bei fehlender Redis-Verbindung ebenfalls nicht weiterleiten
+                        if not REDIS_AVAILABLE:
+                            should_forward = False
+                            forward_reason = "Redis nicht verfügbar"
+                        
+                        # Wenn keine Weiterleitung erfolgen soll, Nachricht nur speichern
+                        if not should_forward:
+                            logger.warning(f"Nachricht wird nicht weitergeleitet: {forward_reason}")
+                            return jsonify({
+                                'status': 'success',
+                                'data': {
+                                    'gateway_id': gateway_id,
+                                    'devices': registered_devices,
+                                    'normalized': True,
+                                    'message': f'Gateway und Geräte aktualisiert, Nachricht wird nicht weitergeleitet ({forward_reason})'
+                                }
+                            })
+                        
+                        # Transformations- und Weiterleitungsschritt
+                        # (Für die Übergangsphase verwenden wir noch das bestehende Template-System)
+                        
+                        # Template automatisch auswählen
+                        is_panic = False
+                        for device in normalized_data.get('devices', []):
+                            values = device.get('values', {})
+                            if values.get('alarmstatus') == 'alarm' and values.get('alarmtype') == 'panic':
+                                is_panic = True
+                                break
+                        
+                        template_name = 'evalarm_panic' if is_panic else 'evalarm'
+                        
+                        # Nachricht in die Queue stellen (bestehende Logik)
+                        message_id = int(time.time() * 1000)
+                        processed_data = {
+                            'gateway_id': gateway_id,
+                            'endpoint': 'auto',  # Automatische Endpunktwahl basierend auf Gateway-ID
+                            'template': template_name,
+                            'message': normalized_data,  # Hier verwenden wir die normalisierte Nachricht!
+                            'timestamp': int(time.time())
+                        }
+                        
+                        redis_client.set(f"message:{message_id}", json.dumps(processed_data))
+                        redis_client.lpush("message_queue", message_id)
+                        
+                        logger.info(f"Normalisierte Nachricht {message_id} in Queue gespeichert (Template: {template_name})")
+                        
+                        return jsonify({
+                            'status': 'success',
+                            'data': {
+                                'message_id': message_id,
+                                'gateway_id': gateway_id,
+                                'devices': registered_devices,
+                                'template': template_name,
+                                'normalized': True,
+                                'status': 'queued'
+                            }
+                        })
+                        
+                    except Exception as e:
+                        logger.error(f"Fehler beim Verarbeiten des Gateways {gateway_id}: {str(e)}")
+                        logger.error(f"Exception Typ: {type(e).__name__}")
+                        import traceback
+                        logger.error(f"Stacktrace: {traceback.format_exc()}")
+                        return jsonify({
+                            'status': 'error',
+                            'error': {
+                                'message': f'Fehler bei der Gateway-Verarbeitung: {str(e)}',
+                                'code': 'gateway_processing_error'
+                            }
+                        }), 500
+                else:
+                    logger.warning(f"Models nicht verfügbar. Verwende Fallback-Verarbeitung.")
+                    # Fallback auf alte Implementierung, wenn Models nicht verfügbar sind
+            except Exception as e:
+                logger.error(f"Fehler bei der Nachrichtennormalisierung: {str(e)}")
+                logger.error(f"Exception Typ: {type(e).__name__}")
+                import traceback
+                logger.error(f"Stacktrace: {traceback.format_exc()}")
+                logger.warning("Verwende Fallback-Verarbeitung nach Fehler in der Normalisierung.")
+                # Fallback auf alte Implementierung bei Fehlern in der Normalisierung
+        
+        # ALTE IMPLEMENTIERUNG (FALLBACK)
+        # Wird verwendet, wenn der Normalisierer nicht verfügbar ist oder ein Fehler aufgetreten ist
+        
         # 1. Gateway-ID aus der Nachricht extrahieren
+        logger.info("Verwende alte Nachrichtenverarbeitungsarchitektur als Fallback")
         gateway_id = None
         
         logger.info(f"=== GATEWAY IDENTIFICATION DEBUG ===")
