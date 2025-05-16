@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faHome, faBell, faGear, faList, faCode, faUser, 
-  faSignOutAlt, faBuilding, faNetworkWired, faDesktop, faBug
+  faSignOutAlt, faBuilding, faNetworkWired, faDesktop, faBug, faEnvelope
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
 
@@ -40,11 +40,25 @@ const AppNavbar = () => {
                 <Nav.Link as={Link} to="/devices" active={location.pathname === '/devices'}>
                   <FontAwesomeIcon icon={faDesktop} className="me-1" /> Geräte
                 </Nav.Link>
-                <Nav.Link as={Link} to="/messages" active={location.pathname === '/messages'}>
-                  <FontAwesomeIcon icon={faList} className="me-1" /> Nachrichten
+                <Nav.Link 
+                  as={Link} 
+                  to="/messages" 
+                  className="d-flex align-items-center gap-2"
+                  active={location.pathname === '/messages'}
+                  title="Nachrichten"
+                >
+                  <FontAwesomeIcon icon={faEnvelope} />
+                  <span className="nav-link-text">Nachrichten</span>
                 </Nav.Link>
-                <Nav.Link as={Link} to="/message-debugger" active={location.pathname === '/message-debugger'}>
-                  <FontAwesomeIcon icon={faBug} className="me-1" /> Nachrichten-Debugger
+                <Nav.Link 
+                  as={Link} 
+                  to="/debugger" 
+                  className="d-flex align-items-center gap-2"
+                  active={location.pathname === '/debugger'}
+                  title="Debugger"
+                >
+                  <FontAwesomeIcon icon={faBug} />
+                  <span className="nav-link-text">Debugger</span>
                 </Nav.Link>
                 <Nav.Link as={Link} to="/templates" active={location.pathname === '/templates'}>
                   <FontAwesomeIcon icon={faCode} className="me-1" /> Templates
