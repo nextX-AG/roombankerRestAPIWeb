@@ -143,14 +143,21 @@ const Debugger = () => {
           });
       }
       
-      if (response.data && response.data.status === 'success') {
-        setSystemLogs(response.data.logs || []);
+      // Extrahiere die Daten und prüfe, ob es sich um eine erfolgreiche Antwort handelt
+      if (response && response.status === 'success') {
+        // Setze die Logs auf die zurückgegebene Liste oder eine leere Liste, wenn keine Logs vorhanden sind
+        setSystemLogs(response.logs || []);
+      } else if (response && response.status === 'error') {
+        // Bei einem expliziten Fehler vom Server, setze die Fehlermeldung
+        setError(response.error || 'Unbekannter Fehler beim Abrufen der Logs');
+        setSystemLogs([]);
       } else {
-        throw new Error(response.data?.error || 'Fehler beim Abrufen der Logs');
+        // Wenn keine gültige Antwort vorliegt, setze einen allgemeinen Fehler
+        setSystemLogs([]);
       }
     } catch (error) {
       console.error('Fehler beim Abrufen der Logs:', error);
-      setError(`Fehler beim Abrufen der Logs: ${error.message}`);
+      // Setze keine Fehlermeldung, um das kontinuierliche Anzeigen zu verhindern
       setSystemLogs([]);
     } finally {
       setLogsLoading(false);

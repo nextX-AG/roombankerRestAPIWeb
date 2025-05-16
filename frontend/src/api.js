@@ -382,7 +382,10 @@ export const logsApi = {
       }
     });
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-    return fetchApi(`${API_URL}/v1/logs/system${queryString}`);
+    const response = await fetchApi(`${API_URL}/v1/logs/system${queryString}`);
+    
+    // Direktes Zurückgeben der Antwort im richtigen Format ohne data-Kapselung
+    return response;
   },
 
   /**
@@ -398,7 +401,10 @@ export const logsApi = {
       }
     });
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-    return fetchApi(`${API_URL}/v1/logs/processor${queryString}`);
+    const response = await fetchApi(`${API_URL}/v1/logs/processor${queryString}`);
+    
+    // Direktes Zurückgeben der Antwort im richtigen Format ohne data-Kapselung
+    return response;
   },
 
   /**
@@ -414,7 +420,10 @@ export const logsApi = {
       }
     });
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-    return fetchApi(`${API_URL}/v1/logs/gateway${queryString}`);
+    const response = await fetchApi(`${API_URL}/v1/logs/gateway${queryString}`);
+    
+    // Direktes Zurückgeben der Antwort im richtigen Format ohne data-Kapselung
+    return response;
   },
 
   /**
@@ -430,7 +439,10 @@ export const logsApi = {
       }
     });
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-    return fetchApi(`${API_URL}/v1/logs/api${queryString}`);
+    const response = await fetchApi(`${API_URL}/v1/logs/api${queryString}`);
+    
+    // Direktes Zurückgeben der Antwort im richtigen Format ohne data-Kapselung
+    return response;
   },
 
   /**
@@ -446,7 +458,10 @@ export const logsApi = {
       }
     });
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-    return fetchApi(`${API_URL}/v1/logs/auth${queryString}`);
+    const response = await fetchApi(`${API_URL}/v1/logs/auth${queryString}`);
+    
+    // Direktes Zurückgeben der Antwort im richtigen Format ohne data-Kapselung
+    return response;
   },
 
   /**
@@ -462,7 +477,10 @@ export const logsApi = {
       }
     });
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-    return fetchApi(`${API_URL}/v1/logs/database${queryString}`);
+    const response = await fetchApi(`${API_URL}/v1/logs/database${queryString}`);
+    
+    // Direktes Zurückgeben der Antwort im richtigen Format ohne data-Kapselung
+    return response;
   },
 };
 

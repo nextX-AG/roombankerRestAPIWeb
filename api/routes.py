@@ -23,6 +23,7 @@ from utils.api_handlers import (
     unauthorized_response, forbidden_response,
     api_error_handler
 )
+from utils.auth_middleware import require_auth, require_role
 
 # Import des Log-Services
 import log_service
