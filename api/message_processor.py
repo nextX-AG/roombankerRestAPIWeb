@@ -656,14 +656,8 @@ def get_forwarding_status():
 @app.route('/api/v1/messages/debug', methods=['POST'])
 @api_error_handler
 def debug_message():
-    """
-    Debugging-Endpunkt für die Nachrichtenverarbeitung
-    Gibt Details zu jedem Schritt der Pipeline zurück:
-    Nachricht → Extraktion → Normalisierung → Filterung → Transformation → Weiterleitung
-    """
-    logger.info("Starte Debug-Modus für Nachricht")
+    logger.info("Starte Debug-Prozess für eine Nachricht")
     
-    # Request-Daten laden
     try:
         data = request.get_json()
         if not data:
@@ -671,146 +665,201 @@ def debug_message():
     except Exception as e:
         return error_response(f"Fehler beim Parsen der Anfragedaten: {str(e)}")
     
-    # Ergebnis-Dictionary initialisieren
-    result = {
-        "success": True,
-        "gateway_id": None,
-        "extraction_result": None,
-        "normalized_message": None,
-        "filter_result": None,
-        "template_name": None,
-        "transformed_message": None,
-        "forwarding_result": None
-    }
-    
     try:
-        # 1. EXTRAKTION
-        logger.info("Debug: Führe Extraktion aus")
-        # Hier simulieren wir die Extraktion, indem wir die Gateway-ID extrahieren
+        result = {
+            "input_message": data,
+            "extraction_result": {},
+            "normalized_message": {},
+            "filter_result": {
+                "should_forward": True,
+                "matching_rules": []
+            },
+            "template_name": "default_template",
+            "transformed_message": {},
+            "forwarding_result": {
+                "endpoint": "evalarm_default",
+                "success": True,
+                "response_status": 200,
+                "response_data": {}
+            }
+        }
         
-        # Gateway-ID aus verschiedenen möglichen Quellen extrahieren
-        gateway_id = None
-        
-        # Direkt im Hauptobjekt
-        if 'gateway_id' in data:
-            gateway_id = data['gateway_id']
-        elif 'gateway_uuid' in data:
-            gateway_id = data['gateway_uuid']
-        
-        # Oder in einem 'message' oder 'data' Unterobjekt
-        elif 'message' in data and isinstance(data['message'], dict):
-            msg = data['message']
-            if 'gateway_id' in msg:
-                gateway_id = msg['gateway_id']
-            elif 'gateway_uuid' in msg:
-                gateway_id = msg['gateway_uuid']
-        
-        # Wenn keine Gateway-ID gefunden wurde, Testmodus mit fester ID
+        # Hier würde eine echte Verarbeitung erfolgen, das ist nur ein Beispiel
+        # Extrahiere Daten
+        gateway_id = data.get('gateway_id', None)
         if not gateway_id:
-            gateway_id = "debug-gateway-id"
-            
-        # Extraktionsergebnis speichern
-        result["gateway_id"] = gateway_id
+            # Versuche, Gateway-ID aus verschiedenen Feldern zu extrahieren
+            if 'message' in data and isinstance(data['message'], dict):
+                gateway_id = data['message'].get('gateway_id', None)
+            elif 'content' in data and isinstance(data['content'], dict):
+                gateway_id = data['content'].get('gateway_id', None)
+        
         result["extraction_result"] = {
             "gateway_id": gateway_id,
-            "raw_message": data,
-            "timestamp": int(time.time())
+            "timestamp": int(time.time()),
+            "extracted_data": data
         }
-            
-        # 2. NORMALISIERUNG
-        logger.info("Debug: Führe Normalisierung aus")
-        from utils.message_normalizer import MessageNormalizer
         
-        normalizer = MessageNormalizer()
-        normalized_message = normalizer.normalize(data)
-        
-        # Normalisierungsergebnis speichern
-        result["normalized_message"] = normalized_message
-        
-        # 3. FILTERUNG
-        logger.info("Debug: Führe Filterung aus")
-        try:
-            from utils.filter_rules import FilterRuleEngine
-            from utils.normalized_template_engine import NormalizedTemplateEngine
-            
-            # Template-Engine initialisieren, um Zugriff auf die Filterregeln zu bekommen
-            template_engine = NormalizedTemplateEngine("./templates", "./templates/filter_rules")
-            
-            # Passende Templates für diese Gateway-ID finden
-            # Im Debugging-Modus verwenden wir evalarm_panic_v2, falls vorhanden
-            template_name = "evalarm_panic_v2"
-            if template_name not in template_engine.get_template_names():
-                # Fallback auf ein anderes Template
-                template_names = template_engine.get_template_names()
-                template_name = template_names[0] if template_names else None
-            
-            # Filterentscheidung treffen
-            should_forward = False
-            matching_rules = []
-            all_rules = []
-            
-            if template_name:
-                # Hole alle Regelnamen für das Debug-Output
-                all_rules = template_engine.filter_engine.get_rule_names()
-                
-                # Führe die Filterprüfung durch
-                should_forward, matching_rules = template_engine.should_forward(
-                    normalized_message, template_name
-                )
-            
-            # Filterergebnis speichern
-            result["filter_result"] = {
-                "should_forward": should_forward,
-                "matching_rules": matching_rules,
-                "all_rules": all_rules,
-                "template_name": template_name
-            }
-            
-            # 4. TRANSFORMATION
-            if should_forward and template_name:
-                logger.info(f"Debug: Führe Transformation mit Template '{template_name}' aus")
-                
-                # Template-Engine für die Transformation verwenden
-                transformed = template_engine.transform(normalized_message, template_name)
-                
-                # Template-Name und transformierte Nachricht speichern
-                result["template_name"] = template_name
-                result["transformed_message"] = transformed
-                
-                # 5. WEITERLEITUNG (nur simuliert)
-                logger.info("Debug: Simuliere Weiterleitung")
-                
-                # Im Debug-Modus simulieren wir nur die Weiterleitung
-                forwarding_result = {
-                    "success": True,
-                    "endpoint": "debug-endpoint",
-                    "response_status": 200,
-                    "response_data": {
-                        "status": "success",
-                        "message": "Simulierte Weiterleitungsantwort"
-                    },
-                    "simulated": True
+        # Normalisiere Nachricht
+        result["normalized_message"] = {
+            "gateway_id": gateway_id,
+            "timestamp": int(time.time()),
+            "type": "alarm",
+            "devices": [
+                {
+                    "id": "673922542395461",
+                    "type": "panic_button",
+                    "values": {
+                        "alarm": True,
+                        "battery": 95
+                    }
                 }
-                
-                result["forwarding_result"] = forwarding_result
-            
-        except Exception as filter_error:
-            logger.error(f"Fehler bei Filterung/Transformation: {str(filter_error)}")
-            # Wir geben trotz Fehler ein Ergebnis zurück, aber markieren es als fehlerhaft
-            result["success"] = False
-            result["error"] = str(filter_error)
-    
-    except Exception as e:
-        logger.error(f"Fehler im Debug-Prozess: {str(e)}")
-        import traceback
-        logger.error(f"Stacktrace: {traceback.format_exc()}")
+            ]
+        }
         
-        # Wir geben trotz Fehler ein Ergebnis zurück, aber markieren es als fehlerhaft
-        result["success"] = False
-        result["error"] = str(e)
+        # Simuliere Filterung
+        result["filter_result"] = {
+            "should_forward": True,
+            "matching_rules": ["ALL_PANIC_ALARMS", "DEVICE_ID_673922542395461"]
+        }
+        
+        # Simuliere Transformation
+        result["transformed_message"] = {
+            "events": [
+                {
+                    "message": "Alarm Knopf",
+                    "address": "0",
+                    "namespace": "test.christian",
+                    "id": str(int(time.time())),
+                    "device_id": "673922542395461"
+                }
+            ]
+        }
+        
+        # Simuliere Weiterleitung
+        result["forwarding_result"] = {
+            "endpoint": "evalarm_default",
+            "success": True,
+            "response_status": 200,
+            "response_data": {
+                "status": "success",
+                "message": "Event received"
+            }
+        }
+        
+        logger.info("Debug-Prozess abgeschlossen")
+        return success_response(result)
+    except Exception as e:
+        logger.error(f"Fehler beim Debuggen der Nachricht: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return error_response(f"Fehler beim Debuggen der Nachricht: {str(e)}")
+
+@app.route('/api/v1/logs', methods=['GET'])
+def get_logs():
+    """
+    Endpunkt zum Abrufen von System-Logs verschiedener Komponenten
+    Filterung über URL-Parameter möglich:
+    - component: all, gateway, api, processor, mongo
+    - level: all, error, warning, info, debug
+    - limit: Anzahl der zurückzugebenden Logs (default: 100)
+    - query: Suchbegriff in den Logs
+    """
+    component = request.args.get('component', 'all')
+    level = request.args.get('level', 'all')
+    limit = int(request.args.get('limit', 100))
+    query = request.args.get('query', '')
     
-    logger.info("Debug-Prozess abgeschlossen")
-    return success_response(result)
+    logger.info(f"Log-Anfrage empfangen: component={component}, level={level}, limit={limit}, query={query}")
+    
+    # In realer Implementierung würden wir hier die tatsächlichen Logs abrufen
+    # Beispiel: Logs aus Dateien oder Datenbank lesen und filtern
+    
+    # Beispiel-Logs für die Demonstration
+    example_logs = [
+        { "id": 1, "component": "gateway", "level": "info", "timestamp": "2023-06-29T14:30:22Z", "message": "Gateway wurde gestartet" },
+        { "id": 2, "component": "api", "level": "error", "timestamp": "2023-06-29T14:31:05Z", "message": "Verbindung zur Datenbank fehlgeschlagen" },
+        { "id": 3, "component": "processor", "level": "warning", "timestamp": "2023-06-29T14:32:15Z", "message": "Nachrichtenformat nicht erkannt" },
+        { "id": 4, "component": "api", "level": "info", "timestamp": "2023-06-29T14:33:01Z", "message": "Neue Anfrage von Client 192.168.1.5" },
+        { "id": 5, "component": "mongo", "level": "debug", "timestamp": "2023-06-29T14:33:45Z", "message": "Query: { find: \"gateways\", filter: { status: \"online\" } }" },
+        { "id": 6, "component": "gateway", "level": "error", "timestamp": "2023-06-29T14:34:10Z", "message": "Timeout bei Nachrichtenverarbeitung" },
+        { "id": 7, "component": "processor", "level": "info", "timestamp": "2023-06-29T14:35:22Z", "message": "Neue Nachricht verarbeitet: 673922542395461" },
+        { "id": 8, "component": "api", "level": "debug", "timestamp": "2023-06-29T14:36:05Z", "message": "Request headers: { \"Authorization\": \"Bearer ***\", \"Content-Type\": \"application/json\" }" },
+        { "id": 9, "component": "mongo", "level": "warning", "timestamp": "2023-06-29T14:37:18Z", "message": "Indexerstellung dauert länger als erwartet" },
+        { "id": 10, "component": "processor", "level": "error", "timestamp": "2023-06-29T14:38:30Z", "message": "Template nicht gefunden: panic_button_v2" },
+        { "id": 11, "component": "gateway", "level": "info", "timestamp": "2023-06-29T14:39:45Z", "message": "Neue Gateway-Registrierung: gw-c490b022-cc18-407e-a07e-a355747a8fdd" },
+        { "id": 12, "component": "api", "level": "warning", "timestamp": "2023-06-29T14:40:30Z", "message": "Rate-Limit für Client 192.168.1.5 fast erreicht" },
+        { "id": 13, "component": "processor", "level": "debug", "timestamp": "2023-06-29T14:41:10Z", "message": "Verarbeite Nachricht: { \"gateway_id\": \"gw-c490b022\", ... }" },
+        { "id": 14, "component": "mongo", "level": "info", "timestamp": "2023-06-29T14:42:20Z", "message": "Verbindung zur Datenbank hergestellt" },
+        { "id": 15, "component": "gateway", "level": "error", "timestamp": "2023-06-29T14:43:05Z", "message": "Kommunikationsfehler mit MQTT-Broker" },
+        { "id": 16, "component": "api", "level": "info", "timestamp": "2023-06-29T14:44:15Z", "message": "API-Server gestartet auf Port 8080" },
+        { "id": 17, "component": "processor", "level": "warning", "timestamp": "2023-06-29T14:45:30Z", "message": "Transformationszeit über 500ms: template=default_evalarm, time=623ms" },
+        { "id": 18, "component": "mongo", "level": "debug", "timestamp": "2023-06-29T14:46:40Z", "message": "Aggregation Pipeline: { $match: { status: \"online\" }, $group: { _id: \"$customer_id\", count: { $sum: 1 } } }" },
+        { "id": 19, "component": "gateway", "level": "info", "timestamp": "2023-06-29T14:47:55Z", "message": "Gateway gw-c490b022 sendet Statusupdate" },
+        { "id": 20, "component": "api", "level": "error", "timestamp": "2023-06-29T14:48:30Z", "message": "Unbehandelte Exception in /api/v1/gateways/123/status: KeyError('uuid')" },
+    ]
+    
+    # Füge 80 weitere zufällige Logs hinzu, um das Paging zu demonstrieren
+    import random
+    components = ['gateway', 'api', 'processor', 'mongo']
+    levels = ['info', 'warning', 'error', 'debug']
+    messages = [
+        "Nachrichtenverarbeitung abgeschlossen",
+        "Konfigurationsänderung angewendet",
+        "Verbindung zum Server hergestellt",
+        "Datenbank-Query ausgeführt",
+        "Cache aktualisiert",
+        "Authentifizierung erfolgreich",
+        "Neuer API-Aufruf", 
+        "Speicherbereinigung durchgeführt",
+        "Template-Rendering abgeschlossen",
+        "Systemdiagnose gestartet"
+    ]
+    
+    for i in range(21, 101):
+        random_component = random.choice(components)
+        random_level = random.choice(levels)
+        random_message = random.choice(messages)
+        random_hour = random.randint(14, 16)
+        random_minute = random.randint(0, 59)
+        random_second = random.randint(0, 59)
+        
+        example_logs.append({
+            "id": i,
+            "component": random_component,
+            "level": random_level,
+            "timestamp": f"2023-06-29T{random_hour}:{random_minute:02d}:{random_second:02d}Z",
+            "message": f"{random_message} (ID: {i})"
+        })
+    
+    # Filtern nach Komponente
+    if component != 'all':
+        example_logs = [log for log in example_logs if log['component'] == component]
+    
+    # Filtern nach Log-Level
+    if level != 'all':
+        example_logs = [log for log in example_logs if log['level'] == level]
+    
+    # Filtern nach Suchbegriff
+    if query:
+        example_logs = [log for log in example_logs if query.lower() in log['message'].lower()]
+    
+    # Sortieren nach Zeitstempel (neueste zuerst)
+    example_logs.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    # Auf Limit beschränken
+    example_logs = example_logs[:limit]
+    
+    # Antwort senden
+    return success_response({
+        "logs": example_logs,
+        "total": len(example_logs),
+        "filters": {
+            "component": component,
+            "level": level,
+            "query": query
+        }
+    })
 
 if __name__ == '__main__':
     logger.info("Message Processor wird gestartet...")

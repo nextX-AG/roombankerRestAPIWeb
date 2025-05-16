@@ -111,6 +111,71 @@ ENDPOINTS = {
     }
 }
 
+# Definiere die API-Routen
+ROUTES = {
+    'auth': {
+        'login': f'/api/{API_VERSION}/auth/login',
+        'logout': f'/api/{API_VERSION}/auth/logout',
+        'refresh': f'/api/{API_VERSION}/auth/refresh',
+        'register': f'/api/{API_VERSION}/auth/register',
+    },
+    'gateways': {
+        'list': f'/api/{API_VERSION}/gateways',
+        'detail': f'/api/{API_VERSION}/gateways/<uuid>',
+        'create': f'/api/{API_VERSION}/gateways',
+        'update': f'/api/{API_VERSION}/gateways/<uuid>',
+        'delete': f'/api/{API_VERSION}/gateways/<uuid>',
+        'unassigned': f'/api/{API_VERSION}/gateways/unassigned',
+        'status': f'/api/{API_VERSION}/gateways/status',
+    },
+    'customers': {
+        'list': f'/api/{API_VERSION}/customers',
+        'detail': f'/api/{API_VERSION}/customers/<id>',
+        'create': f'/api/{API_VERSION}/customers',
+        'update': f'/api/{API_VERSION}/customers/<id>',
+        'delete': f'/api/{API_VERSION}/customers/<id>',
+    },
+    'devices': {
+        'list': f'/api/{API_VERSION}/devices',
+        'detail': f'/api/{API_VERSION}/devices/<id>',
+        'create': f'/api/{API_VERSION}/devices',
+        'update': f'/api/{API_VERSION}/devices/<id>',
+        'delete': f'/api/{API_VERSION}/devices/<id>',
+        'by_gateway': f'/api/{API_VERSION}/gateways/<gateway_uuid>/devices',
+    },
+    'messages': {
+        'process': f'/api/{API_VERSION}/messages/process',
+        'test': f'/api/{API_VERSION}/messages/test',
+        'list': f'/api/{API_VERSION}/messages',
+        'latest': f'/api/{API_VERSION}/messages/latest',
+        'detail': f'/api/{API_VERSION}/messages/<id>',
+        'forward': f'/api/{API_VERSION}/messages/<id>/forward',
+        'debug': f'/api/{API_VERSION}/messages/debug',
+    },
+    'templates': {
+        'list': f'/api/{API_VERSION}/templates',
+        'detail': f'/api/{API_VERSION}/templates/<name>',
+        'create': f'/api/{API_VERSION}/templates',
+        'update': f'/api/{API_VERSION}/templates/<name>',
+        'delete': f'/api/{API_VERSION}/templates/<name>',
+        'test': f'/api/{API_VERSION}/templates/test',
+    },
+    'system': {
+        'health': f'/api/{API_VERSION}/system/health',
+        'endpoints': f'/api/{API_VERSION}/system/endpoints',
+        'test-message': f'/api/{API_VERSION}/test-message',
+    },
+    'logs': {
+        '': f'/api/{API_VERSION}/logs',
+    },
+    'health': {
+        '': f'/api/{API_VERSION}/health',
+    },
+    'iot-status': {
+        '': f'/api/{API_VERSION}/iot-status',
+    },
+}
+
 def get_full_url(endpoint_category, endpoint_name, env='development', params=None):
     """
     Erzeugt eine vollständige URL für den angegebenen Endpunkt.

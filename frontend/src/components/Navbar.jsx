@@ -44,7 +44,7 @@ const AppNavbar = () => {
                   <FontAwesomeIcon icon={faList} className="me-1" /> Nachrichten
                 </Nav.Link>
                 <Nav.Link as={Link} to="/message-debugger" active={location.pathname === '/message-debugger'}>
-                  <FontAwesomeIcon icon={faBug} className="me-1" /> Nachrichten-Debugger
+                  <FontAwesomeIcon icon={faBug} className="me-1" /> Debugger
                 </Nav.Link>
                 <Nav.Link as={Link} to="/templates" active={location.pathname === '/templates'}>
                   <FontAwesomeIcon icon={faCode} className="me-1" /> Templates
