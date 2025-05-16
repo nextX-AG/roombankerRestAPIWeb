@@ -629,7 +629,93 @@ Das neue Filterregel-System ermöglicht eine detaillierte Konfiguration, welche 
 
 Die Filterregeln werden in einer JSON-Datei gespeichert und durch ein JSON-Schema validiert. Das System stellt eine `FilterRuleEngine`-Klasse bereit, die die Regeln verwaltet und auf normalisierte Nachrichten anwendet.
 
-### 10.4 Implementierte Komponenten
+### 10.4 Erweitertes Template-System
+
+Das neue Template-System bietet eine leistungsstarke und flexible Möglichkeit, normalisierte Nachrichten zu transformieren und weiterzuleiten.
+
+#### Integrierte Filterregeln in Templates
+
+Templates können jetzt Filterregeln direkt integrieren, was eine präzise Steuerung ermöglicht, welche Nachrichten transformiert werden:
+
+```json
+{
+  "name": "evalarm_panic_v2",
+  "description": "Template für Panic-Button-Alarme",
+  "version": "2.0.0",
+  "filter_rules": ["panic_alarm", "battery_ok"],
+  "transform": {
+    "events": [
+      {
+        "message": "{{ devices[0].values.alarmtype | default('Alarm') }}",
+        "device_id": "{{ devices[0].id }}"
+      }
+    ]
+  }
+}
+```
+
+Nachrichten werden nur dann transformiert und weitergeleitet, wenn sie die angegebenen Filterregeln erfüllen.
+
+#### Erweiterter Zugriff auf normalisierte Daten
+
+Das Template-System bietet direkten Zugriff auf alle Teile der normalisierten Daten:
+
+- `gateway`: Alle Gateway-Informationen
+- `devices`: Liste aller Geräte
+- `metadata`: Metadaten wie Zeitstempel und Nachrichtenformat
+- `raw_message`: Die ursprüngliche Nachricht für Debugging-Zwecke
+
+Dies ermöglicht eine viel präzisere Kontrolle über die Transformation als das alte System.
+
+#### Erweiterte Jinja2-Funktionen
+
+Das Template-System bietet zahlreiche Hilfsfunktionen und Filter:
+
+```jinja2
+{# Datums- und Zeitformatierung #}
+{{ timestamp | datetime }}
+
+{# Array-Operationen #}
+{{ devices | first | get('id') }}
+
+{# Typ-Konvertierungen #}
+{{ value | int }}
+{{ value | float }}
+{{ value | str }}
+{{ value | bool }}
+
+{# Hilfsfunktionen #}
+{{ get_device_by_type(devices, 'panic_button') }}
+{{ get_device_value(device, 'temperature', 20) }}
+{{ get_gateway_metadata(gateway, 'rssi', -80) }}
+```
+
+Diese Funktionen machen die Templates leistungsfähiger und lesbarer.
+
+#### Automatische Template-Generierung
+
+Das System kann nun Basis-Templates automatisch aus normalisierten Nachrichten generieren:
+
+```python
+template = template_engine.generate_template(normalized_message, "new_template")
+```
+
+Dies ist besonders nützlich für die schnelle Entwicklung neuer Templates oder für neue Gerätetypen.
+
+#### Versionierte Templates
+
+Templates unterstützen jetzt explizite Versionierung, was die Verwaltung mehrerer Versionen desselben Templates erleichtert:
+
+```json
+{
+  "name": "evalarm_panic",
+  "version": "2.0.0", 
+  "created_at": "2023-05-15T10:00:00.000Z",
+  "updated_at": "2023-05-15T10:00:00.000Z"
+}
+```
+
+### 10.5 Implementierte Komponenten
 
 Folgende Komponenten der neuen Nachrichtenverarbeitungsarchitektur wurden bereits implementiert:
 
@@ -649,29 +735,14 @@ Folgende Komponenten der neuen Nachrichtenverarbeitungsarchitektur wurden bereit
   - AndRule/OrRule für logische Verknüpfungen
 - Enthält die FilterRuleEngine zur Anwendung von Regeln
 
+#### Normalized Template Engine (utils/normalized_template_engine.py)
+- Implementiert das erweiterte Template-System
+- Integriert das Filterregel-System
+- Bietet erweiterte Jinja2-Funktionen und Filter
+- Unterstützt die automatische Template-Generierung
+- Ermöglicht Versionierung von Templates
+
 #### Filter Rule Schema (utils/filter_rule_schema.json)
 - JSON-Schema zur Validierung von Filterregeldefinitionen
 - Unterstützt alle implementierten Regeltypen
-- Enthält Beispiele für verschiedene Regelanwendungen
-
-### 10.5 Geplante Erweiterungen
-
-Die folgenden Komponenten werden als nächstes implementiert:
-
-#### Erweitertes Template-System
-- Integration von Filterregeln in Templates
-- Direkte Verwendung normalisierter Daten in Templates
-- Unterstützung für bedingte Transformation
-- Versionierung von Templates
-
-#### Automatische Template-Generierung
-- Erstellung von Templates aus normalisierten Daten
-- Intelligente Erkennung von Variablen und ihren Typen
-- Vorschläge für sinnvolle Filterregeln
-- Benutzerfreundliche Anpassungsmöglichkeiten
-
-#### Message-Debugging-Interface
-- Visualisierung des Pipeline-Datenflusses
-- Anzeige von Zwischenergebnissen jeder Verarbeitungsstufe
-- Filterentscheidungen nachvollziehbar machen
-- Tools zum Kopieren und erneuten Verarbeiten von Nachrichten 
+- Enthält Beispiele für verschiedene Regelanwendungen 

@@ -1044,17 +1044,17 @@ Nachricht → Extraktion → Normalisierung → Filterung → Transformation →
   - [x] Listen-basierte Werte-Filterung
   - [x] Logische Verknüpfungen zwischen Regeln (UND/ODER)
 
-- [ ] **Erweitertes Template-System**
-  - [ ] Templates mit integrierten Filterregeln
-  - [ ] Zugriff auf alle normalisierten Daten in Templates
-  - [ ] Erweiterte Jinja2-Funktionen für Datentransformation
-  - [ ] Versionierung von Templates
+- [x] **Erweitertes Template-System**
+  - [x] Templates mit integrierten Filterregeln
+  - [x] Zugriff auf alle normalisierten Daten in Templates
+  - [x] Erweiterte Jinja2-Funktionen für Datentransformation
+  - [x] Versionierung von Templates
 
 - [ ] **Automatische Template-Generierung**
-  - [ ] Generierung von Template-Grundgerüsten aus normalisierten Daten
+  - [x] Generierung von Template-Grundgerüsten aus normalisierten Daten
   - [ ] Erkennung typischer Variablen und ihrer Typen
-  - [ ] Vorschläge für sinnvolle Filterregeln basierend auf beobachteten Werten
-  - [ ] Unterstützung für Template-Bearbeitung und -Anpassung
+  - [ ] Vorschläge für sinnvolle Filterregeln basierend auf beobachteten Daten
+  - [ ] GUI für die Template-Generierung
 
 ### Phase 3: Verbesserte Benutzerschnittstelle
 

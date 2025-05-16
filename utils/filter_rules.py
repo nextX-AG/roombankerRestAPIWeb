@@ -621,85 +621,110 @@ class OrRule(FilterRule):
 
 class FilterRuleEngine:
     """
-    Engine zur Verwaltung und Anwendung von Filterregeln.
+    Engine zur Verwaltung und Anwendung von Filterregeln auf normalisierte Nachrichten.
     """
     
     def __init__(self):
-        """
-        Initialisiert die Filter-Engine.
-        """
+        """Initialisiert die Filter-Engine"""
         self.rules = {}
     
-    def add_rule(self, rule: FilterRule) -> None:
+    def add_rule(self, rule: FilterRule):
         """
-        Fügt eine Regel zur Engine hinzu.
+        Fügt eine Regel zur Engine hinzu
         
         Args:
             rule: Die hinzuzufügende Regel
         """
         self.rules[rule.name] = rule
     
-    def remove_rule(self, rule_name: str) -> None:
+    def has_rule(self, rule_name: str) -> bool:
         """
-        Entfernt eine Regel aus der Engine.
+        Prüft, ob eine Regel mit dem angegebenen Namen existiert
         
         Args:
-            rule_name: Der Name der zu entfernenden Regel
-        """
-        if rule_name in self.rules:
-            del self.rules[rule_name]
-    
-    def should_forward(self, normalized_message: Dict[str, Any], rule_names: List[str] = None) -> bool:
-        """
-        Entscheidet, ob eine Nachricht basierend auf den angegebenen Regeln weitergeleitet werden soll.
-        
-        Args:
-            normalized_message: Die normalisierte Nachricht
-            rule_names: Die Namen der anzuwendenden Regeln (None = alle Regeln)
+            rule_name: Name der Regel
             
         Returns:
-            True, wenn die Nachricht weitergeleitet werden soll
+            True, wenn die Regel existiert, sonst False
         """
-        # Wenn keine Regeln definiert sind, immer weiterleiten
-        if not self.rules:
-            return True
-        
-        # Bestimme, welche Regeln angewendet werden sollen
-        rules_to_apply = {}
-        if rule_names:
-            for name in rule_names:
-                if name in self.rules:
-                    rules_to_apply[name] = self.rules[name]
-        else:
-            rules_to_apply = self.rules
-        
-        # Wenn keine Regeln anzuwenden sind, immer weiterleiten
-        if not rules_to_apply:
-            return True
-        
-        # Wende alle angegebenen Regeln an und verknüpfe sie mit OR
-        # (D.h. mindestens eine Regel muss zutreffen, damit die Nachricht weitergeleitet wird)
-        for rule in rules_to_apply.values():
-            if rule.matches(normalized_message):
-                return True
-        
-        # Keine Regel trifft zu
-        return False
+        return rule_name in self.rules
     
-    def get_matching_rules(self, normalized_message: Dict[str, Any]) -> List[str]:
+    def get_rule(self, rule_name: str) -> Optional[FilterRule]:
         """
-        Gibt die Namen aller Regeln zurück, die für eine Nachricht zutreffen.
+        Holt eine Regel anhand ihres Namens
         
         Args:
-            normalized_message: Die normalisierte Nachricht
+            rule_name: Name der Regel
+            
+        Returns:
+            Die Regel oder None, wenn sie nicht existiert
+        """
+        return self.rules.get(rule_name)
+    
+    def get_rule_names(self) -> List[str]:
+        """
+        Gibt die Namen aller registrierten Regeln zurück
+        
+        Returns:
+            Liste der Regelnamen
+        """
+        return list(self.rules.keys())
+    
+    def should_forward(self, message: Dict[str, Any], rule_names: Optional[List[str]] = None) -> bool:
+        """
+        Prüft, ob eine Nachricht basierend auf den angegebenen Regeln weitergeleitet werden soll
+        
+        Args:
+            message: Die zu prüfende normalisierte Nachricht
+            rule_names: Liste der anzuwendenden Regelnamen (optional, wenn nicht angegeben, werden alle Regeln angewendet)
+            
+        Returns:
+            True, wenn die Nachricht weitergeleitet werden soll, sonst False
+        """
+        # Wenn keine Regeln angegeben sind, alle anwenden
+        rules_to_check = []
+        
+        if rule_names:
+            # Nur die angegebenen Regeln anwenden
+            for name in rule_names:
+                if name in self.rules:
+                    rules_to_check.append(self.rules[name])
+                else:
+                    logger.warning(f"Regel '{name}' nicht gefunden, wird übersprungen")
+        else:
+            # Alle Regeln anwenden
+            rules_to_check = list(self.rules.values())
+        
+        # Wenn keine Regeln zu prüfen sind, immer weiterleiten
+        if not rules_to_check:
+            logger.info("Keine Regeln zu prüfen, leite weiter")
+            return True
+        
+        # Prüfe, ob mindestens eine Regel erfüllt ist
+        matching_rules = []
+        
+        for rule in rules_to_check:
+            if rule.matches(message):
+                matching_rules.append(rule.name)
+        
+        # Wenn wir hier sind und mindestens eine Regel erfüllt ist, weiterleiten
+        return len(matching_rules) > 0
+    
+    def get_matching_rules(self, message: Dict[str, Any]) -> List[str]:
+        """
+        Gibt alle Regeln zurück, die auf die Nachricht zutreffen
+        
+        Args:
+            message: Die zu prüfende normalisierte Nachricht
             
         Returns:
             Liste der Namen der zutreffenden Regeln
         """
         matching_rules = []
-        for name, rule in self.rules.items():
-            if rule.matches(normalized_message):
-                matching_rules.append(name)
+        
+        for rule_name, rule in self.rules.items():
+            if rule.matches(message):
+                matching_rules.append(rule_name)
         
         return matching_rules
     
