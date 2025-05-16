@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Table, Button, Form, Modal, Alert, Badge, InputGroup } from 'react-bootstrap';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Row, Col, Card, Button, Form, Modal, Alert, InputGroup } from 'react-bootstrap';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { Cpu, RefreshCw, Search, Info, Edit } from 'lucide-react';
+import { Cpu, RefreshCw, Search, Edit } from 'lucide-react';
 import axios from 'axios';
-import JSONPretty from 'react-json-pretty';
-import 'react-json-pretty/themes/monikai.css';
 import config, { API_VERSION } from '../config';
+import BasicTable from '../components/BasicTable';
 
 // Verwende die konfigurierte API-URL mit Version
 const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
@@ -26,7 +25,6 @@ const Devices = () => {
   const [error, setError] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentDevice, setCurrentDevice] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -129,18 +127,62 @@ const Devices = () => {
     return date.toLocaleString('de-DE');
   };
 
-  // Geräte filtern basierend auf der Suche
-  const filteredDevices = devices.filter(device => {
-    if (searchTerm === '') return true;
-    
-    const searchTermLower = searchTerm.toLowerCase();
-    return (
-      device.name?.toLowerCase().includes(searchTermLower) ||
-      device.device_id?.toLowerCase().includes(searchTermLower) ||
-      device.device_type?.toLowerCase().includes(searchTermLower) ||
-      device.gateway_uuid?.toLowerCase().includes(searchTermLower)
-    );
-  });
+  // TanStack Table Spalten-Definition
+  const columns = useMemo(
+    () => [
+      {
+        accessorKey: 'device_id',
+        header: 'Geräte-ID',
+        size: 180,
+      },
+      {
+        accessorKey: 'name',
+        header: 'Name',
+        size: 150,
+      },
+      {
+        accessorKey: 'device_type',
+        header: 'Typ',
+        size: 150,
+        cell: ({ row }) => formatDeviceType(row.original.device_type),
+      },
+      {
+        accessorKey: 'gateway_uuid',
+        header: 'Gateway',
+        size: 180,
+        cell: ({ row }) => getGatewayName(row.original.gateway_uuid),
+      },
+      {
+        accessorKey: 'last_update',
+        header: 'Letztes Update',
+        size: 150,
+        cell: ({ row }) => formatDateTime(row.original.last_update),
+      },
+      {
+        id: 'actions',
+        header: 'Aktionen',
+        size: 100,
+        cell: ({ row }) => {
+          const device = row.original;
+          return (
+            <div onClick={(e) => e.stopPropagation()}>
+              <Button 
+                variant="outline-primary" 
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openEditModal(device);
+                }}
+              >
+                <Edit size={16} />
+              </Button>
+            </div>
+          );
+        },
+      },
+    ],
+    [gateways]
+  );
 
   return (
     <>
@@ -153,84 +195,29 @@ const Devices = () => {
       {/* 2. Fehler/Erfolgs-Anzeigen */}
       {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
 
-      {/* 3. Suchleiste und Aktions-Buttons */}
-      <Card className="mb-4">
-        <Card.Body>
-          <Row>
-            <Col md={6}>
-              <InputGroup>
-                <InputGroup.Text>
-                  <Search size={16} />
-                </InputGroup.Text>
-                <Form.Control
-                  placeholder="Suche nach Name, Geräte-ID, Typ oder Gateway..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </InputGroup>
-            </Col>
-            <Col md={6} className="d-flex justify-content-end">
-              <Button 
-                variant="secondary" 
-                onClick={fetchData}
-              >
-                <RefreshCw size={16} className="me-1" /> Aktualisieren
-              </Button>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
+      {/* 3. Aktions-Buttons */}
+      <Row className="mb-4">
+        <Col xs={12} className="d-flex justify-content-end">
+          <Button 
+            variant="secondary" 
+            onClick={fetchData}
+          >
+            <RefreshCw size={16} className="me-1" /> Aktualisieren
+          </Button>
+        </Col>
+      </Row>
 
       {/* 4. Tabelle mit Geräten */}
       <Card>
         <Card.Header>Geräteliste</Card.Header>
         <Card.Body>
-          {loading ? (
-            <div className="text-center p-5">Lade Gerätedaten...</div>
-          ) : devices.length === 0 ? (
-            <div className="text-center p-5">Keine Geräte vorhanden.</div>
-          ) : (
-            <Table responsive hover>
-              <thead>
-                <tr>
-                  <th>Geräte-ID</th>
-                  <th>Name</th>
-                  <th>Typ</th>
-                  <th>Gateway</th>
-                  <th>Letztes Update</th>
-                  <th>Aktionen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDevices.map((device) => (
-                  <tr 
-                    key={`${device.gateway_uuid}-${device.device_id}`}
-                    onClick={() => openDeviceDetail(device)}
-                    className="cursor-pointer"
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <td>{device.device_id}</td>
-                    <td>{device.name}</td>
-                    <td>{formatDeviceType(device.device_type)}</td>
-                    <td>{getGatewayName(device.gateway_uuid)}</td>
-                    <td>{formatDateTime(device.last_update)}</td>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <Button 
-                        variant="outline-primary" 
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditModal(device);
-                        }}
-                      >
-                        <Edit size={16} />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
+          <BasicTable 
+            data={devices}
+            columns={columns}
+            isLoading={loading}
+            emptyMessage="Keine Geräte vorhanden."
+            onRowClick={openDeviceDetail}
+          />
         </Card.Body>
       </Card>
 

@@ -1029,6 +1029,21 @@ const columns = [
 ];
 ```
 
+#### Implementierte Tabellen
+
+Die TanStack Table wurde für alle Hauptdaten-Tabellen der Anwendung implementiert:
+
+1. **Kundenliste** (`Customers.jsx`) - Zeigt alle Kunden mit Status und Gateway-Anzahl
+2. **Gateway-Liste** (`Gateways.jsx`) - Zeigt alle Gateways mit Status, Kundenzuordnung und Statusicons
+3. **Geräteliste** (`Devices.jsx`) - Zeigt alle verbundenen Geräte mit Typ, Gateway-Zuordnung und Letztem Update
+
+Jede Tabelle bietet:
+- Spaltenbasierte Sortierung durch Klick auf den Spaltenkopf
+- Globale Suche über alle Spalten
+- Paginierung mit konfigurierbarer Seitengröße
+- Klickbare Zeilen, die zum Detail-Drawer navigieren
+- Aktionen-Spalte mit stopPropagation für Inline-Aktionen
+
 Diese Architektur verbessert die Wartbarkeit und Erweiterbarkeit der Tabellenkomponenten erheblich.
 
 ### 13.5 Geplante Erweiterungen

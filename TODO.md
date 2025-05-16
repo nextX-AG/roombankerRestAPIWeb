@@ -976,7 +976,11 @@ Die UI soll modernisiert werden, orientiert an modernen Server-Management-Konsol
   - [x] Headless Table-Implementation für flexibles Styling
   - [x] Sticky Header, Virtual Scrolling, Sort/Filter-API
   - [x] Kunden-Komponente als erstes Implementierungsbeispiel
-  - [ ] Migration aller Listen-Ansichten auf TanStack Table
+  - [x] Migration der Listen-Ansichten auf TanStack Table
+    - [x] Kundenliste auf TanStack Table migriert
+    - [x] Gateway-Liste auf TanStack Table migriert
+    - [x] Geräteliste auf TanStack Table migriert
+    - [ ] Weitere Listen (Nachrichten, Templates) migrieren
   - [ ] Einheitliche Status-Badge-Darstellung
 
 - [ ] **Command Palette implementieren**

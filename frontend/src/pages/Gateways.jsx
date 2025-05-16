@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Table, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Row, Col, Card, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash, RefreshCw, Users, Eye, Router, Server, Info } from 'lucide-react';
+import { Plus, Edit, Trash, RefreshCw, Eye, Router } from 'lucide-react';
 import GatewayStatusIcons from '../components/GatewayStatusIcons';
 import config, { API_VERSION } from '../config';
 import { gatewayApi, customerApi, templateApi } from '../api';
+import BasicTable from '../components/BasicTable';
 
 // Verwende die konfigurierte Gateway-URL mit API-Version
 const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
@@ -320,6 +321,102 @@ const Gateways = () => {
     navigate(`/gateways/${gateway.uuid}`);
   };
 
+  // TanStack Table Spalten-Definition
+  const columns = useMemo(
+    () => [
+      {
+        accessorKey: 'uuid',
+        header: 'UUID',
+        size: 180,
+      },
+      {
+        accessorKey: 'name',
+        header: 'Name',
+        size: 150,
+      },
+      {
+        accessorKey: 'customer_id',
+        header: 'Kunde',
+        size: 150,
+        cell: ({ row }) => getCustomerName(row.original.customer_id),
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        size: 100,
+        cell: ({ row }) => renderStatusBadge(row.original.status),
+      },
+      {
+        id: 'status_icons',
+        header: 'Status-Icons',
+        size: 130,
+        cell: ({ row }) => {
+          const gateway = row.original;
+          return (
+            gatewayLatestData[gateway.uuid] && 
+            gatewayLatestData[gateway.uuid].data && 
+            GatewayStatusIcons({ gatewayData: gatewayLatestData[gateway.uuid].data }) &&
+            GatewayStatusIcons({ gatewayData: gatewayLatestData[gateway.uuid].data }).primary
+          );
+        }
+      },
+      {
+        accessorKey: 'last_contact',
+        header: 'Letzter Kontakt',
+        size: 150,
+        cell: ({ row }) => formatDateTime(row.original.last_contact),
+      },
+      {
+        id: 'actions',
+        header: 'Aktionen',
+        size: 140,
+        cell: ({ row }) => {
+          const gateway = row.original;
+          return (
+            <div onClick={(e) => e.stopPropagation()}>
+              <Button 
+                variant="outline-secondary" 
+                size="sm" 
+                className="me-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fetchDevices(gateway);
+                }}
+                title="Geräte anzeigen"
+              >
+                <Eye size={16} />
+              </Button>
+              <Button 
+                variant="outline-primary" 
+                size="sm" 
+                className="me-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openEditModal(gateway);
+                }}
+                title="Bearbeiten"
+              >
+                <Edit size={16} />
+              </Button>
+              <Button 
+                variant="outline-danger" 
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openDeleteConfirm(gateway);
+                }}
+                title="Löschen"
+              >
+                <Trash size={16} />
+              </Button>
+            </div>
+          );
+        },
+      },
+    ],
+    [gatewayLatestData, customers]
+  );
+
   return (
     <>
       {/* 1. Seiten-Titel */}
@@ -359,84 +456,13 @@ const Gateways = () => {
           <Card>
             <Card.Header>Gateways</Card.Header>
             <Card.Body>
-              {loading ? (
-                <div className="text-center p-5">Lade Gateway-Daten...</div>
-              ) : gateways.length === 0 ? (
-                <div className="text-center p-5">Keine Gateways vorhanden. Fügen Sie ein neues Gateway hinzu.</div>
-              ) : (
-                <Table responsive hover>
-                  <thead>
-                    <tr>
-                      <th>UUID</th>
-                      <th>Name</th>
-                      <th>Kunde</th>
-                      <th>Status</th>
-                      <th>Status-Icons</th>
-                      <th>Letzter Kontakt</th>
-                      <th>Aktionen</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {gateways.map((gateway) => (
-                      <tr 
-                        key={gateway.uuid} 
-                        onClick={() => navigateToDetail(gateway)}
-                        style={{ cursor: 'pointer' }}
-                        className="cursor-pointer"
-                      >
-                        <td>{gateway.uuid}</td>
-                        <td>{gateway.name}</td>
-                        <td>{getCustomerName(gateway.customer_id)}</td>
-                        <td>{renderStatusBadge(gateway.status)}</td>
-                        <td>
-                          {gatewayLatestData[gateway.uuid] && 
-                           gatewayLatestData[gateway.uuid].data && 
-                           GatewayStatusIcons({ gatewayData: gatewayLatestData[gateway.uuid].data }) &&
-                           GatewayStatusIcons({ gatewayData: gatewayLatestData[gateway.uuid].data }).primary}
-                        </td>
-                        <td>{formatDateTime(gateway.last_contact)}</td>
-                        <td onClick={(e) => e.stopPropagation()}>
-                          <Button 
-                            variant="outline-secondary" 
-                            size="sm" 
-                            className="me-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              fetchDevices(gateway);
-                            }}
-                            title="Geräte anzeigen"
-                          >
-                            <Eye size={16} />
-                          </Button>
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
-                            className="me-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEditModal(gateway);
-                            }}
-                            title="Bearbeiten"
-                          >
-                            <Edit size={16} />
-                          </Button>
-                          <Button 
-                            variant="outline-danger" 
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDeleteConfirm(gateway);
-                            }}
-                            title="Löschen"
-                          >
-                            <Trash size={16} />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
+              <BasicTable 
+                data={gateways}
+                columns={columns}
+                isLoading={loading}
+                emptyMessage="Keine Gateways vorhanden. Fügen Sie ein neues Gateway hinzu."
+                onRowClick={navigateToDetail}
+              />
             </Card.Body>
           </Card>
         </Col>
