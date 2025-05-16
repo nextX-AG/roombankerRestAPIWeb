@@ -919,6 +919,8 @@ Vorteile des Drawer-Patterns:
 - `GatewayDetailDrawer` für Gateway-Details
 - `CustomerDetailDrawer` für Kundendetails
 - `DeviceDetailDrawer` für Gerätedetails
+- `MessageDetailDrawer` für Nachrichtendetails
+- `TemplateDetailDrawer` für Template-Details
 
 Diese Komponenten wurden in die bestehende Routing-Struktur als verschachtelte Routen integriert:
 
@@ -931,6 +933,12 @@ Diese Komponenten wurden in die bestehende Routing-Struktur als verschachtelte R
 </Route>
 <Route path="/devices" element={<Devices />}>
   <Route path=":gatewayUuid/:deviceId" element={<DeviceDetailDrawer />} />
+</Route>
+<Route path="/messages" element={<Messages />}>
+  <Route path=":messageId" element={<MessageDetailDrawer />} />
+</Route>
+<Route path="/templates" element={<Templates />}>
+  <Route path=":id" element={<TemplateDetailDrawer />} />
 </Route>
 ```
 
@@ -1036,6 +1044,8 @@ Die TanStack Table wurde für alle Hauptdaten-Tabellen der Anwendung implementie
 1. **Kundenliste** (`Customers.jsx`) - Zeigt alle Kunden mit Status und Gateway-Anzahl
 2. **Gateway-Liste** (`Gateways.jsx`) - Zeigt alle Gateways mit Status, Kundenzuordnung und Statusicons
 3. **Geräteliste** (`Devices.jsx`) - Zeigt alle verbundenen Geräte mit Typ, Gateway-Zuordnung und Letztem Update
+4. **Nachrichtenliste** (`Messages.jsx`) - Zeigt alle Nachrichten mit Gateway-ID, Typ und Empfangszeitpunkt
+5. **Templateliste** (`Templates.jsx`) - Zeigt alle Templates mit Name, Anbieter-Typ und Erstellungsdatum
 
 Jede Tabelle bietet:
 - Spaltenbasierte Sortierung durch Klick auf den Spaltenkopf

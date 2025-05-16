@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Table, Button, Form, Alert, InputGroup, Badge, Nav, Tab, Accordion, Modal } from 'react-bootstrap';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSync, faSearch, faInfoCircle, faExclamationTriangle, faEnvelope, faCopy, faBug, faArrowRight, faCheck, faTimes } from '@fortawesome/free-solid-svg-icons';
-import { messageApi } from '../api';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Row, Col, Card, Button, Form, Alert, InputGroup, Badge, Nav, Tab, Accordion, Modal } from 'react-bootstrap';
+import { RefreshCw, Inbox, Bug, Copy, Filter, ListFilter } from 'lucide-react';
+import { messageApi, customerApi } from '../api';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import config, { API_VERSION } from '../config';
-import axios from 'axios';
+import BasicTable from '../components/BasicTable';
+import { useNavigate, useParams, Outlet } from 'react-router-dom';
 
 // Verwende die konfigurierte API-URL mit Version
 const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
@@ -25,14 +25,19 @@ const Messages = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedMessage, setSelectedMessage] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [groupBy, setGroupBy] = useState('time'); // 'time', 'gateway', 'type'
+  const [showDetailDrawer, setShowDetailDrawer] = useState(false);
   const [forwardingStatus, setForwardingStatus] = useState([]);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [queueStatus, setQueueStatus] = useState({});
   const [showDebugModal, setShowDebugModal] = useState(false);
   const [debugResult, setDebugResult] = useState(null);
   const [debugLoading, setDebugLoading] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [activeTab, setActiveTab] = useState('all-messages');
+  
+  const navigate = useNavigate();
+  const { messageId } = useParams();
 
   const fetchMessages = async () => {
     try {
@@ -105,10 +110,23 @@ const Messages = () => {
       setLoadingStatus(false);
     }
   };
+  
+  // Lade verfügbare Kunden für die Filterung
+  const fetchCustomers = async () => {
+    try {
+      const response = await customerApi.list();
+      if (response.status === 'success') {
+        setCustomers(response.data || []);
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Kunden:', error);
+    }
+  };
 
   useEffect(() => {
     fetchMessages();
     fetchForwardingStatus();
+    fetchCustomers();
     
     // Alle 10 Sekunden aktualisieren
     const interval = setInterval(() => {
@@ -118,20 +136,36 @@ const Messages = () => {
     
     return () => clearInterval(interval);
   }, []);
-
-  const handleSearch = (e) => {
-    setSearchQuery(e.target.value);
-  };
+  
+  // Überprüfe, ob ein messageId in der URL vorhanden ist
+  useEffect(() => {
+    if (messageId) {
+      const message = messages.find(m => m.id === messageId);
+      if (message) {
+        setSelectedMessage(message);
+        setShowDetailDrawer(true);
+      }
+    }
+  }, [messageId, messages]);
 
   const handleMessageSelect = (message) => {
     setSelectedMessage(message);
+    setShowDetailDrawer(true);
+    navigate(`/messages/${message.id}`);
+  };
+
+  const handleCloseDrawer = () => {
+    setShowDetailDrawer(false);
+    setSelectedMessage(null);
+    navigate('/messages');
   };
 
   const handleRefresh = () => {
     fetchMessages();
+    fetchForwardingStatus();
   };
 
-  // Extrahiere Gateway-ID aus der Nachricht
+  // Hilfsfunktionen
   const getGatewayId = (message) => {
     try {
       // Versuche die gateway_id aus dem Inhalt zu extrahieren
@@ -147,7 +181,6 @@ const Messages = () => {
     }
   };
 
-  // Extrahiere Gerätetyp aus der Nachricht
   const getDeviceType = (message) => {
     try {
       // Prüfe auf alarmtype
@@ -173,44 +206,34 @@ const Messages = () => {
       return 'Unbekannter Typ';
     }
   };
-
-  // Filtere Nachrichten basierend auf der Suche
-  const filteredMessages = messages.filter((message) => {
-    const searchLower = searchQuery.toLowerCase();
-    const messageStr = JSON.stringify(message).toLowerCase();
-    return messageStr.includes(searchLower);
-  });
-
-  // Gruppiere Nachrichten nach Gateway
-  const groupedByGateway = filteredMessages.reduce((acc, message) => {
+  
+  // Finde die Kunden-ID aus der Gateway-ID (falls Gateway einem Kunden zugeordnet ist)
+  const getCustomerIdFromGateway = (message) => {
     const gatewayId = getGatewayId(message);
-    if (!acc[gatewayId]) {
-      acc[gatewayId] = [];
-    }
-    acc[gatewayId].push(message);
-    return acc;
-  }, {});
+    // Diese Funktion müsste angepasst werden, um tatsächlich den Kunden einer Gateway-ID zu finden
+    // Hier nur als Platzhalter implementiert
+    return message.customer_id || '';
+  };
 
-  // Gruppiere nach Gateway, dann nach Typ
-  const groupedByGatewayAndType = Object.keys(groupedByGateway).reduce((acc, gatewayId) => {
-    acc[gatewayId] = groupedByGateway[gatewayId].reduce((typeAcc, message) => {
-      const deviceType = getDeviceType(message);
-      if (!typeAcc[deviceType]) {
-        typeAcc[deviceType] = [];
-      }
-      typeAcc[deviceType].push(message);
-      return typeAcc;
-    }, {});
-    return acc;
-  }, {});
+  // Filtere Nachrichten nach ausgewähltem Kunden
+  const filteredMessages = useMemo(() => {
+    if (!selectedCustomerId) return messages;
+    
+    return messages.filter(message => {
+      // Direkte Kunden-ID in der Nachricht
+      if (message.customer_id === selectedCustomerId) return true;
+      
+      // Kunden-ID über Gateway-Zuordnung finden
+      const customerIdFromGateway = getCustomerIdFromGateway(message);
+      return customerIdFromGateway === selectedCustomerId;
+    });
+  }, [messages, selectedCustomerId]);
 
   // Formatiere Zeitstempel für bessere Lesbarkeit
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'Unbekannt';
     
     try {
-      console.log('Formatiere Zeitstempel:', timestamp, typeof timestamp);
-      
       // 1. Wenn es ein Unix-Zeitstempel als Zahl ist (Sekunden seit 1970)
       if (typeof timestamp === 'number' || (!isNaN(Number(timestamp)) && String(timestamp).length <= 10)) {
         const numericTimestamp = Number(timestamp);
@@ -224,27 +247,24 @@ const Messages = () => {
         return date.toLocaleString('de-DE');
       }
       
-      // 3. ISO-String (mit T und optional Z/Zeitzone)
+      // 3. ISO-String
       if (typeof timestamp === 'string' && timestamp.includes('T')) {
-        // Ersetze Z durch +00:00 für bessere Kompatibilität
         const normalizedTimestamp = timestamp.replace('Z', '+00:00');
         const date = new Date(normalizedTimestamp);
-        if (!isNaN(date.getTime())) { // Prüfe, ob das Datum gültig ist
+        if (!isNaN(date.getTime())) { 
           return date.toLocaleString('de-DE');
         }
       }
       
-      // 4. Standard-Fallback für andere Formate
+      // 4. Standard-Fallback
       const date = new Date(timestamp);
-      if (!isNaN(date.getTime())) { // Prüfe, ob das Datum gültig ist
+      if (!isNaN(date.getTime())) {
         return date.toLocaleString('de-DE');
       }
       
-      // 5. Wenn alles fehlschlägt, gib den Rohwert zurück
-      console.warn('Ungültiges Datumsformat:', timestamp);
+      // 5. Wenn alles fehlschlägt
       return String(timestamp);
     } catch (e) {
-      console.error("Fehler beim Formatieren des Zeitstempels:", e, timestamp);
       return String(timestamp);
     }
   };
@@ -318,13 +338,13 @@ const Messages = () => {
   // Nachricht erneut versuchen
   const handleRetryMessage = async (messageId) => {
     try {
-      const response = await axios.post(`${config.apiBaseUrl}/v1/messages/${messageId}/retry`);
-      if (response.data && response.data.status === 'success') {
+      const response = await messageApi.retry(messageId);
+      if (response.status === 'success') {
         // Aktualisiere die Listen nach erfolgreicher Wiederholung
         fetchForwardingStatus();
         fetchMessages();
       } else {
-        throw new Error(response.data?.error?.message || 'Wiederholung fehlgeschlagen');
+        throw new Error(response.error?.message || 'Wiederholung fehlgeschlagen');
       }
     } catch (error) {
       console.error('Fehler bei der Nachrichtenwiederholung:', error);
@@ -386,546 +406,238 @@ const Messages = () => {
     setShowDebugModal(false);
     setDebugResult(null);
   };
+  
+  // Spalten-Definition für die Nachrichten-Tabelle
+  const messageColumns = useMemo(
+    () => [
+      {
+        accessorKey: 'id',
+        header: 'ID',
+        size: 120,
+        cell: ({ row }) => shortenId(row.original.id),
+      },
+      {
+        accessorKey: 'received_at',
+        header: 'Empfangen',
+        size: 180,
+        cell: ({ row }) => getCorrectDate(row.original),
+      },
+      {
+        accessorKey: 'gateway_id',
+        header: 'Gateway',
+        size: 150,
+        cell: ({ row }) => shortenId(getGatewayId(row.original)),
+      },
+      {
+        accessorKey: 'type',
+        header: 'Typ',
+        size: 120,
+        cell: ({ row }) => {
+          const type = getDeviceType(row.original);
+          return <Badge bg={getTypeColor(type)}>{type}</Badge>;
+        },
+      },
+      {
+        id: 'actions',
+        header: 'Aktionen',
+        size: 120,
+        cell: ({ row }) => (
+          <div onClick={(e) => e.stopPropagation()}>
+            <Button 
+              variant="outline-primary" 
+              size="sm" 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMessageSelect(row.original);
+              }}
+            >
+              Details
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
+  
+  // Spalten-Definition für die Weiterleitungstabelle
+  const forwardingColumns = useMemo(
+    () => [
+      {
+        accessorFn: (row) => formatTimestamp(row.completed_at || row.failed_at || row.created_at),
+        header: 'Zeit',
+        size: 180,
+      },
+      {
+        accessorKey: 'template',
+        header: 'Template',
+        size: 140,
+      },
+      {
+        accessorKey: 'endpoint',
+        header: 'Ziel',
+        size: 150,
+        cell: ({ row }) => formatEndpoint(row.original.endpoint),
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        size: 130,
+        cell: ({ row }) => formatForwardingStatus(row.original.status),
+      },
+      {
+        id: 'actions',
+        header: 'Aktionen',
+        size: 180,
+        cell: ({ row }) => (
+          <div onClick={(e) => e.stopPropagation()}>
+            <Button 
+              size="sm" 
+              variant="outline-primary"
+              className="me-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (row.original.message) {
+                  handleMessageSelect(row.original.message);
+                }
+              }}
+            >
+              Details
+            </Button>
+            {row.original.status === 'failed' && (
+              <Button 
+                size="sm" 
+                variant="outline-warning"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRetryMessage(row.original.id);
+                }}
+              >
+                Wiederholen
+              </Button>
+            )}
+          </div>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
     <>
       {/* 1. Seiten-Titel */}
       <h1 className="page-title mb-4">
-        <FontAwesomeIcon icon={faEnvelope} className="icon" />
+        <Inbox size={24} className="me-2" />
         Nachrichten
       </h1>
       
       {/* 2. Fehler/Erfolgs-Anzeigen */}
       {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
       
-      {/* 3. Suchleiste und Aktualisieren-Button */}
-      <Card className="mb-4">
-        <Card.Body>
-          <InputGroup>
-            <Form.Control
-              placeholder="Suche in Nachrichten..."
-              value={searchQuery}
-              onChange={handleSearch}
-            />
-            <Button variant="primary" onClick={handleRefresh}>
-              <FontAwesomeIcon icon={faSync} className="me-2" />
-              Aktualisieren
-            </Button>
-          </InputGroup>
-        </Card.Body>
-      </Card>
+      {/* 3. Aktionsleiste mit Filtern und Aktualisieren */}
+      <Row className="mb-4">
+        <Col md={8}>
+          <Card>
+            <Card.Body className="d-flex">
+              <Form.Group className="me-3 flex-grow-1">
+                <Form.Label><strong>Kunde</strong></Form.Label>
+                <Form.Select 
+                  value={selectedCustomerId}
+                  onChange={(e) => setSelectedCustomerId(e.target.value)}
+                >
+                  <option value="">Alle Kunden</option>
+                  {customers.map(customer => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+
+              <div className="d-flex align-items-end">
+                <Button variant="primary" onClick={handleRefresh}>
+                  <RefreshCw size={16} className="me-1" />
+                  Aktualisieren
+                </Button>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={4}>
+          <Card>
+            <Card.Body>
+              <div className="d-flex justify-content-between">
+                <div>
+                  <div className="small text-muted">Ausstehend</div>
+                  <h4 className="mb-0">{queueStatus.pending_count || 0}</h4>
+                </div>
+                <div>
+                  <div className="small text-muted">Fehlgeschlagen</div>
+                  <h4 className="mb-0">{queueStatus.failed_count || 0}</h4>
+                </div>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
 
       {/* 4. Tabs für verschiedene Nachrichtenansichten */}
-      <Tab.Container id="message-view-tabs" defaultActiveKey="groupedView">
+      <Tab.Container 
+        id="message-view-tabs" 
+        defaultActiveKey="all-messages"
+        activeKey={activeTab}
+        onSelect={(k) => setActiveTab(k)}
+      >
         <Nav variant="tabs" className="mb-3">
           <Nav.Item>
-            <Nav.Link eventKey="groupedView">Nach Gateways gruppiert</Nav.Link>
+            <Nav.Link eventKey="all-messages">Alle Nachrichten</Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link eventKey="chronologicalView">Chronologisch</Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link eventKey="forwardingView">Weiterleitung</Nav.Link>
+            <Nav.Link eventKey="forwarding-status">Weiterleitungsstatus</Nav.Link>
           </Nav.Item>
         </Nav>
 
         <Tab.Content>
-          <Tab.Pane eventKey="groupedView">
+          {/* Alle Nachrichten Tab */}
+          <Tab.Pane eventKey="all-messages">
             <Row>
-              <Col md={6}>
-                <Card className="message-list-card mb-4">
-                  <Card.Header>
-                    Gateways und Geräte ({Object.keys(groupedByGatewayAndType).length})
-                  </Card.Header>
-                  <Card.Body style={{ maxHeight: '700px', overflowY: 'auto' }}>
-                    {Object.keys(groupedByGatewayAndType).length > 0 ? (
-                      <Accordion defaultActiveKey="0">
-                        {Object.keys(groupedByGatewayAndType).map((gatewayId, idx) => (
-                          <Accordion.Item key={gatewayId} eventKey={idx.toString()}>
-                            <Accordion.Header>
-                              <div className="d-flex justify-content-between w-100 align-items-center pr-3">
-                                <span>
-                                  <strong>Gateway:</strong> {gatewayId.substring(0, 12)}...
-                                </span>
-                                <Badge bg="info" className="ms-auto">
-                                  {Object.values(groupedByGatewayAndType[gatewayId])
-                                    .flat().length} Nachrichten
-                                </Badge>
-                              </div>
-                            </Accordion.Header>
-                            <Accordion.Body>
-                              <Accordion>
-                                {Object.keys(groupedByGatewayAndType[gatewayId]).map((deviceType, typeIdx) => (
-                                  <Accordion.Item key={`${gatewayId}-${deviceType}`} eventKey={`${idx}-${typeIdx}`}>
-                                    <Accordion.Header>
-                                      <div className="d-flex justify-content-between w-100 align-items-center">
-                                        <span>
-                                          <strong>{deviceType}</strong>
-                                        </span>
-                                        <Badge bg={getTypeColor(deviceType)} className="ms-auto">
-                                          {groupedByGatewayAndType[gatewayId][deviceType].length}
-                                        </Badge>
-                                      </div>
-                                    </Accordion.Header>
-                                    <Accordion.Body>
-                                      <Table hover size="sm">
-                                        <thead>
-                                          <tr>
-                                            <th>Zeit</th>
-                                            <th>Status</th>
-                                            <th>Aktion</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {groupedByGatewayAndType[gatewayId][deviceType].map((message) => (
-                                            <tr 
-                                              key={message.id}
-                                              className={selectedMessage?.id === message.id ? 'table-primary' : ''}
-                                              onClick={() => handleMessageSelect(message)}
-                                              style={{ cursor: 'pointer' }}
-                                            >
-                                              <td>{getCorrectDate(message)}</td>
-                                              <td>
-                                                <Badge bg={getTypeColor(message.type || deviceType)}>
-                                                  {message.type || deviceType}
-                                                </Badge>
-                                              </td>
-                                              <td>
-                                                <Button size="sm" variant="outline-primary" onClick={() => handleMessageSelect(message)}>
-                                                  Details
-                                                </Button>
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </Table>
-                                    </Accordion.Body>
-                                  </Accordion.Item>
-                                ))}
-                              </Accordion>
-                            </Accordion.Body>
-                          </Accordion.Item>
-                        ))}
-                      </Accordion>
-                    ) : (
-                      <p className="text-center">Keine Nachrichten gefunden</p>
-                    )}
-                  </Card.Body>
-                </Card>
-              </Col>
-
-              <Col md={6}>
-                <Card className="message-detail-card">
-                  <Card.Header>
-                    Nachrichtendetails
-                  </Card.Header>
+              <Col>
+                <Card>
+                  <Card.Header>Nachrichten</Card.Header>
                   <Card.Body>
-                    {selectedMessage ? (
-                      <>
-                        <h5>Metadaten</h5>
-                        <Table bordered size="sm" className="mb-3">
-                          <tbody>
-                            <tr>
-                              <th>ID</th>
-                              <td>{selectedMessage.id}</td>
-                            </tr>
-                            <tr>
-                              <th>Empfangen</th>
-                              <td>{getCorrectDate(selectedMessage)}</td>
-                            </tr>
-                            <tr>
-                              <th>Timestamp</th>
-                              <td>{selectedMessage.timestamp}</td>
-                            </tr>
-                            <tr>
-                              <th>Typ</th>
-                              <td>
-                                <Badge bg={getTypeColor(getDeviceType(selectedMessage))}>
-                                  {getDeviceType(selectedMessage)}
-                                </Badge>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </Table>
-
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <h5 className="mb-0">Nachrichteninhalt</h5>
-                          <div>
-                            <Button 
-                              size="sm" 
-                              variant="outline-secondary" 
-                              className="me-2"
-                              onClick={() => copyToClipboard(selectedMessage.content || selectedMessage)}
-                            >
-                              <FontAwesomeIcon icon={faCopy} className="me-1" />
-                              Kopieren
-                            </Button>
-                            
-                            <Button 
-                              size="sm" 
-                              variant="outline-primary"
-                              onClick={handleDebugMessage}
-                              disabled={debugLoading}
-                            >
-                              <FontAwesomeIcon icon={faBug} className="me-1" />
-                              {debugLoading ? 'Wird analysiert...' : 'Nachricht debuggen'}
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                          <JsonView data={selectedMessage.content || selectedMessage} />
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-center">Wählen Sie eine Nachricht aus, um die Details anzuzeigen</p>
-                    )}
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
-          </Tab.Pane>
-      
-          <Tab.Pane eventKey="chronologicalView">
-            <Row>
-              <Col md={6}>
-                <Card className="message-list-card mb-4">
-                  <Card.Header>
-                    Nachrichtenliste ({filteredMessages.length})
-                  </Card.Header>
-                  <Card.Body style={{ maxHeight: '700px', overflowY: 'auto' }}>
-                    <Table hover>
-                      <thead>
-                        <tr>
-                          <th>Zeitstempel</th>
-                          <th>ID</th>
-                          <th>Typ</th>
-                          <th>Aktionen</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredMessages.length > 0 ? (
-                          filteredMessages.map(message => (
-                            <tr 
-                              key={message.id}
-                              className={selectedMessage?.id === message.id ? 'table-primary' : ''}
-                              onClick={() => handleMessageSelect(message)}
-                              style={{ cursor: 'pointer' }}
-                            >
-                              <td>{getCorrectDate(message)}</td>
-                              <td>{shortenId(message.id)}</td>
-                              <td>
-                                <Badge bg={getTypeColor(getDeviceType(message))}>
-                                  {getDeviceType(message)}
-                                </Badge>
-                              </td>
-                              <td>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline-primary"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleMessageSelect(message);
-                                  }}
-                                >
-                                  Details
-                                </Button>
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan="4" className="text-center">
-                              Keine Nachrichten gefunden
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </Table>
-                  </Card.Body>
-                </Card>
-              </Col>
-        
-              <Col md={6}>
-                <Card className="message-detail-card">
-                  <Card.Header>
-                    Nachrichtendetails
-                  </Card.Header>
-                  <Card.Body>
-                    {selectedMessage ? (
-                      <>
-                        <h5>Metadaten</h5>
-                        <Table bordered size="sm" className="mb-3">
-                          <tbody>
-                            <tr>
-                              <th>ID</th>
-                              <td>{selectedMessage.id}</td>
-                            </tr>
-                            <tr>
-                              <th>Empfangen</th>
-                              <td>{getCorrectDate(selectedMessage)}</td>
-                            </tr>
-                            <tr>
-                              <th>Timestamp</th>
-                              <td>{selectedMessage.timestamp}</td>
-                            </tr>
-                            <tr>
-                              <th>Typ</th>
-                              <td>
-                                <Badge bg={getTypeColor(getDeviceType(selectedMessage))}>
-                                  {getDeviceType(selectedMessage)}
-                                </Badge>
-                              </td>
-                            </tr>
-                            <tr>
-                              <th>Gateway</th>
-                              <td>{getGatewayId(selectedMessage)}</td>
-                            </tr>
-                          </tbody>
-                        </Table>
-                  
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <h5 className="mb-0">Nachrichteninhalt</h5>
-                          <div>
-                            <Button 
-                              size="sm" 
-                              variant="outline-secondary" 
-                              className="me-2"
-                              onClick={() => copyToClipboard(selectedMessage.content || selectedMessage)}
-                            >
-                              <FontAwesomeIcon icon={faCopy} className="me-1" />
-                              Kopieren
-                            </Button>
-                            
-                            <Button 
-                              size="sm" 
-                              variant="outline-primary"
-                              onClick={handleDebugMessage}
-                              disabled={debugLoading}
-                            >
-                              <FontAwesomeIcon icon={faBug} className="me-1" />
-                              {debugLoading ? 'Wird analysiert...' : 'Nachricht debuggen'}
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                          <JsonView data={selectedMessage.content || selectedMessage} />
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-center">Wählen Sie eine Nachricht aus, um die Details anzuzeigen</p>
-                    )}
+                    <BasicTable 
+                      data={filteredMessages}
+                      columns={messageColumns}
+                      isLoading={loading}
+                      emptyMessage="Keine Nachrichten vorhanden."
+                      onRowClick={handleMessageSelect}
+                      enableGlobalFilter={true}
+                      enablePagination={true}
+                      enableSorting={true}
+                    />
                   </Card.Body>
                 </Card>
               </Col>
             </Row>
           </Tab.Pane>
           
-          <Tab.Pane eventKey="forwardingView">
+          {/* Weiterleitungsstatus Tab */}
+          <Tab.Pane eventKey="forwarding-status">
             <Row>
-              <Col md={12} lg={6}>
-                <Card className="mb-4">
-                  <Card.Header>Weiterleitungs-Status</Card.Header>
+              <Col>
+                <Card>
+                  <Card.Header>Weiterleitungsstatus</Card.Header>
                   <Card.Body>
-                    <Row className="mb-3">
-                      <Col xs={6} md={3}>
-                        <div className="d-flex align-items-center">
-                          <div className="bg-info p-3 rounded me-2">
-                            <FontAwesomeIcon icon={faSync} className="text-white" />
-                          </div>
-                          <div>
-                            <div className="small text-muted">Ausstehend</div>
-                            <h4 className="mb-0">{queueStatus.pending_count || 0}</h4>
-                          </div>
-                        </div>
-                      </Col>
-                      <Col xs={6} md={3}>
-                        <div className="d-flex align-items-center">
-                          <div className="bg-warning p-3 rounded me-2">
-                            <FontAwesomeIcon icon={faSync} className="text-white fa-spin" />
-                          </div>
-                          <div>
-                            <div className="small text-muted">In Bearbeitung</div>
-                            <h4 className="mb-0">{queueStatus.processing_count || 0}</h4>
-                          </div>
-                        </div>
-                      </Col>
-                      <Col xs={6} md={3}>
-                        <div className="d-flex align-items-center">
-                          <div className="bg-success p-3 rounded me-2">
-                            <FontAwesomeIcon icon={faInfoCircle} className="text-white" />
-                          </div>
-                          <div>
-                            <div className="small text-muted">Erfolgreich</div>
-                            <h4 className="mb-0">{queueStatus.stats?.total_processed || 0}</h4>
-                          </div>
-                        </div>
-                      </Col>
-                      <Col xs={6} md={3}>
-                        <div className="d-flex align-items-center">
-                          <div className="bg-danger p-3 rounded me-2">
-                            <FontAwesomeIcon icon={faExclamationTriangle} className="text-white" />
-                          </div>
-                          <div>
-                            <div className="small text-muted">Fehlgeschlagen</div>
-                            <h4 className="mb-0">{queueStatus.failed_count || 0}</h4>
-                          </div>
-                        </div>
-                      </Col>
-                    </Row>
-                    <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                      <Table hover>
-                        <thead>
-                          <tr>
-                            <th>Zeit</th>
-                            <th>Template</th>
-                            <th>Ziel</th>
-                            <th>Status</th>
-                            <th>Aktionen</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {loadingStatus ? (
-                            <tr>
-                              <td colSpan="5" className="text-center">Lade Weiterleitungsdaten...</td>
-                            </tr>
-                          ) : forwardingStatus.length === 0 ? (
-                            <tr>
-                              <td colSpan="5" className="text-center">Keine Weiterleitungsdaten vorhanden</td>
-                            </tr>
-                          ) : (
-                            forwardingStatus.map((status) => (
-                              <tr 
-                                key={status.id}
-                                className={selectedMessage?.id === status.id ? 'table-primary' : ''}
-                                onClick={() => handleMessageSelect(status.message)}
-                                style={{ cursor: 'pointer' }}
-                              >
-                                <td>{formatTimestamp(status.completed_at || status.failed_at || status.created_at)}</td>
-                                <td>{status.template}</td>
-                                <td>{formatEndpoint(status.endpoint)}</td>
-                                <td>{formatForwardingStatus(status.status)}</td>
-                                <td>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline-primary"
-                                    className="me-1"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleMessageSelect(status.message);
-                                    }}
-                                  >
-                                    Details
-                                  </Button>
-                                  {status.status === 'failed' && (
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline-warning"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleRetryMessage(status.id);
-                                      }}
-                                    >
-                                      Wiederholen
-                                    </Button>
-                                  )}
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </Table>
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-              
-              <Col md={12} lg={6}>
-                <Card className="message-detail-card">
-                  <Card.Header>
-                    Nachrichtendetails
-                  </Card.Header>
-                  <Card.Body>
-                    {selectedMessage ? (
-                      <>
-                        <h5>Metadaten</h5>
-                        <Table bordered size="sm" className="mb-3">
-                          <tbody>
-                            <tr>
-                              <th>ID</th>
-                              <td>{selectedMessage.id}</td>
-                            </tr>
-                            <tr>
-                              <th>Empfangen</th>
-                              <td>{getCorrectDate(selectedMessage)}</td>
-                            </tr>
-                            <tr>
-                              <th>Gateway</th>
-                              <td>{getGatewayId(selectedMessage)}</td>
-                            </tr>
-                            {selectedMessage.result && (
-                              <tr>
-                                <th>API-Antwort</th>
-                                <td>
-                                  {selectedMessage.result.response_status === 200 ? (
-                                    <Badge bg="success">Erfolgreich ({selectedMessage.result.response_status})</Badge>
-                                  ) : (
-                                    <Badge bg="danger">Fehler ({selectedMessage.result.response_status})</Badge>
-                                  )}
-                                </td>
-                              </tr>
-                            )}
-                            {selectedMessage.error && (
-                              <tr>
-                                <th>Fehler</th>
-                                <td><span className="text-danger">{selectedMessage.error}</span></td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </Table>
-
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <h5 className="mb-0">Nachrichteninhalt</h5>
-                          <div>
-                            <Button 
-                              size="sm" 
-                              variant="outline-secondary" 
-                              className="me-2"
-                              onClick={() => copyToClipboard(selectedMessage.content || selectedMessage)}
-                            >
-                              <FontAwesomeIcon icon={faCopy} className="me-1" />
-                              Kopieren
-                            </Button>
-                            
-                            <Button 
-                              size="sm" 
-                              variant="outline-primary"
-                              onClick={handleDebugMessage}
-                              disabled={debugLoading}
-                            >
-                              <FontAwesomeIcon icon={faBug} className="me-1" />
-                              {debugLoading ? 'Wird analysiert...' : 'Nachricht debuggen'}
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                          <JsonView data={selectedMessage.content || selectedMessage} />
-                        </div>
-
-                        {selectedMessage.result && selectedMessage.result.transformed_message && (
-                          <>
-                            <h5 className="mt-3">Transformierte Nachricht</h5>
-                            <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                              <JsonView data={selectedMessage.result.transformed_message} />
-                            </div>
-                          </>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-center">Wählen Sie eine Nachricht aus, um die Details anzuzeigen</p>
-                    )}
+                    <BasicTable 
+                      data={forwardingStatus}
+                      columns={forwardingColumns}
+                      isLoading={loadingStatus}
+                      emptyMessage="Keine Weiterleitungsdaten vorhanden."
+                      onRowClick={(row) => row.message && handleMessageSelect(row.message)}
+                      enableGlobalFilter={true}
+                      enablePagination={true}
+                      enableSorting={true}
+                    />
                   </Card.Body>
                 </Card>
               </Col>
@@ -934,7 +646,18 @@ const Messages = () => {
         </Tab.Content>
       </Tab.Container>
       
-      {/* Debug-Modal für die Anzeige der Debug-Ergebnisse */}
+      {/* 5. Nachrichtendetail-Drawer */}
+      {/* Dieser Code wird entfernt, da wir nun Routing für den Drawer verwenden */}
+      {/* <MessageDetailDrawer
+        show={showDetailDrawer}
+        onClose={handleCloseDrawer}
+        message={selectedMessage}
+        handleDebugMessage={handleDebugMessage}
+        debugLoading={debugLoading}
+        copyToClipboard={copyToClipboard}
+      /> */}
+      
+      {/* 6. Debug-Modal für die Anzeige der Debug-Ergebnisse */}
       <Modal 
         show={showDebugModal} 
         onHide={handleCloseDebugModal}
@@ -948,197 +671,47 @@ const Messages = () => {
         <Modal.Body>
           {debugResult ? (
             <div>
-              <h5 className="mb-3">Verarbeitungs-Pipeline</h5>
-              <div className="d-flex flex-wrap gap-2 align-items-center justify-content-center mb-4">
-                <Badge bg="light" text="dark" className="p-2">Rohe Nachricht</Badge>
-                <FontAwesomeIcon icon={faArrowRight} />
-                <Badge bg="light" text="dark" className="p-2">Extraktion</Badge>
-                <FontAwesomeIcon icon={faArrowRight} />
-                <Badge bg="light" text="dark" className="p-2">Normalisierung</Badge>
-                <FontAwesomeIcon icon={faArrowRight} />
-                <Badge bg="light" text="dark" className="p-2">Filterung</Badge>
-                <FontAwesomeIcon icon={faArrowRight} />
-                <Badge bg="light" text="dark" className="p-2">Transformation</Badge>
-                <FontAwesomeIcon icon={faArrowRight} />
-                <Badge bg="light" text="dark" className="p-2">Weiterleitung</Badge>
+              <h5>Eingangsnachricht</h5>
+              <div className="border p-3 rounded bg-light mb-4" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                <JsonView data={debugResult.input_message || {}} />
               </div>
               
-              <Accordion defaultActiveKey="0">
-                {/* 1. Extraktion */}
-                <Accordion.Item eventKey="0">
-                  <Accordion.Header>
-                    <h6 className="mb-0">1. Extrahierte Daten</h6>
-                  </Accordion.Header>
-                  <Accordion.Body>
-                    <p>
-                      In dieser Phase werden grundlegende Informationen aus der Rohnachricht extrahiert, 
-                      wie Gateway-ID und die eigentliche Nutzdaten.
-                    </p>
-                    {debugResult.extraction_result ? (
-                      <div className="border rounded p-3 bg-light mb-3" style={{maxHeight: '300px', overflowY: 'auto'}}>
-                        <JsonView data={debugResult.extraction_result} />
-                      </div>
-                    ) : (
-                      <Alert variant="info">Keine Extraktionsdaten verfügbar</Alert>
-                    )}
-                  </Accordion.Body>
-                </Accordion.Item>
-                
-                {/* 2. Normalisierung */}
-                <Accordion.Item eventKey="1">
-                  <Accordion.Header>
-                    <h6 className="mb-0">2. Normalisierte Nachricht</h6>
-                  </Accordion.Header>
-                  <Accordion.Body>
-                    <p>
-                      In dieser Phase wird die Nachricht in ein standardisiertes internes Format konvertiert,
-                      unabhängig vom ursprünglichen Format der Eingangsnachricht.
-                    </p>
-                    {debugResult.normalized_message ? (
-                      <div className="border rounded p-3 bg-light mb-3" style={{maxHeight: '300px', overflowY: 'auto'}}>
-                        <JsonView data={debugResult.normalized_message} />
-                      </div>
-                    ) : (
-                      <Alert variant="info">Keine normalisierten Daten verfügbar</Alert>
-                    )}
-                  </Accordion.Body>
-                </Accordion.Item>
-                
-                {/* 3. Filterung */}
-                <Accordion.Item eventKey="2">
-                  <Accordion.Header>
-                    <h6 className="mb-0">3. Filterung</h6>
-                  </Accordion.Header>
-                  <Accordion.Body>
-                    <p>
-                      In dieser Phase wird anhand von Filterregeln entschieden, ob die Nachricht 
-                      weitergeleitet werden soll oder nicht.
-                    </p>
-                    {debugResult.filter_result ? (
-                      <>
-                        <div className="mb-3">
-                          <h6>Filterentscheidung:</h6>
-                          {debugResult.filter_result.should_forward ? (
-                            <Alert variant="success">
-                              <FontAwesomeIcon icon={faCheck} className="me-2" />
-                              Diese Nachricht wird weitergeleitet
-                            </Alert>
-                          ) : (
-                            <Alert variant="warning">
-                              <FontAwesomeIcon icon={faTimes} className="me-2" />
-                              Diese Nachricht wird NICHT weitergeleitet
-                            </Alert>
-                          )}
-                        </div>
-                        
-                        <div className="mb-3">
-                          <h6>Zutreffende Filterregeln ({debugResult.filter_result.matching_rules?.length || 0}):</h6>
-                          {debugResult.filter_result.matching_rules?.length > 0 ? (
-                            <ul className="list-group">
-                              {debugResult.filter_result.matching_rules.map((rule, index) => (
-                                <li className="list-group-item" key={index}>
-                                  <Badge bg="success" className="me-2">Trifft zu</Badge>
-                                  {rule}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p>Keine zutreffenden Filterregeln gefunden.</p>
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <Alert variant="info">Keine Filterergebnisse verfügbar</Alert>
-                    )}
-                  </Accordion.Body>
-                </Accordion.Item>
-                
-                {/* 4. Transformation */}
-                <Accordion.Item eventKey="3">
-                  <Accordion.Header>
-                    <h6 className="mb-0">4. Transformation</h6>
-                  </Accordion.Header>
-                  <Accordion.Body>
-                    <p>
-                      In dieser Phase wird die normalisierte Nachricht in ein Zielformat (z.B. evAlarm)
-                      transformiert, basierend auf einem Template.
-                    </p>
-                    {debugResult.transformed_message ? (
-                      <>
-                        <h6>Verwendetes Template:</h6>
-                        <p><code>{debugResult.template_name || 'Unbekannt'}</code></p>
-                        
-                        <h6>Transformiertes Ergebnis:</h6>
-                        <div className="border rounded p-3 bg-light mb-3" style={{maxHeight: '300px', overflowY: 'auto'}}>
-                          <JsonView data={debugResult.transformed_message} />
-                        </div>
-                      </>
-                    ) : (
-                      <Alert variant="info">Keine Transformationsdaten verfügbar</Alert>
-                    )}
-                  </Accordion.Body>
-                </Accordion.Item>
-                
-                {/* 5. Weiterleitung */}
-                <Accordion.Item eventKey="4">
-                  <Accordion.Header>
-                    <h6 className="mb-0">5. Weiterleitung</h6>
-                  </Accordion.Header>
-                  <Accordion.Body>
-                    <p>
-                      In dieser Phase wird die transformierte Nachricht an das Zielsystem (z.B. evAlarm) 
-                      weitergeleitet oder die Weiterleitung simuliert.
-                    </p>
-                    {debugResult.forwarding_result ? (
-                      <>
-                        <h6>Weiterleitungsziel:</h6>
-                        <p><code>{debugResult.forwarding_result.endpoint || 'N/A'}</code></p>
-                        
-                        <h6>API-Antwort:</h6>
-                        <Alert variant={debugResult.forwarding_result.success ? 'success' : 'danger'}>
-                          {debugResult.forwarding_result.success ? (
-                            <>
-                              <FontAwesomeIcon icon={faCheck} className="me-2" />
-                              Weiterleitung erfolgreich 
-                              (Status: {debugResult.forwarding_result.response_status || 'N/A'})
-                            </>
-                          ) : (
-                            <>
-                              <FontAwesomeIcon icon={faTimes} className="me-2" />
-                              Weiterleitung fehlgeschlagen 
-                              (Status: {debugResult.forwarding_result.response_status || 'N/A'})
-                            </>
-                          )}
-                        </Alert>
-                        
-                        {debugResult.forwarding_result.response_data && (
-                          <>
-                            <h6>Antwortdaten:</h6>
-                            <div className="border rounded p-3 bg-light mb-3" style={{maxHeight: '200px', overflowY: 'auto'}}>
-                              <JsonView data={debugResult.forwarding_result.response_data} />
-                            </div>
-                          </>
-                        )}
-                      </>
-                    ) : debugResult.filter_result && !debugResult.filter_result.should_forward ? (
-                      <Alert variant="warning">
-                        <FontAwesomeIcon icon={faTimes} className="me-2" />
-                        Keine Weiterleitung durchgeführt, da die Nachricht von den Filterregeln blockiert wurde.
-                      </Alert>
-                    ) : (
-                      <Alert variant="info">Keine Weiterleitungsdaten verfügbar</Alert>
-                    )}
-                  </Accordion.Body>
-                </Accordion.Item>
-              </Accordion>
+              <h5>Verarbeitete Nachricht</h5>
+              <div className="border p-3 rounded bg-light mb-4" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                <JsonView data={debugResult.processed_message || {}} />
+              </div>
+              
+              {debugResult.rules_applied && (
+                <>
+                  <h5>Angewendete Regeln</h5>
+                  <div className="border p-3 rounded bg-light mb-4">
+                    <ul className="m-0">
+                      {debugResult.rules_applied.map((rule, idx) => (
+                        <li key={idx}>
+                          {rule.rule_name || `Regel ${idx + 1}`}
+                          {rule.result === false && <span className="text-danger"> (nicht angewendet)</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
+              
+              <h5>Empfänger</h5>
+              <div className="border p-3 rounded bg-light mb-4">
+                {debugResult.endpoints && debugResult.endpoints.length > 0 ? (
+                  <ul className="m-0">
+                    {debugResult.endpoints.map((endpoint, idx) => (
+                      <li key={idx}>{formatEndpoint(endpoint)}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="m-0">Keine Empfänger bestimmt</p>
+                )}
+              </div>
             </div>
           ) : (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Lädt...</span>
-              </div>
-              <p className="mt-3">Debug-Informationen werden geladen...</p>
-            </div>
+            <div className="text-center p-4">Keine Debug-Daten vorhanden.</div>
           )}
         </Modal.Body>
         <Modal.Footer>
@@ -1147,6 +720,9 @@ const Messages = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+      
+      {/* Outlet für verschachtelte Routen */}
+      <Outlet />
     </>
   );
 };

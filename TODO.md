@@ -967,12 +967,13 @@ Die UI soll modernisiert werden, orientiert an modernen Server-Management-Konsol
   - [x] Gateway-Detail als erstes Implementierungsbeispiel
   - [x] Kunden-Detail als zweites Implementierungsbeispiel
   - [x] Geräte-Detail als drittes Implementierungsbeispiel
+  - [x] Nachrichten-Detail als viertes Implementierungsbeispiel
   - [x] Klickbare Tabellenzeilen für einfachere Navigation zu Detail-Drawern
   - [ ] Restliche Modals schrittweise migrieren
 
 ### Phase 2: Erweiterte Komponenten (Sprint 3-4)
 
-- [ ] **TanStack Table einführen**
+- [x] **TanStack Table einführen**
   - [x] Headless Table-Implementation für flexibles Styling
   - [x] Sticky Header, Virtual Scrolling, Sort/Filter-API
   - [x] Kunden-Komponente als erstes Implementierungsbeispiel
@@ -980,7 +981,8 @@ Die UI soll modernisiert werden, orientiert an modernen Server-Management-Konsol
     - [x] Kundenliste auf TanStack Table migriert
     - [x] Gateway-Liste auf TanStack Table migriert
     - [x] Geräteliste auf TanStack Table migriert
-    - [ ] Weitere Listen (Nachrichten, Templates) migrieren
+    - [x] Nachrichtenliste auf TanStack Table migriert
+    - [x] Templates-Liste auf TanStack Table migriert (AKTUELLER TASK)
   - [ ] Einheitliche Status-Badge-Darstellung
 
 - [ ] **Command Palette implementieren**
@@ -1041,3 +1043,59 @@ Die UI soll modernisiert werden, orientiert an modernen Server-Management-Konsol
 |  6     | Dark-Mode, QA, Docs                | QA      |
 
 Das Feature-Flag-System sollte für jede Komponente implementiert werden, um rollbacks zu erleichtern (z.B. `REACT_APP_ENABLE_DRAWER`).
+
+## 18. Weitere UI-Modernisierungen (MITTLERE PRIORITÄT)
+
+### Implementierung des Template-Detail-Drawers
+
+Eine Drawer-Komponente soll für die Anzeige und Bearbeitung von Templates implementiert werden, ähnlich wie bei Gateways, Kunden, Geräten und Nachrichten. Dies verbessert die Benutzererfahrung und sorgt für Konsistenz in der Anwendung.
+
+#### Phase 1: Grundfunktionalität des Template-Drawers
+
+- [x] **TemplateDetailDrawer-Komponente erstellen**
+  - [x] Basisstruktur des Drawers implementieren
+  - [x] Template-Daten über URL-Parameter laden
+  - [x] Metadaten-Anzeige (Name, Typ, Anbieter)
+  - [x] Template-Code-Anzeige mit Syntax-Highlighting
+
+- [x] **Templates-Komponente aktualisieren**
+  - [x] Migration auf TanStack Table für die Template-Liste
+  - [x] Klickbare Zeilen für die Navigation zum Template-Detail
+  - [x] Filterung nach Template-Typ und Anbieter
+  - [x] Verbesserte Status- und Metadaten-Darstellung
+
+- [x] **URL-basiertes Routing**
+  - [x] Verschachtelte Route für Template-Details in App.jsx einrichten
+  - [x] Deep-Linking zu einzelnen Templates
+  - [x] Breadcrumb-Navigation für Templates
+
+#### Phase 2: Erweiterte Funktionen (NIEDRIGE PRIORITÄT)
+
+- [ ] **Inline-Template-Editor**
+  - [x] Code-Editor-Komponente mit Syntax-Highlighting
+  - [x] Live-Vorschau der Template-Transformationen
+  - [x] Direktes Speichern von Änderungen aus dem Drawer
+
+- [ ] **Template-Testbereich**
+  - [x] Testbereich für Templates in den Drawer integrieren
+  - [x] Beispieldaten laden und testen
+  - [x] Ergebnisvorschau mit JSON-Formatierung
+
+- [ ] **Template-Versionshistorie**
+  - [ ] Anzeige der Versionshistorie im Drawer
+  - [ ] Diff-Ansicht zwischen verschiedenen Versionen
+  - [ ] Rollback-Funktion zu früheren Versionen
+
+### Implementierungsplan
+
+- [ ] **Phase 1: Basisimplementierung**
+  - [ ] TemplateDetailDrawer-Komponente erstellen
+  - [ ] Templates.jsx auf TanStack Table umstellen
+  - [ ] Routing in App.jsx einrichten
+  - [ ] Grundlegende Ansichten implementieren
+
+- [ ] **Phase 2: Tests und Erweiterungen**
+  - [ ] Funktionalität umfassend testen
+  - [x] Code-Editor-Komponente integrieren
+  - [x] Test-Funktionalität verbessern
+  - [ ] Historien-Ansicht implementieren

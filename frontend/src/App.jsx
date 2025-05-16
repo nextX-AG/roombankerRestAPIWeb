@@ -9,6 +9,8 @@ import AppShell from './components/AppShell';
 import GatewayDetailDrawer from './components/GatewayDetailDrawer';
 import CustomerDetailDrawer from './components/CustomerDetailDrawer';
 import DeviceDetailDrawer from './components/DeviceDetailDrawer';
+import MessageDetailDrawer from './components/MessageDetailDrawer';
+import TemplateDetailDrawer from './components/TemplateDetailDrawer';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -72,11 +74,17 @@ function AppContent() {
             {/* Verschachtelte Route für Geräte-Detail als Drawer */}
             <Route path=":gatewayUuid/:deviceId" element={<DeviceDetailDrawer />} />
           </Route>
-          <Route path="/messages" element={<Messages />} />
+          <Route path="/messages" element={<Messages />}>
+            {/* Verschachtelte Route für Nachrichten-Detail als Drawer */}
+            <Route path=":messageId" element={<MessageDetailDrawer />} />
+          </Route>
+          <Route path="/templates" element={<Templates />}>
+            {/* Verschachtelte Route für Template-Detail als Drawer */}
+            <Route path=":id" element={<TemplateDetailDrawer />} />
+          </Route>
           <Route path="/debugger" element={<Debugger />} />
           {/* Umleitung von alten Pfaden */}
           <Route path="/message-debugger" element={<Navigate to="/debugger" />} />
-          <Route path="/templates" element={<Templates />} />
           <Route path="/settings" element={<Settings />} />
           {/* Neue Betrieb-Routen */}
           <Route path="/status" element={<div>Live-Status (Implementierung folgt)</div>} />
