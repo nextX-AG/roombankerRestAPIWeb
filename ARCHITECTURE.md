@@ -745,4 +745,126 @@ Folgende Komponenten der neuen Nachrichtenverarbeitungsarchitektur wurden bereit
 #### Filter Rule Schema (utils/filter_rule_schema.json)
 - JSON-Schema zur Validierung von Filterregeldefinitionen
 - Unterstützt alle implementierten Regeltypen
-- Enthält Beispiele für verschiedene Regelanwendungen 
+- Enthält Beispiele für verschiedene Regelanwendungen
+
+## 11. Debug-Dashboard und Logging-Architektur (NEU)
+
+Im Rahmen der Verbesserung der Entwickler- und Administratorwerkzeuge wurde ein umfassendes Debug-Dashboard implementiert, das die Fehlersuche und Analyse erheblich erleichtert.
+
+### 11.1 Debug-Dashboard-Komponenten
+
+Das Debug-Dashboard besteht aus mehreren integrierten Modulen:
+
+#### Nachrichtendebugger
+- Visualisierung der kompletten Nachrichtenverarbeitungspipeline
+- Schrittweise Anzeige von Extraktion, Normalisierung, Filterung, Transformation und Weiterleitung
+- Testfunktionalität für neue Nachrichten
+- Detaillierte Anzeige der Zwischenergebnisse jedes Verarbeitungsschritts
+
+#### System-Logs-Viewer
+- Echtzeitanzeige von Logs aller Systemkomponenten
+- Filterung nach Komponente (API, Processor, Gateway, Auth, Database)
+- Filterung nach Log-Level (debug, info, warning, error)
+- Volltextsuche in Log-Nachrichten
+- Zeitraum-basierte Filterung
+- Export-Funktionalität für Logs
+
+#### Nachrichtenanalyse
+- Detaillierte Ansicht aller empfangenen Nachrichten
+- Sortierung nach Zeit, Gateway oder Gerätetyp
+- Detailansicht mit JSON-Datenstruktur
+- Debug-Funktion zum Nachverfolgen der Verarbeitung
+
+### 11.2 Log-Service-Architektur
+
+Eine zentrale Komponente des Debug-Systems ist der neu implementierte Log-Service:
+
+#### Container-Log-Extraktion
+- Direkter Zugriff auf Docker-Container-Logs
+- Automatische Strukturierung und Normalisierung verschiedener Log-Formate
+- Echtzeitverfügbarkeit der neuesten Logs
+- Persistente Speicherung für spätere Analyse
+
+#### Log-API-Endpunkte
+- Vereinheitlichte Schnittstelle für alle Log-Typen
+- Filter- und Suchmöglichkeiten
+- Pagination für große Logmengen
+- Unterstützung verschiedener Ausgabeformate (JSON, TXT)
+
+#### Frontend-Integration
+- Reaktives UI-Update bei neuen Log-Einträgen
+- Farbliche Hervorhebung nach Log-Level
+- Erweiterte Filteroptionen
+- Automatisches Polling für Echtzeit-Updates
+
+### 11.3 Gateway-ID/UUID-Konvention
+
+Um die Konsistenz im Gesamtsystem zu verbessern, wurde eine klare Konvention für die Identifikation von Gateways etabliert:
+
+#### Datenbankschema
+- Verwendet einheitlich `uuid` als Feldnamen für Gateway-IDs
+- Alle Datenbank-Lookups verwenden `find_by_uuid()`
+
+#### API-Kommunikation
+- Verwendet einheitlich `gateway_id` als Parameter-Name in JSON-Payloads
+- Unterstützt für Abwärtskompatibilität alternative Feldnamen wie `gateway_uuid`, `uuid`, `gateway.uuid`
+- Bei der internen Verarbeitung wird immer auf `uuid` normalisiert
+
+#### Gateway-Skripte
+- Alle Gateway-Skripte wurden standardisiert, um konsistent `gateway_id` zu verwenden
+- Einheitliches Format `gw-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` für alle Gateway-IDs
+
+Diese Vereinheitlichung löst frühere Inkonsistenzen und vermeidet Fehler bei der Identifikation von Gateways.
+
+## 12. Datenbankzentrierte Architektur (NEU)
+
+Das System wurde von einer Mischung aus JSON-Konfigurationsdateien und Datenbanknutzung zu einer vollständig datenbankzentrierten Architektur migriert. Diese Migration löst ein kritisches architektonisches Problem, bei dem die gleichen Daten an mehreren Stellen gespeichert wurden und Inkonsistenzen entstanden.
+
+### 12.1 Migration von JSON zu MongoDB
+
+#### Frühere Probleme
+- Gateway-zu-Kunde-Zuordnungen waren in `templates/customer_config.json` gespeichert
+- UI lud Daten aus der Datenbank, während Nachrichtenverarbeitung die JSON-Datei verwendete
+- Gateways erschienen nicht in der UI, obwohl sie in der JSON-Datei einem Kunden zugeordnet waren
+
+#### Lösungsansatz
+- Entwicklung eines Migrationsskripts (`utils/migrate_customer_config.py`)
+- Vollständige Migration aller Daten aus JSON-Dateien in die MongoDB
+- Aktualisierung aller Codestellen, die auf JSON-Dateien zugriffen
+- Vereinheitlichung der Datenquelle für alle Systemkomponenten
+
+#### Hauptkomponenten
+- `message_processor.py` wurde aktualisiert, um Kundenzuordnungen aus der Datenbank zu lesen
+- Die Gateway-Registrierung und -Zuordnung nutzt nun ausschließlich die Datenbank
+- Alle Frontend-Komponenten beziehen ihre Daten konsistent aus der gleichen Datenbank
+
+### 12.2 Vorteile der datenbankzentrierten Architektur
+
+- **Konsistenz**: Alle Komponenten sehen den gleichen Datenstand
+- **Zuverlässigkeit**: Keine Synchronisationsprobleme zwischen verschiedenen Speicherorten
+- **Flexibilität**: Leichtere Implementierung neuer Features durch einheitlichen Datenzugriff
+- **Skalierbarkeit**: Bessere Unterstützung für Clustering und Hochverfügbarkeit
+- **Sicherheit**: Verbesserte Zugangskontrolle und Audit-Möglichkeiten
+
+### 12.3 Aktuelle Datenbankmodelle
+
+#### Customer
+- MongoDB-Collection für Kundendaten
+- Zentrale Speicherung aller kundenspezifischen Konfigurationen
+- API-Zugangsdaten für evAlarm werden sicher in der Datenbank gespeichert
+
+#### Gateway
+- UUID als primärer Identifikator
+- Kundenreferenz als Foreign Key (ObjectId)
+- Status- und Konfigurationsinformationen
+
+#### Device
+- Gerätedaten werden mit Gateway verknüpft
+- Automatische Erkennung und Registrierung neuer Geräte
+- Statusverfolgung in der Datenbank
+
+### 12.4 Zukünftige Erweiterungen
+
+- Vollständige Integration aller Template-Definitionen in die Datenbank
+- UI-Komponenten für Datenbank-Backup und -Wiederherstellung
+- Erweiterte Validierung und Konsistenzprüfung für Datenbankoperationen 

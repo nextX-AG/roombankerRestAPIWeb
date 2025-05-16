@@ -173,6 +173,62 @@ Erfolgreiche Antwort ohne Weiterleitung (Gateway keinem Kunden zugeordnet):
 | `/api/v1/templates/reload` | POST | Alle Templates neu laden |
 | `/api/v1/templates/test-transform` | POST | Transformation mit einem Template testen |
 
+### Logs-API (NEU)
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/v1/logs/system` | GET | Aggregierte System-Logs aller Komponenten |
+| `/api/v1/logs/processor` | GET | Logs des Message Processors |
+| `/api/v1/logs/gateway` | GET | Logs des API-Gateways und NGINX |
+| `/api/v1/logs/api` | GET | Logs des API-Servers |
+| `/api/v1/logs/auth` | GET | Logs des Auth-Services |
+| `/api/v1/logs/database` | GET | Logs der Datenbank-Operationen (MongoDB, Redis) |
+
+Alle Log-Endpunkte unterstützen folgende Query-Parameter:
+- `limit`: Maximale Anzahl an Log-Einträgen (default: 100)
+- `level`: Log-Level Filter (error, warning, info, debug, all)
+- `from_time`: ISO 8601 Zeitstempel für Beginn des Zeitfensters
+- `to_time`: ISO 8601 Zeitstempel für Ende des Zeitfensters
+- `search`: Volltextsuche in Log-Nachrichten
+
+### Debugging-API (NEU)
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/v1/messages/debug` | POST | Debugging von Nachrichten durch die gesamte Verarbeitungspipeline |
+
+Dieser Endpunkt zeigt detaillierte Informationen für jeden Schritt der Nachrichtenverarbeitung:
+1. Extraktion der Gateway-ID und Rohdaten
+2. Normalisierung der Nachricht in ein einheitliches Format
+3. Filterung basierend auf konfigurierten Regeln
+4. Transformation mit dem ausgewählten Template
+5. Simulierte Weiterleitung an das Zielsystem
+
+Antwortformat für `/api/v1/messages/debug`:
+```json
+{
+  "status": "success",
+  "data": {
+    "gateway_id": "gw-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "extraction_result": { ... },
+    "normalized_message": { ... },
+    "filter_result": {
+      "should_forward": true,
+      "matching_rules": [ ... ],
+      "all_rules": [ ... ]
+    },
+    "template_name": "evalarm_panic_v2",
+    "transformed_message": { ... },
+    "forwarding_result": {
+      "success": true,
+      "endpoint": "evalarm",
+      "response_status": 200,
+      "response_data": { ... }
+    }
+  }
+}
+```
+
 ### Queue-API (im Processor)
 
 | Endpunkt | Methode | Beschreibung |
@@ -287,6 +343,71 @@ Erfolgreiche Antwort ohne Weiterleitung (Gateway keinem Kunden zugeordnet):
 }
 ```
 
+## Nachrichtenverarbeitungs-Pipeline (NEU)
+
+Die Nachrichtenverarbeitung folgt einer klaren Pipeline-Architektur:
+
+```
+Nachricht → Extraktion → Normalisierung → Filterung → Transformation → Weiterleitung
+```
+
+### 1. Extraktion
+- Empfang der Nachrichten im Rohformat von verschiedenen Gateway-Typen
+- Identifikation des Gateway und Bestimmung des Nachrichtentyps
+- Extraktion von Gateway-ID und grundlegenden Metadaten
+
+### 2. Normalisierung
+- Konvertierung der Rohdaten in ein standardisiertes internes Format
+- Extrahieren aller Gerätedaten, unabhängig vom ursprünglichen Format
+- Typenkonvertierung und Validierung von Werten
+
+Normalisiertes Datenmodell:
+```json
+{
+  "gateway": {
+    "id": "gw-c490b022-cc18-407e-a07e-a355747a8fdd",
+    "type": "roombanker_gateway",
+    "metadata": {
+      "dbm": "-117",
+      "last_seen": "2025-05-15T21:52:32.675Z"
+    }
+  },
+  "devices": [
+    {
+      "id": "673922542395461",
+      "type": "panic_button",
+      "values": {
+        "alarmstatus": "alarm",
+        "alarmtype": "panic",
+        "batterystatus": "connected"
+      },
+      "last_seen": "2025-05-15T21:52:32.675Z"
+    }
+  ],
+  "raw_message": { ... },
+  "metadata": {
+    "received_at": "2025-05-15T21:52:32.675Z",
+    "source_ip": "192.168.1.100",
+    "format_type": "roombanker_subdevicelist"
+  }
+}
+```
+
+### 3. Filterung
+- Anwendung konfigurierbarer Filterregeln auf normalisierte Daten
+- Entscheidung, ob Nachrichten weitergeleitet werden sollen
+- Regelbasierte Filterung nach Werten, Bereichen, Textmustern oder komplexen Bedingungen
+
+### 4. Transformation
+- Anwendung von Templates auf die normalisierten Daten
+- Umwandlung in das Zielformat (z.B. evAlarm-Format)
+- Zugriff auf alle normalisierten Daten im Template
+
+### 5. Weiterleitung
+- Authentifizierung mit dem Zielsystem (z.B. evAlarm-API)
+- Protokollierung des Weiterleitungserfolgs
+- Umgang mit Fehlern und Wiederholungsversuchen
+
 ## Wichtige Hinweise
 
 1. **Gateway-ID-Erkennung**: Das System versucht, die Gateway-ID aus verschiedenen Feldern zu extrahieren:
@@ -305,6 +426,8 @@ Erfolgreiche Antwort ohne Weiterleitung (Gateway keinem Kunden zugeordnet):
    - API-Server: Port 8080
    - Auth Service: Port 8081
    - Message Processor: Port 8082
+
+5. **Datenbankmigration**: Das System ist von JSON-Konfigurationsdateien zu einer vollständigen Datenbanknutzung migriert worden. Die customer_config.json wird nicht mehr verwendet, alle Gateway-Kundenzuordnungen werden jetzt ausschließlich in der MongoDB gespeichert.
 
 ## Deployment
 
@@ -443,13 +566,14 @@ Das Frontend verwendet einen zentralen API-Client in `frontend/src/api.js`, der 
 
 ```javascript
 // Import des zentralen API-Clients
-import { gatewayApi, customerApi, templateApi, messageApi, systemApi } from '../api';
+import { gatewayApi, customerApi, templateApi, messageApi, systemApi, logsApi } from '../api';
 
 // Beispiel für API-Aufrufe in einer Komponente
 async function loadDashboardData() {
   const healthResponse = await systemApi.health();
   const templatesResponse = await templateApi.list();
   const messagesResponse = await messageApi.list();
+  const logsResponse = await logsApi.getSystemLogs({ limit: 50, level: 'error' });
   
   // Verarbeitung der Antworten
   if (healthResponse.status === 'success') {
@@ -480,7 +604,7 @@ async function loadDashboardData() {
    ```
 
 2. **Regelmäßige Aktualisierung:** Implementieren Sie Polling für zeitkritische Daten:
-c
+
    ```javascript
    useEffect(() => {
      // Initial laden
@@ -546,10 +670,14 @@ Alle Frontend-Komponenten sollten ausschließlich die folgenden API-Endpunkte ve
 | `systemApi.testMessage()` | `/api/v1/system/test-message` | Testnachricht senden |
 | `templateApi.list()` | `/api/v1/templates` | Liste aller Templates |
 | `messageApi.list()` | `/api/v1/list-messages` | Liste aller Nachrichten |
+| `messageApi.debugMessage()` | `/api/v1/messages/debug` | Nachricht durch Pipeline debuggen |
 | `gatewayApi.list()` | `/api/v1/gateways` | Liste aller Gateways |
 | `gatewayApi.latest(uuid)` | `/api/v1/gateways/{uuid}/latest` | Neueste Telemetriedaten eines Gateways |
 | `gatewayApi.unassigned()` | `/api/v1/gateways/unassigned` | Liste nicht zugeordneter Gateways |
 | `customerApi.list()` | `/api/v1/customers` | Liste aller Kunden |
+| `logsApi.getSystemLogs()` | `/api/v1/logs/system` | System-Logs abrufen |
+| `logsApi.getProcessorLogs()` | `/api/v1/logs/processor` | Processor-Logs abrufen |
+| `logsApi.getGatewayLogs()` | `/api/v1/logs/gateway` | Gateway-Logs abrufen |
 
 ### Häufige Fehlerquellen bei der API-Integration
 
