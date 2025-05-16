@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Table, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faEdit, faTrash, faSync, faUsers, faEye, faNetworkWired, faServer, faDesktop, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import { Link, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
+import { Plus, Edit, Trash, RefreshCw, Users, Eye, Router, Server, Info } from 'lucide-react';
 import GatewayStatusIcons from '../components/GatewayStatusIcons';
 import config, { API_VERSION } from '../config';
 import { gatewayApi, customerApi, templateApi } from '../api';
@@ -325,13 +324,15 @@ const Gateways = () => {
     <>
       {/* 1. Seiten-Titel */}
       <h1 className="page-title mb-4">
-        <FontAwesomeIcon icon={faNetworkWired} className="icon" />
+        <Router size={24} className="me-2" />
         Gateway-Verwaltung
       </h1>
 
       {/* 2. Fehler/Erfolgs-Anzeigen */}
       {error && (
-        <Alert variant="danger" className="mb-4">{error}</Alert>
+        <Alert variant="danger" className="mb-4" onClose={() => setError(null)} dismissible>
+          {error}
+        </Alert>
       )}
 
       {/* 3. Inhalt in Karten */}
@@ -342,13 +343,13 @@ const Gateways = () => {
             className="me-2" 
             onClick={() => setShowAddModal(true)}
           >
-            <FontAwesomeIcon icon={faPlus} className="me-1" /> Gateway hinzufügen
+            <Plus size={16} className="me-1" /> Gateway hinzufügen
           </Button>
           <Button 
             variant="secondary" 
             onClick={fetchData}
           >
-            <FontAwesomeIcon icon={faSync} className="me-1" /> Aktualisieren
+            <RefreshCw size={16} className="me-1" /> Aktualisieren
           </Button>
         </Col>
       </Row>
@@ -397,7 +398,7 @@ const Gateways = () => {
                             onClick={() => navigateToDetail(gateway)}
                             title="Details anzeigen"
                           >
-                            <FontAwesomeIcon icon={faInfoCircle} />
+                            <Info size={16} />
                           </Button>
                           <Button 
                             variant="outline-secondary" 
@@ -406,7 +407,7 @@ const Gateways = () => {
                             onClick={() => fetchDevices(gateway)}
                             title="Geräte anzeigen"
                           >
-                            <FontAwesomeIcon icon={faEye} />
+                            <Eye size={16} />
                           </Button>
                           <Button 
                             variant="outline-primary" 
@@ -415,7 +416,7 @@ const Gateways = () => {
                             onClick={() => openEditModal(gateway)}
                             title="Bearbeiten"
                           >
-                            <FontAwesomeIcon icon={faEdit} />
+                            <Edit size={16} />
                           </Button>
                           <Button 
                             variant="outline-danger" 
@@ -423,7 +424,7 @@ const Gateways = () => {
                             onClick={() => openDeleteConfirm(gateway)}
                             title="Löschen"
                           >
-                            <FontAwesomeIcon icon={faTrash} />
+                            <Trash size={16} />
                           </Button>
                         </td>
                       </tr>
@@ -710,7 +711,7 @@ const Gateways = () => {
       <Modal show={showDevicesList} onHide={() => setShowDevicesList(false)} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>
-            <FontAwesomeIcon icon={faServer} className="me-2" />
+            <Server size={18} className="me-2" />
             Geräte für Gateway: {currentGateway?.name || currentGateway?.uuid}
           </Modal.Title>
         </Modal.Header>
@@ -748,6 +749,9 @@ const Gateways = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+      
+      {/* Outlet für verschachtelte Routen (GatewayDetailDrawer) */}
+      <Outlet />
     </>
   );
 };

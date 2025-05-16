@@ -947,3 +947,89 @@ Ein architektonisches Problem wurde identifiziert: Das System verwendet parallel
 - [x] Container logs integration
 - [x] Database-centered architecture migration
 - [x] Gateway-ID/UUID standardization
+
+## 17. UI-Modernisierung nach Design-Konzept (HOHE PRIORITÄT)
+
+Die UI soll modernisiert werden, orientiert an modernen Server-Management-Konsolen, unter Beibehaltung des React/Bootstrap-Stacks. Das Konzept basiert auf dem Dokument UI.md und umfasst folgende Komponenten:
+
+### Phase 1: Grundlegende UI-Struktur (Sprint 1-2)
+
+- [x] **Side-Navigation einführen**
+  - [x] Permanente Navigation links (240px breit)
+  - [x] Responsive Anpassung: Offcanvas bei < lg Breakpoint
+  - [x] Neue Menüstruktur nach menu.ts-Vorlage implementieren
+  - [x] Top-Bar auf Logo + User-Menu + Command Palette reduzieren
+  - [x] Breadcrumbs integrieren
+
+- [x] **Drawer statt Modals**
+  - [x] `<Offcanvas placement="end">` als Basis-Komponente
+  - [x] URL-basierte Detail-Drawer mit Deep-Linking
+  - [x] Gateway-Detail als erstes Implementierungsbeispiel
+  - [ ] Bestehende Modals schrittweise migrieren
+
+### Phase 2: Erweiterte Komponenten (Sprint 3-4)
+
+- [ ] **TanStack Table einführen**
+  - [ ] Headless Table-Implementation für flexibles Styling
+  - [ ] Sticky Header, Virtual Scrolling, Sort/Filter-API
+  - [ ] Migration aller Listen-Ansichten auf TanStack Table
+  - [ ] Einheitliche Status-Badge-Darstellung
+
+- [ ] **Command Palette implementieren**
+  - [ ] Globales Overlay mit `⌘K`-Shortcut
+  - [ ] Fuzzy-Suche über Routen und Objekte
+  - [ ] Integration von react-hotkeys-hook
+  - [ ] Implementierung mit fuse.js für Fuzzy-Matching
+
+- [ ] **Toast-Notification-System**
+  - [ ] react-toastify global im AppShell einrichten
+  - [ ] Ersatz für bestehende Alert-Komponenten
+  - [ ] Einheitliches API für Notifications
+
+### Phase 3: Styling & Design-System (Sprint 5-6)
+
+- [ ] **CSS-Variablen-System aufbauen**
+  - [ ] Farb-Tokens definieren (Primärfarbe #E02424)
+  - [ ] Abstands- und Größen-System standardisieren
+  - [ ] Bootstrap-Token über CSS-Variablen überschreiben
+  - [ ] Schriftart Inter einbinden
+
+- [ ] **Icon-System standardisieren**
+  - [ ] lucide-react integrieren (18px Standardgröße)
+  - [ ] Bestehende Icons ersetzen
+  - [ ] Icon-Komponente für einheitliches Styling
+
+- [ ] **Dark-Mode implementieren**
+  - [ ] CSS-Variablen für Dark-Mode definieren
+  - [ ] Theme-Switcher in User-Menu integrieren
+  - [ ] Persistieren der User-Präferenz
+  - [ ] Respektieren des System-Farbschemas
+
+### Phase 4: Qualitätssicherung und Dokumentation
+
+- [ ] **Cross-Browser-Tests**
+  - [ ] Desktop: Chrome, Firefox, Safari, Edge
+  - [ ] Mobile: iOS Safari, Android Chrome
+
+- [ ] **Responsive Design Qualitätssicherung**
+  - [ ] Test aller Komponenten auf verschiedenen Bildschirmgrößen
+  - [ ] Sicherstellen der korrekten Funktionalität des Offcanvas-Menüs
+  - [ ] Optimierung für Tablets und mobile Geräte
+
+- [ ] **Dokumentation**
+  - [ ] Styling-Guide aktualisieren
+  - [ ] Komponenten-Dokumentation
+  - [ ] Migration-Guide für Entwickler
+
+### Implementierungsplan 
+
+| Sprint | Deliverable                        | Owner   |
+| ------ | ---------------------------------- | ------- |
+|  1     | Side-Nav + Top-Bar Refactor        | FE Team |
+|  2     | Drawer-Pattern für *Gateways*      | FE Team |
+|  3     | TanStack Table in allen Listen     | FE Team |
+|  4     | Command Palette + Toasts           | FE Team |
+|  5     | Nachrichten-Refactor (Tabs, Retry) | FE + BE |
+|  6     | Dark-Mode, QA, Docs                | QA      |
+
+Das Feature-Flag-System sollte für jede Komponente implementiert werden, um rollbacks zu erleichtern (z.B. `REACT_APP_ENABLE_DRAWER`).

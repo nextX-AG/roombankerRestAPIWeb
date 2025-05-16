@@ -138,7 +138,7 @@ services:
       - "80:5173"
     environment:
       - VITE_DOCKER=true
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    command: sh -c "npm install --legacy-peer-deps && npm run dev -- --host 0.0.0.0"
     depends_on:
       gateway:
         condition: service_healthy

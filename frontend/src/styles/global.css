@@ -67,6 +67,118 @@ html, body {
   width: 100%;
 }
 
+/* Top-Navigation */
+.top-navbar {
+  height: 56px;
+  z-index: 1030;
+}
+
+/* Seiten-Layout mit Side-Navigation */
+.app-container {
+  min-height: 100vh;
+}
+
+.app-content {
+  padding-top: 56px; /* Höhe der Top-Navbar */
+}
+
+/* Side-Navigation */
+.side-nav {
+  width: 240px;
+  height: 100%;
+  background-color: #f8f9fa;
+  border-right: 1px solid #e7e7e7;
+  transition: all 0.3s ease;
+  overflow-y: auto;
+  z-index: 1020;
+  flex-shrink: 0;
+}
+
+.side-nav-collapsed {
+  width: 60px;
+}
+
+.side-nav-header {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #e7e7e7;
+}
+
+.side-nav-title {
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-nav-group-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.side-nav-item {
+  color: #212529;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  margin: 0 0.5rem;
+  transition: all 0.2s;
+}
+
+.side-nav-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.side-nav-item.active {
+  background-color: rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+}
+
+.side-nav-group {
+  margin-bottom: 1rem;
+}
+
+.side-nav-footer {
+  margin-top: auto;
+  padding: 1rem;
+}
+
+/* Mobile Side-Navigation */
+.side-nav-mobile {
+  width: 280px;
+}
+
+.mobile-nav-toggle {
+  width: 30px;
+  height: 40px;
+}
+
+/* Main Content Bereich */
+.main-content {
+  transition: all 0.3s ease;
+  margin-left: 0;
+}
+
+.main-content-expanded {
+  margin-left: 0;
+}
+
+.breadcrumb-container {
+  background-color: #f8f9fa;
+}
+
+.page-content {
+  height: calc(100% - 42px); /* Höhe abzüglich Breadcrumbs */
+  overflow-y: auto;
+}
+
+/* Drawer Component */
+.drawer {
+  width: 400px;
+  max-width: 100%;
+}
+
 /* Hauptinhaltsbereich */
 .app-main-content {
   flex: 1;
@@ -157,6 +269,16 @@ th {
 }
 
 /* Responsive Anpassungen */
+@media (max-width: 992px) {
+  .side-nav {
+    display: none !important;
+  }
+  
+  .main-content {
+    margin-left: 0 !important;
+  }
+}
+
 @media (max-width: 768px) {
   .page-container {
     padding: 15px;
