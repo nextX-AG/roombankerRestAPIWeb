@@ -586,24 +586,26 @@ def get_api_messages():
     # Pfad zu gespeicherten Nachrichten
     messages_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
     
+    # Sortierungsparameter aus der Anfrage abrufen
+    sort_by = request.args.get('sort_by', 'date')  # 'date' oder 'customer'
+    sort_order = request.args.get('order', 'desc')  # 'asc' oder 'desc'
+    customer_id = request.args.get('customer_id')  # Optional: Filtern nach Kunden-ID
+    
     # Alle JSON-Dateien im Verzeichnis
     json_files = glob.glob(os.path.join(messages_dir, '*.json'))
     
     if not json_files:
         return success_response([])
     
-    # Sortiere die Dateien nach Änderungszeitstempel (neueste zuerst)
-    json_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
-    
     # Sammle alle Nachrichten
     messages = []
-    for file_path in json_files[:100]:  # Begrenze auf die neuesten 100 Nachrichten
+    for file_path in json_files:
         try:
             with open(file_path, 'r') as f:
                 message = json.load(f)
                 
             # Füge ID und Dateiinformationen hinzu
-            timestamp = os.path.getmtime(file_path)
+            file_timestamp = os.path.getmtime(file_path)
             message_id = os.path.basename(file_path).split('.')[0]
             
             # Falls nur der Nachrichteninhalt gespeichert wurde, umhülle ihn
@@ -611,16 +613,90 @@ def get_api_messages():
                 message = {
                     'id': message_id,
                     'content': message,
-                    'received_at': timestamp,
-                    'timestamp': timestamp
+                    'received_at': message.get('received_at', file_timestamp),
+                    'timestamp': message.get('timestamp', file_timestamp)
                 }
             else:
                 message['id'] = message.get('id', message_id)
-                message['timestamp'] = message.get('timestamp', timestamp)
+                # Wichtig: Verwende den tatsächlichen Zeitstempel aus der Nachricht, wenn vorhanden
+                if 'timestamp' not in message:
+                    message['timestamp'] = file_timestamp
+                if 'received_at' not in message:
+                    message['received_at'] = datetime.fromtimestamp(message['timestamp']).isoformat()
             
+            # Extrahiere die Kunden-ID aus der Nachricht, falls vorhanden
+            if 'customer_id' not in message:
+                # Versuche, customer_id zu extrahieren
+                try:
+                    if 'content' in message and isinstance(message['content'], dict):
+                        if 'customer_id' in message['content']:
+                            message['customer_id'] = message['content']['customer_id']
+                    elif 'data' in message and isinstance(message['data'], dict):
+                        if 'customer_id' in message['data']:
+                            message['customer_id'] = message['data']['customer_id']
+                        elif 'gateway' in message['data'] and isinstance(message['data']['gateway'], dict):
+                            if 'customer_id' in message['data']['gateway']:
+                                message['customer_id'] = message['data']['gateway']['customer_id']
+                except Exception:
+                    # Wenn keine Kunden-ID gefunden wird, setze auf None
+                    message['customer_id'] = None
+            
+            # Filtere nach Kunden-ID, falls angegeben
+            if customer_id and (not message.get('customer_id') or str(message['customer_id']) != str(customer_id)):
+                continue
+                
             messages.append(message)
         except Exception as e:
             logger.error(f"Fehler beim Lesen der Datei {file_path}: {str(e)}")
+    
+    # Sortiere Nachrichten nach dem ausgewählten Kriterium
+    if sort_by == 'date':
+        # Nachrichten nach Zeitstempel sortieren (verwende received_at, wenn vorhanden, sonst timestamp)
+        def get_message_time(msg):
+            try:
+                if 'received_at' in msg and msg['received_at']:
+                    # Konvertiere ISO-String zu timestamp, wenn es ein String ist
+                    if isinstance(msg['received_at'], str):
+                        dt = datetime.fromisoformat(msg['received_at'].replace('Z', '+00:00'))
+                        return dt.timestamp()
+                    return float(msg['received_at'])
+                elif 'timestamp' in msg and msg['timestamp']:
+                    return float(msg['timestamp'])
+                else:
+                    return 0  # Fallback
+            except (ValueError, TypeError):
+                return 0  # Bei Konvertierungsproblemen
+                
+        messages.sort(key=get_message_time, reverse=(sort_order == 'desc'))
+    elif sort_by == 'customer':
+        # Nachrichten nach Kunden-ID sortieren
+        messages.sort(
+            key=lambda msg: str(msg.get('customer_id', '')), 
+            reverse=(sort_order == 'desc')
+        )
+        # Sekundäre Sortierung nach Datum
+        if len(messages) > 0:
+            customer_groups = {}
+            for msg in messages:
+                customer_id = str(msg.get('customer_id', ''))
+                if customer_id not in customer_groups:
+                    customer_groups[customer_id] = []
+                customer_groups[customer_id].append(msg)
+            
+            # Sortiere jede Kundengruppe nach Datum
+            sorted_messages = []
+            for customer_id in sorted(customer_groups.keys(), reverse=(sort_order == 'desc')):
+                customer_messages = customer_groups[customer_id]
+                customer_messages.sort(
+                    key=lambda msg: float(msg.get('timestamp', 0)), 
+                    reverse=True  # Neueste zuerst innerhalb der Kundengruppe
+                )
+                sorted_messages.extend(customer_messages)
+            messages = sorted_messages
+    
+    # Begrenze auf die neuesten 100 Nachrichten nach der Sortierung
+    if len(messages) > 100:
+        messages = messages[:100]
     
     return success_response(messages)
 

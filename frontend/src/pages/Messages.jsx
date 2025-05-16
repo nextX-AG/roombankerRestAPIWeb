@@ -33,17 +33,45 @@ const Messages = () => {
   const [showDebugModal, setShowDebugModal] = useState(false);
   const [debugResult, setDebugResult] = useState(null);
   const [debugLoading, setDebugLoading] = useState(false);
+  const [sortBy, setSortBy] = useState('date'); // 'date' oder 'customer'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' oder 'desc'
+  const [selectedCustomerId, setSelectedCustomerId] = useState(''); // Für Kundenfilterung
+  const [customers, setCustomers] = useState([]); // Liste der verfügbaren Kunden
 
   const fetchMessages = async () => {
     try {
       setLoading(true);
-      const response = await messageApi.list();
-      if (response.status === 'success' && response.data) {
-        const messagesList = response.data || [];
+      
+      // URL-Parameter für Sortierung und Filterung
+      const params = new URLSearchParams();
+      params.append('sort_by', sortBy);
+      params.append('order', sortOrder);
+      if (selectedCustomerId) {
+        params.append('customer_id', selectedCustomerId);
+      }
+      
+      // Direkter API-Aufruf mit den Parametern
+      const response = await fetch(`${API_URL}/messages?${params.toString()}`);
+      const data = await response.json();
+      
+      if (data.status === 'success' && data.data) {
+        const messagesList = data.data || [];
         setMessages(Array.isArray(messagesList) ? messagesList : []);
+        
+        // Extrahiere eindeutige Kunden-IDs aus den Nachrichten
+        const uniqueCustomerIds = new Set();
+        messagesList.forEach(msg => {
+          if (msg.customer_id) uniqueCustomerIds.add(msg.customer_id);
+        });
+        
+        // Wenn wir noch keine Kunden haben, verwende diese IDs
+        if (customers.length === 0 && uniqueCustomerIds.size > 0) {
+          setCustomers([...uniqueCustomerIds].map(id => ({ id, name: `Kunde ${id}` })));
+        }
+        
         setError(null);
       } else {
-        throw new Error(response.error?.message || 'Keine Daten in der Antwort');
+        throw new Error(data.error?.message || 'Keine Daten in der Antwort');
       }
     } catch (error) {
       console.error('Fehler beim Abrufen der Nachrichten:', error);
@@ -97,7 +125,7 @@ const Messages = () => {
     }, 10000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [sortBy, sortOrder, selectedCustomerId]);
 
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
@@ -344,6 +372,23 @@ const Messages = () => {
     setDebugResult(null);
   };
 
+  // Funktion zum Ändern der Sortierung
+  const handleSortChange = (newSortBy) => {
+    // Wenn der gleiche Wert gewählt wird, ändere die Reihenfolge
+    if (newSortBy === sortBy) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Bei neuem Sortierkriterium, setze Standard-Reihenfolge
+      setSortBy(newSortBy);
+      setSortOrder('desc'); // Neueste zuerst als Standard
+    }
+  };
+
+  // Funktion zum Ändern des Kundenfilters
+  const handleCustomerFilterChange = (e) => {
+    setSelectedCustomerId(e.target.value);
+  };
+
   return (
     <>
       {/* 1. Seiten-Titel */}
@@ -358,17 +403,62 @@ const Messages = () => {
       {/* 3. Suchleiste und Aktualisieren-Button */}
       <Card className="mb-4">
         <Card.Body>
-          <InputGroup>
-            <Form.Control
-              placeholder="Suche in Nachrichten..."
-              value={searchQuery}
-              onChange={handleSearch}
-            />
-            <Button variant="primary" onClick={handleRefresh}>
-              <FontAwesomeIcon icon={faSync} className="me-2" />
-              Aktualisieren
-            </Button>
-          </InputGroup>
+          <Row>
+            <Col md={6}>
+              <InputGroup className="mb-3 mb-md-0">
+                <Form.Control
+                  placeholder="Suche in Nachrichten..."
+                  value={searchQuery}
+                  onChange={handleSearch}
+                />
+                <Button variant="primary" onClick={handleRefresh}>
+                  <FontAwesomeIcon icon={faSync} className="me-2" />
+                  Aktualisieren
+                </Button>
+              </InputGroup>
+            </Col>
+            <Col md={6}>
+              <Row>
+                <Col sm={6}>
+                  <Form.Group>
+                    <Form.Label>Sortieren nach</Form.Label>
+                    <div className="d-flex">
+                      <Form.Select 
+                        value={sortBy} 
+                        onChange={(e) => handleSortChange(e.target.value)}
+                        className="me-2"
+                      >
+                        <option value="date">Datum</option>
+                        <option value="customer">Kunde</option>
+                      </Form.Select>
+                      <Button 
+                        variant="outline-secondary"
+                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                      >
+                        {sortOrder === 'desc' ? '↓' : '↑'}
+                      </Button>
+                    </div>
+                  </Form.Group>
+                </Col>
+                <Col sm={6}>
+                  <Form.Group>
+                    <Form.Label>Kundenfilter</Form.Label>
+                    <Form.Select
+                      value={selectedCustomerId}
+                      onChange={handleCustomerFilterChange}
+                    >
+                      <option value="">Alle Kunden</option>
+                      {customers.map(customer => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name || `Kunde ${customer.id}`}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+              </Row>
+            </Col>
+          </Row>
         </Card.Body>
       </Card>
 
