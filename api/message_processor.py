@@ -5,6 +5,7 @@ import logging
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from datetime import datetime
+import time
 
 # Füge das Projektverzeichnis zum Python-Pfad hinzu
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -303,8 +304,58 @@ def list_all_messages():
     """
     logger.info("Liste alle Nachrichten auf für Dashboard")
     
-    # Leeres Array zurückgeben statt Beispieldaten
     messages = []
+    try:
+        # Hole die letzten Ergebnisse aus der Ergebnis-Liste
+        results_json = queue.redis_client.lrange(queue.results_list, 0, 99)
+        completed_msgs = [json.loads(result) for result in results_json if result]
+        
+        # Hole fehlgeschlagene Nachrichten
+        failed_messages = queue.get_failed_messages()
+        
+        # Hole Nachrichten in Verarbeitung
+        processing_messages = []
+        processing_queue = queue.redis_client.hgetall(queue.processing_queue)
+        for job_json in processing_queue.values():
+            if job_json:
+                processing_messages.append(json.loads(job_json))
+        
+        # Kombiniere und formatiere alle Nachrichten
+        for msg in completed_msgs + failed_messages + processing_messages:
+            try:
+                # Erstelle einheitliches Format für die Nachrichtenübersicht
+                message_entry = {
+                    'id': msg.get('id', f"msg-{int(time.time() * 1000)}"),
+                    'gateway_id': msg.get('gateway_id', 'unknown'),
+                    'timestamp': msg.get('timestamp', int(time.time())),
+                    'received_at': msg.get('created_at', datetime.now().isoformat()),
+                    'status': msg.get('status', 'unknown'),
+                    'type': 'message',
+                    'content': msg.get('message', {})
+                }
+                
+                # Füge zusätzliche Informationen hinzu, wenn vorhanden
+                if 'template' in msg:
+                    message_entry['template'] = msg['template']
+                if 'endpoint' in msg:
+                    message_entry['endpoint'] = msg['endpoint']
+                if 'result' in msg:
+                    message_entry['result'] = msg['result']
+                if 'error' in msg:
+                    message_entry['error'] = msg['error']
+                
+                messages.append(message_entry)
+            except Exception as inner_e:
+                logger.error(f"Fehler beim Formatieren einer Nachricht: {str(inner_e)}")
+        
+        # Sortiere nach Timestamp (neueste zuerst)
+        messages.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+        
+        logger.info(f"{len(messages)} Nachrichten gefunden")
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Nachrichten: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
     
     return success_response(messages)
 
@@ -540,8 +591,6 @@ def generate_test_message():
     """
     Erzeugt eine Testnachricht für Dashboard-Tests
     """
-    import time
-    
     logger.info("Erzeuge Testnachricht")
     
     # Einfache Testnachricht

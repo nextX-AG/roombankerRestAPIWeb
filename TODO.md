@@ -1018,17 +1018,17 @@ Nachricht → Extraktion → Normalisierung → Filterung → Transformation →
 
 ### Phase 1: Generische Extraktions- und Normalisierungsschicht
 
-- [ ] **Generischer Message-Extraktor implementieren**
-  - [ ] Gateway-ID aus beliebigem Format extrahieren
-  - [ ] Geräte-IDs aus beliebigen Formaten extrahieren
-  - [ ] Gerätewerte aus verschiedenen Nachrichtenformaten extrahieren
-  - [ ] Automatische Typ-Bestimmung für Geräte basierend auf vorhandenen Werten
+- [x] **Generischer Message-Extraktor implementieren**
+  - [x] Gateway-ID aus beliebigem Format extrahieren
+  - [x] Geräte-IDs aus beliebigen Formaten extrahieren
+  - [x] Gerätewerte aus verschiedenen Nachrichtenformaten extrahieren
+  - [x] Automatische Typ-Bestimmung für Geräte basierend auf vorhandenen Werten
 
-- [ ] **Normalisierungsschicht entwickeln**
-  - [ ] Einheitliches internes Datenformat definieren
-  - [ ] Extraktion von Gateway- und Gerätedaten in das normalisierte Format
-  - [ ] Transformation von Werten in konsistente Datentypen
-  - [ ] Behandlung von fehlenden oder ungültigen Daten
+- [x] **Normalisierungsschicht entwickeln**
+  - [x] Einheitliches internes Datenformat definieren
+  - [x] Extraktion von Gateway- und Gerätedaten in das normalisierte Format
+  - [x] Transformation von Werten in konsistente Datentypen
+  - [x] Behandlung von fehlenden oder ungültigen Daten
 
 - [ ] **Zwischenspeicherung normalisierter Daten**
   - [ ] Datenbankschema für normalisierte Daten erstellen
@@ -1037,12 +1037,12 @@ Nachricht → Extraktion → Normalisierung → Filterung → Transformation →
 
 ### Phase 2: Regelbasierte Filterung und Template-System
 
-- [ ] **Filterregelsystem implementieren**
-  - [ ] JSON-Schema für Filterregeln definieren
-  - [ ] Min/Max-Werteprüfung implementieren
-  - [ ] Präzise Werteübereinstimmungsprüfungen
-  - [ ] Listen-basierte Werte-Filterung
-  - [ ] Logische Verknüpfungen zwischen Regeln (UND/ODER)
+- [x] **Filterregelsystem implementieren**
+  - [x] JSON-Schema für Filterregeln definieren
+  - [x] Min/Max-Werteprüfung implementieren
+  - [x] Präzise Werteübereinstimmungsprüfungen
+  - [x] Listen-basierte Werte-Filterung
+  - [x] Logische Verknüpfungen zwischen Regeln (UND/ODER)
 
 - [ ] **Erweitertes Template-System**
   - [ ] Templates mit integrierten Filterregeln
@@ -1058,6 +1058,19 @@ Nachricht → Extraktion → Normalisierung → Filterung → Transformation →
 
 ### Phase 3: Verbesserte Benutzerschnittstelle
 
+- [ ] **Message-Debugging-Interface (NEUER TASK)**
+  - [ ] Neue dedizierte Debug-Seite für Nachrichtenverarbeitung implementieren
+  - [ ] Visualisierung des Verarbeitungspipeline-Flusses
+  - [ ] Anzeige des Zustands nach jedem Verarbeitungsschritt
+  - [ ] Copy-to-Clipboard Funktionalität für JSON-Daten
+  - [ ] Möglichkeit zum Einreichen einer Nachricht zur erneuten Verarbeitung
+
+- [ ] **Fehler in Nachrichtenanzeige beheben (DRINGENDER TASK)**
+  - [ ] Problem analysieren, warum Nachrichten nur im Dashboard und nicht in der Nachrichtenseite erscheinen
+  - [ ] API-Endpunkte für Nachrichtenabfrage überprüfen
+  - [ ] Datenflussprobleme in der Frontend-Komponente beheben
+  - [ ] Konsistente Nachrichtenanzeige über alle Seiten sicherstellen
+
 - [ ] **Verbesserte Dashboard-Widgets**
   - [ ] Anzeige normalisierter Daten für eingehende Nachrichten
   - [ ] Live-Vorschau der Transformationen mit verschiedenen Templates
@@ -1069,12 +1082,6 @@ Nachricht → Extraktion → Normalisierung → Filterung → Transformation →
   - [ ] Min/Max-Slider für numerische Werte
   - [ ] Dropdown-Menüs für kategorische Werte
   - [ ] Echtzeit-Vorschau der Transformation
-
-- [ ] **Debugger für Nachrichtenverarbeitung**
-  - [ ] Detaillierte Protokollierung der Verarbeitungsschritte
-  - [ ] Visualisierung des Datenflusses durch die Pipeline
-  - [ ] Anzeige von Filterentscheidungen und deren Begründung
-  - [ ] Historische Nachrichtenanalyse
 
 ### Phase 4: Systemintegration und Optimierung
 
@@ -1096,12 +1103,12 @@ Nachricht → Extraktion → Normalisierung → Filterung → Transformation →
 ### Implementierungsplan
 
 1. **Stufe 1: Grundlegende Neuarchitektur (Priorität: HÖCHST)**
-   - [ ] Entwurf und Implementierung der Extraktions- und Normalisierungsschicht
+   - [x] Entwurf und Implementierung der Extraktions- und Normalisierungsschicht
    - [ ] Speicherung normalisierter Daten
-   - [ ] Anpassung der bestehenden Prozessor-Komponente
+   - [x] Anpassung der bestehenden Prozessor-Komponente
 
 2. **Stufe 2: Erweitertes Filtersystem (Priorität: HOCH)**
-   - [ ] Implementierung des Filterregelsystems
+   - [x] Implementierung des Filterregelsystems
    - [ ] Erweiterung des Template-Systems um Filterunterstützung
    - [ ] Backend-API für Filterregelkonfiguration
 

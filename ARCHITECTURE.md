@@ -556,100 +556,122 @@ Dieses Modell bietet:
 
 ### 10.3 Filterregel-System
 
-Das neue Filterregel-System ermöglicht eine detaillierte Konfiguration, welche Nachrichten weitergeleitet werden:
+Das neue Filterregel-System ermöglicht eine detaillierte Konfiguration, welche Nachrichten weitergeleitet werden sollen. Es unterstützt verschiedene Regeltypen:
 
+#### Wertebasierte Regeln
 ```json
 {
-  "name": "evalarm_panic_filter",
-  "description": "Weiterleitung von Panic-Button-Alarmen",
-  "device_rules": [
+  "name": "panic_alarm",
+  "type": "ValueComparisonRule",
+  "description": "Filtert Panic-Button-Alarme",
+  "field_path": "devices[0].values.alarmtype",
+  "expected_value": "panic"
+}
+```
+
+#### Numerische Bereichsregeln
+```json
+{
+  "name": "temperature_range",
+  "type": "RangeRule",
+  "description": "Filtert Temperaturen zwischen 18 und 30 Grad",
+  "field_path": "devices[0].values.temperature",
+  "min_value": 18,
+  "max_value": 30,
+  "inclusive": true
+}
+```
+
+#### Textmuster-Regeln
+```json
+{
+  "name": "gateway_pattern",
+  "type": "RegexRule",
+  "description": "Filtert Gateway-IDs, die mit 'gw-' beginnen",
+  "field_path": "gateway.id",
+  "pattern": "^gw-.*"
+}
+```
+
+#### Listenwert-Regeln
+```json
+{
+  "name": "allowed_status",
+  "type": "ListContainsRule",
+  "description": "Filtert nach erlaubten Status-Werten",
+  "field_path": "devices[0].values.status",
+  "allowed_values": ["online", "warning", "alarm"]
+}
+```
+
+#### Logisch verknüpfte Regeln (AND/OR)
+```json
+{
+  "name": "combined_conditions",
+  "type": "AndRule",
+  "description": "Kombinierte Bedingung (Alarm UND Batterie OK)",
+  "rules": [
     {
-      "device_type": "panic_button",
-      "conditions": [
-        {
-          "field": "alarmstatus",
-          "operator": "equals",
-          "value": "alarm",
-          "action": "forward"
-        },
-        {
-          "field": "batterystatus",
-          "operator": "equals",
-          "value": "low",
-          "action": "forward"
-        }
-      ],
-      "combine_with": "OR"
-    }
-  ],
-  "gateway_rules": [
+      "name": "is_alarm",
+      "type": "ValueComparisonRule",
+      "field_path": "devices[0].values.alarmstatus",
+      "expected_value": "alarm"
+    },
     {
-      "field": "dbm",
-      "operator": "outside_range",
-      "min": -120,
-      "max": -30,
-      "action": "forward"
+      "name": "battery_ok",
+      "type": "ValueComparisonRule",
+      "field_path": "devices[0].values.batterystatus",
+      "expected_value": "connected"
     }
   ]
 }
 ```
 
-Diese Regeln werden auf die normalisierten Daten angewendet und bestimmen, ob eine Weiterleitung erfolgt.
+Die Filterregeln werden in einer JSON-Datei gespeichert und durch ein JSON-Schema validiert. Das System stellt eine `FilterRuleEngine`-Klasse bereit, die die Regeln verwaltet und auf normalisierte Nachrichten anwendet.
 
-### 10.4 Automatische Template-Generierung
+### 10.4 Implementierte Komponenten
 
-Ein Kernfeature der neuen Architektur ist die Fähigkeit, aus eingehenden normalisierten Daten automatisch Templates zu generieren:
+Folgende Komponenten der neuen Nachrichtenverarbeitungsarchitektur wurden bereits implementiert:
 
-1. **Erkennung der Variablen und Typen**:
-   - Analyse der normalisierten Daten
-   - Bestimmung von Variablentypen (Strings, Zahlen, Booleans)
-   - Erkennung von Wertemustern und üblichen Bereichen
+#### Message Normalizer (utils/message_normalizer.py)
+- Konvertiert verschiedene Nachrichtenformate in das normalisierte Datenmodell
+- Unterstützt automatische Format-Erkennung
+- Extrahiert Gateway- und Geräteinformationen
+- Bestimmt automatisch Gerätetypen anhand von Werten
 
-2. **Generierung des Template-Grundgerüsts**:
-   - Erstellung eines Basis-Templates mit erkannten Variablen
-   - Konfiguration von Standardfilterregeln
-   - Vorausfüllung der Transformationslogik
+#### Filter Rules System (utils/filter_rules.py)
+- Definiert die Basisklasse für alle Filterregeln
+- Implementiert verschiedene Regeltypen:
+  - ValueComparisonRule für exakte Wertevergleiche
+  - RangeRule für numerische Wertebereiche
+  - RegexRule für Textmustervergleiche
+  - ListContainsRule für Listenprüfungen
+  - AndRule/OrRule für logische Verknüpfungen
+- Enthält die FilterRuleEngine zur Anwendung von Regeln
 
-3. **Anpassung durch Benutzer**:
-   - Grafische Bearbeitung des generierten Templates
-   - Anpassung der Filterregeln
-   - Erweiterung der Transformationslogik
+#### Filter Rule Schema (utils/filter_rule_schema.json)
+- JSON-Schema zur Validierung von Filterregeldefinitionen
+- Unterstützt alle implementierten Regeltypen
+- Enthält Beispiele für verschiedene Regelanwendungen
 
-4. **Versionierung und Testen**:
-   - Speicherung verschiedener Versionen eines Templates
-   - Tests mit historischen Daten
-   - A/B-Tests zwischen Template-Versionen
+### 10.5 Geplante Erweiterungen
 
-### 10.5 Integration in die Systemarchitektur
+Die folgenden Komponenten werden als nächstes implementiert:
 
-Die neue Nachrichtenverarbeitungs-Pipeline ist vollständig in die bestehende Systemarchitektur integriert:
+#### Erweitertes Template-System
+- Integration von Filterregeln in Templates
+- Direkte Verwendung normalisierter Daten in Templates
+- Unterstützung für bedingte Transformation
+- Versionierung von Templates
 
-1. **API-Gateway** empfängt Nachrichten über den einheitlichen Endpunkt `/api/v1/messages/process`
-2. **Processor-Service** führt die Extraktion und Normalisierung durch
-3. **Redis** speichert normalisierte Daten temporär und verwaltet die Nachrichtenqueue
-4. **MongoDB** speichert Templates, Filterregeln und historische Daten
-5. **Frontend** bietet Oberflächen für Template-Generierung, Filterregelkonfiguration und Debugging
+#### Automatische Template-Generierung
+- Erstellung von Templates aus normalisierten Daten
+- Intelligente Erkennung von Variablen und ihren Typen
+- Vorschläge für sinnvolle Filterregeln
+- Benutzerfreundliche Anpassungsmöglichkeiten
 
-Während der Übergangsphase läuft das System parallel zur bestehenden Implementierung, um einen reibungslosen Wechsel zu gewährleisten.
-
-### 10.6 Vorteile der neuen Architektur
-
-1. **Maximale Flexibilität**:
-   - Unterstützung beliebiger Gateway- und Gerätetypen ohne Codeänderungen
-   - Konfigurierbare Filterung und Weiterleitung
-   - Kundenspezifische Templates und Regeln
-
-2. **Verbesserte Wartbarkeit**:
-   - Klare Trennung der Verantwortlichkeiten
-   - Standardisiertes internes Datenmodell
-   - Reduzierte Abhängigkeiten zwischen Komponenten
-
-3. **Erweiterte Diagnose-Möglichkeiten**:
-   - Detaillierte Protokollierung jeder Verarbeitungsstufe
-   - Nachvollziehbarkeit von Filterentscheidungen
-   - Historische Daten für Analyse und Optimierung
-
-4. **Leistungsfähigkeit**:
-   - Optimierte Verarbeitung großer Nachrichtenmengen
-   - Parallele Verarbeitung durch klare Pipelinetrennung
-   - Effiziente Datenspeicherung und -abfrage 
+#### Message-Debugging-Interface
+- Visualisierung des Pipeline-Datenflusses
+- Anzeige von Zwischenergebnissen jeder Verarbeitungsstufe
+- Filterentscheidungen nachvollziehbar machen
+- Tools zum Kopieren und erneuten Verarbeiten von Nachrichten 

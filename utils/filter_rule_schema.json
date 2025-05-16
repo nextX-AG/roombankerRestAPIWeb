@@ -1,0 +1,200 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Filter Rule Schema",
+  "description": "Schema für Filterregeln zur Nachrichtenweiterleitung",
+  "definitions": {
+    "baseRule": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Der eindeutige Name der Regel"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optionale Beschreibung der Regel"
+        },
+        "type": {
+          "type": "string",
+          "description": "Der Typ der Regel",
+          "enum": ["ValueComparisonRule", "RangeRule", "RegexRule", "ListContainsRule", "AndRule", "OrRule"]
+        }
+      }
+    },
+    "fieldRule": {
+      "allOf": [
+        { "$ref": "#/definitions/baseRule" },
+        {
+          "required": ["field_path"],
+          "properties": {
+            "field_path": {
+              "type": "string",
+              "description": "Der Pfad zum Feld in der normalisierten Nachricht (z.B. 'gateway.id' oder 'devices[0].values.temperature')"
+            },
+            "negate": {
+              "type": "boolean",
+              "description": "Ob das Ergebnis der Regel negiert werden soll",
+              "default": false
+            }
+          }
+        }
+      ]
+    }
+  },
+
+  "type": "object",
+  "additionalProperties": {
+    "oneOf": [
+      {
+        "allOf": [
+          { "$ref": "#/definitions/fieldRule" },
+          {
+            "properties": {
+              "type": { "enum": ["ValueComparisonRule"] },
+              "expected_value": {
+                "description": "Der erwartete Wert für den Vergleich"
+              }
+            },
+            "required": ["expected_value"]
+          }
+        ]
+      },
+      {
+        "allOf": [
+          { "$ref": "#/definitions/fieldRule" },
+          {
+            "properties": {
+              "type": { "enum": ["RangeRule"] },
+              "min_value": {
+                "oneOf": [
+                  { "type": "number" },
+                  { "type": "null" }
+                ],
+                "description": "Der Mindestwert für den Bereich (NULL für keinen Mindestwert)"
+              },
+              "max_value": {
+                "oneOf": [
+                  { "type": "number" },
+                  { "type": "null" }
+                ],
+                "description": "Der Maximalwert für den Bereich (NULL für keinen Maximalwert)"
+              },
+              "inclusive": {
+                "type": "boolean",
+                "description": "Ob die Grenzen einschließlich sind",
+                "default": true
+              }
+            },
+            "anyOf": [
+              { "required": ["min_value"] },
+              { "required": ["max_value"] }
+            ]
+          }
+        ]
+      },
+      {
+        "allOf": [
+          { "$ref": "#/definitions/fieldRule" },
+          {
+            "properties": {
+              "type": { "enum": ["RegexRule"] },
+              "pattern": {
+                "type": "string",
+                "description": "Das Regex-Muster für den Vergleich"
+              }
+            },
+            "required": ["pattern"]
+          }
+        ]
+      },
+      {
+        "allOf": [
+          { "$ref": "#/definitions/fieldRule" },
+          {
+            "properties": {
+              "type": { "enum": ["ListContainsRule"] },
+              "allowed_values": {
+                "type": "array",
+                "description": "Liste der erlaubten Werte"
+              }
+            },
+            "required": ["allowed_values"]
+          }
+        ]
+      },
+      {
+        "allOf": [
+          { "$ref": "#/definitions/baseRule" },
+          {
+            "properties": {
+              "type": { "enum": ["AndRule", "OrRule"] },
+              "rules": {
+                "type": "array",
+                "description": "Liste der Unterregeln",
+                "items": {
+                  "$ref": "#/definitions/baseRule"
+                },
+                "minItems": 1
+              }
+            },
+            "required": ["rules"]
+          }
+        ]
+      }
+    ]
+  },
+  "examples": [
+    {
+      "panic_alarm": {
+        "name": "panic_alarm",
+        "type": "ValueComparisonRule",
+        "description": "Filtert Panic-Button-Alarme",
+        "field_path": "devices[0].values.alarmtype",
+        "expected_value": "panic"
+      },
+      "temperature_range": {
+        "name": "temperature_range",
+        "type": "RangeRule",
+        "description": "Filtert Temperaturen zwischen 18 und 30 Grad",
+        "field_path": "devices[0].values.temperature",
+        "min_value": 18,
+        "max_value": 30,
+        "inclusive": true
+      },
+      "gateway_pattern": {
+        "name": "gateway_pattern",
+        "type": "RegexRule",
+        "description": "Filtert Gateway-IDs, die mit 'gw-' beginnen",
+        "field_path": "gateway.id",
+        "pattern": "^gw-.*"
+      },
+      "allowed_status": {
+        "name": "allowed_status",
+        "type": "ListContainsRule",
+        "description": "Filtert nach erlaubten Status-Werten",
+        "field_path": "devices[0].values.status",
+        "allowed_values": ["online", "warning", "alarm"]
+      },
+      "combined_conditions": {
+        "name": "combined_conditions",
+        "type": "AndRule",
+        "description": "Kombinierte Bedingung (Alarm UND Batterie OK)",
+        "rules": [
+          {
+            "name": "is_alarm",
+            "type": "ValueComparisonRule",
+            "field_path": "devices[0].values.alarmstatus",
+            "expected_value": "alarm"
+          },
+          {
+            "name": "battery_ok",
+            "type": "ValueComparisonRule",
+            "field_path": "devices[0].values.batterystatus",
+            "expected_value": "connected"
+          }
+        ]
+      }
+    }
+  ]
+} 

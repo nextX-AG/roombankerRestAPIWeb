@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Table, Button, Form, Alert, InputGroup, Badge, Nav, Tab, Accordion } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSync, faSearch, faInfoCircle, faExclamationTriangle, faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import { faSync, faSearch, faInfoCircle, faExclamationTriangle, faEnvelope, faCopy } from '@fortawesome/free-solid-svg-icons';
 import { messageApi } from '../api';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
@@ -34,13 +34,13 @@ const Messages = () => {
   const fetchMessages = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${config.apiBaseUrl}/v1/list-messages`);
-      if (response.data) {
-        const messagesList = response.data.data || [];
+      const response = await messageApi.list();
+      if (response.status === 'success' && response.data) {
+        const messagesList = response.data || [];
         setMessages(Array.isArray(messagesList) ? messagesList : []);
         setError(null);
       } else {
-        throw new Error('Keine Daten in der Antwort');
+        throw new Error(response.error?.message || 'Keine Daten in der Antwort');
       }
     } catch (error) {
       console.error('Fehler beim Abrufen der Nachrichten:', error);
@@ -56,9 +56,9 @@ const Messages = () => {
       setLoadingStatus(true);
       
       // Hole Weiterleitungsstatus
-      const forwardingResponse = await axios.get(`${config.apiBaseUrl}/v1/messages/forwarding`);
-      if (forwardingResponse.data) {
-        const forwardingData = forwardingResponse.data.data || { details: { completed: [], failed: [] } };
+      const forwardingResponse = await messageApi.forwarding();
+      if (forwardingResponse.status === 'success' && forwardingResponse.data) {
+        const forwardingData = forwardingResponse.data || { details: { completed: [], failed: [] } };
         setForwardingStatus([
           ...(forwardingData.details?.completed || []),
           ...(forwardingData.details?.failed || [])
@@ -66,9 +66,9 @@ const Messages = () => {
       }
       
       // Hole Queue-Status
-      const queueResponse = await axios.get(`${config.apiBaseUrl}/v1/messages/queue/status`);
-      if (queueResponse.data) {
-        const queueData = queueResponse.data.data || {};
+      const queueResponse = await messageApi.queueStatus();
+      if (queueResponse.status === 'success' && queueResponse.data) {
+        const queueData = queueResponse.data || {};
         setQueueStatus(queueData);
       }
       
@@ -296,6 +296,17 @@ const Messages = () => {
     }
   };
 
+  // Funktion zum Kopieren von JSON in die Zwischenablage
+  const copyToClipboard = (data) => {
+    try {
+      navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      alert('JSON in Zwischenablage kopiert!');
+    } catch (error) {
+      console.error('Fehler beim Kopieren in die Zwischenablage:', error);
+      alert('Fehler beim Kopieren: ' + error.message);
+    }
+  };
+
   return (
     <>
       {/* 1. Seiten-Titel */}
@@ -458,6 +469,17 @@ const Messages = () => {
                         </Table>
 
                         <h5>Nachrichteninhalt</h5>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span>Originalnachricht</span>
+                          <Button 
+                            size="sm" 
+                            variant="outline-secondary" 
+                            onClick={() => copyToClipboard(selectedMessage.content || selectedMessage)}
+                          >
+                            <FontAwesomeIcon icon={faCopy} className="me-1" />
+                            Kopieren
+                          </Button>
+                        </div>
                         <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                           <JsonView data={selectedMessage.content || selectedMessage} />
                         </div>
@@ -570,6 +592,17 @@ const Messages = () => {
                         </Table>
                   
                         <h5>Nachrichteninhalt</h5>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span>Originalnachricht</span>
+                          <Button 
+                            size="sm" 
+                            variant="outline-secondary" 
+                            onClick={() => copyToClipboard(selectedMessage.content || selectedMessage)}
+                          >
+                            <FontAwesomeIcon icon={faCopy} className="me-1" />
+                            Kopieren
+                          </Button>
+                        </div>
                         <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                           <JsonView data={selectedMessage.content || selectedMessage} />
                         </div>
@@ -747,8 +780,19 @@ const Messages = () => {
                         </Table>
 
                         <h5>Nachrichteninhalt</h5>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span>Originalnachricht</span>
+                          <Button 
+                            size="sm" 
+                            variant="outline-secondary" 
+                            onClick={() => copyToClipboard(selectedMessage.content || selectedMessage)}
+                          >
+                            <FontAwesomeIcon icon={faCopy} className="me-1" />
+                            Kopieren
+                          </Button>
+                        </div>
                         <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                          <JsonView data={selectedMessage.message || selectedMessage.content || selectedMessage} />
+                          <JsonView data={selectedMessage.content || selectedMessage} />
                         </div>
 
                         {selectedMessage.result && selectedMessage.result.transformed_message && (
