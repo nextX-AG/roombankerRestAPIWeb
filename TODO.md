@@ -1067,16 +1067,14 @@ Nachricht → Extraktion → Normalisierung → Filterung → Transformation →
   - [x] Integration des Nachrichten-Debuggers in die reguläre Nachrichtenansicht
   - [x] Debug-Funktion für historische Nachrichten implementiert
 
-- [x] **Erweitertes Debugging-System (NEUER TASK)**
-  - [x] Umbenennung von "Nachrichten-Debugger" zu "Debugger" in der Navigation
-  - [x] Tab-basierte Struktur für verschiedene Debugging-Bereiche implementieren
-  - [x] Komponenten-Auswahl über linke Seitenleiste (Gateway, Processor, API, etc.)
-  - [x] Echtzeit-Anzeige von System-Logs mit Filterungsmöglichkeiten
-  - [x] Konfigurierbare Debug-Level (ERROR, WARNING, INFO, DEBUG)
-  - [x] Feature zum Herunterladen von Log-Dateien für Offline-Analyse
-  - [x] Suchfunktion zur Filterung von Logs nach Schlüsselwörtern
-  - [x] Live-Update der Logs mit konfigurierbarem Aktualisierungsintervall
-  - [x] Visuelle Hervorhebung verschiedener Log-Level (Farben für ERROR, WARNING, etc.)
+- [ ] **Zentrales Debug-Dashboard (HÖCHSTE PRIORITÄT)**
+  - [ ] Umwandlung der "Nachrichten-Debugger"-Seite in ein zentrales "Debugger"-Dashboard
+  - [ ] Implementierung von Tabs für verschiedene Debug-Bereiche (Nachrichten, System-Logs)
+  - [ ] Sidebar zur Auswahl verschiedener Komponenten (Gateway, Processor, API, etc.)
+  - [ ] Filtern der Debug-Informationen nach Typ und Detailgrad
+  - [ ] Echtzeitanzeige von System-Logs mit Filtermöglichkeiten
+  - [ ] Visuelle Darstellung von Fehlern und Warnungen
+  - [ ] Export-Funktion für Debug-Informationen und Logs
 
 - [ ] **Fehler in Nachrichtenanzeige beheben (DRINGENDER TASK)**
   - [ ] Problem analysieren, warum Nachrichten nur im Dashboard und nicht in der Nachrichtenseite erscheinen

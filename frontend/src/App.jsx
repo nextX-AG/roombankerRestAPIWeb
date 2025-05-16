@@ -18,7 +18,7 @@ import Customers from './pages/Customers';
 import Gateways from './pages/Gateways';
 import GatewayDetail from './pages/GatewayDetail';
 import Devices from './pages/Devices';
-import Debugger from './pages/Debugger';
+import MessageDebugger from './pages/MessageDebugger';
 
 // Auth Context
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -79,7 +79,7 @@ function AppContent() {
           } />
           <Route path="/message-debugger" element={
             <ProtectedRoute>
-              <Debugger />
+              <MessageDebugger />
             </ProtectedRoute>
           } />
           <Route path="/templates" element={

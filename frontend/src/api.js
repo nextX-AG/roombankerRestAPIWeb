@@ -362,32 +362,6 @@ export const systemApi = {
   }
 };
 
-// Log-API-Endpunkte
-export const logApi = {
-  list: async (params = {}) => {
-    // Standard-Parameter
-    const defaults = {
-      component: 'all',
-      level: 'all',
-      limit: 100,
-      query: ''
-    };
-    
-    // Parameter mit Defaults zusammenführen
-    const queryParams = { ...defaults, ...params };
-    
-    // URL-Parameter erstellen
-    const urlParams = new URLSearchParams();
-    Object.keys(queryParams).forEach(key => {
-      if (queryParams[key]) {
-        urlParams.append(key, queryParams[key]);
-      }
-    });
-    
-    return fetchApi(`${getApiUrl('logs', '')}?${urlParams.toString()}`);
-  }
-};
-
 // Exportiere alle API-Funktionen als API-Objekt
 export default {
   auth: authApi,
@@ -395,6 +369,5 @@ export default {
   customers: customerApi,
   templates: templateApi,
   messages: messageApi,
-  system: systemApi,
-  logs: logApi
+  system: systemApi
 }; 
