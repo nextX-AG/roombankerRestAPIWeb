@@ -24,6 +24,9 @@ from utils.api_handlers import (
     api_error_handler
 )
 
+# Import des Log-Services
+import log_service
+
 # Blueprint für alle API-Routen
 api_bp = Blueprint('api', __name__)
 
@@ -695,4 +698,70 @@ def redirect_message_process():
     
     # Direkt die process_message Funktion aufrufen statt einen HTTP-Request zu machen
     # Das vermeidet den 500-Fehler bei internen Weiterleitungen
-    return process_message() 
+    return process_message()
+
+# Log-API-Endpunkte
+@api_bp.route('/api/v1/logs/system', methods=['GET'])
+@require_auth
+def get_system_logs():
+    """Hole alle System-Logs (aggregiert über alle Container)"""
+    return _get_logs(log_service.LOG_TYPE_SYSTEM)
+
+@api_bp.route('/api/v1/logs/processor', methods=['GET'])
+@require_auth
+def get_processor_logs():
+    """Hole Logs vom Processor/Message-Worker"""
+    return _get_logs(log_service.LOG_TYPE_PROCESSOR)
+
+@api_bp.route('/api/v1/logs/gateway', methods=['GET'])
+@require_auth
+def get_gateway_logs():
+    """Hole Logs vom Gateway-Service"""
+    return _get_logs(log_service.LOG_TYPE_GATEWAY)
+
+@api_bp.route('/api/v1/logs/api', methods=['GET'])
+@require_auth
+def get_api_logs():
+    """Hole Logs vom API-Service"""
+    return _get_logs(log_service.LOG_TYPE_API)
+
+@api_bp.route('/api/v1/logs/auth', methods=['GET'])
+@require_auth
+def get_auth_logs():
+    """Hole Logs vom Auth-Service"""
+    return _get_logs(log_service.LOG_TYPE_AUTH)
+
+@api_bp.route('/api/v1/logs/database', methods=['GET'])
+@require_auth
+def get_database_logs():
+    """Hole Logs von Datenbank-Containern (MongoDB, Redis)"""
+    return _get_logs(log_service.LOG_TYPE_DATABASE)
+
+def _get_logs(log_type):
+    """Hilfsfunktion für alle Log-Anfragen"""
+    try:
+        # Parameter aus der Anfrage extrahieren
+        limit = request.args.get('limit', 100, type=int)
+        level = request.args.get('level', 'info')
+        from_time = request.args.get('from_time')
+        to_time = request.args.get('to_time')
+        search_term = request.args.get('search')
+        
+        # Logs vom Service anfordern
+        result = log_service.get_logs(
+            log_type=log_type,
+            limit=limit,
+            level=level,
+            from_time=from_time,
+            to_time=to_time,
+            search_term=search_term
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Logs: {e}")
+        return jsonify({
+            "status": "error",
+            "error": f"Fehler beim Abrufen der Logs: {str(e)}",
+            "logs": []
+        }), 500 

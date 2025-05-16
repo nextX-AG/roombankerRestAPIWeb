@@ -5,7 +5,7 @@ import {
   faSync, faBug, faArrowRight, faCopy, faCheck, faTimes, 
   faPaperPlane, faServer, faNetworkWired, faExchangeAlt, faDatabase, faFilter
 } from '@fortawesome/free-solid-svg-icons';
-import { messageApi } from '../api';
+import { messageApi, logsApi } from '../api';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 
@@ -101,32 +101,83 @@ const Debugger = () => {
     }
   };
   
-  // Funktion zum Laden der System-Logs (Beispielimplementierung)
-  const fetchSystemLogs = (component) => {
+  // Funktion zum Laden der System-Logs (jetzt mit echter API)
+  const fetchSystemLogs = async (component) => {
     setLogsLoading(true);
+    setError(null);
     
-    // Simulation eines API-Aufrufs - würde später durch einen echten API-Aufruf ersetzt
-    setTimeout(() => {
-      // Beispiel-Logs
-      const mockLogs = [
-        { timestamp: new Date().toISOString(), level: 'info', component: component, message: 'System gestartet' },
-        { timestamp: new Date().toISOString(), level: 'info', component: component, message: 'Verbindung zur Datenbank hergestellt' },
-        { timestamp: new Date().toISOString(), level: 'warning', component: component, message: 'Hohe CPU-Auslastung festgestellt' },
-        { timestamp: new Date().toISOString(), level: 'error', component: component, message: 'Fehler bei der Verarbeitung: XYZ' },
-        { timestamp: new Date().toISOString(), level: 'info', component: component, message: 'Nachricht erfolgreich verarbeitet' },
-      ];
+    try {
+      let response;
       
-      setSystemLogs(mockLogs);
+      // Wähle die richtige API-Funktion basierend auf der ausgewählten Komponente
+      switch (component) {
+        case 'processor':
+          response = await logsApi.getProcessorLogs({
+            limit: 100,
+            level: logLevel === 'all' ? 'debug' : logLevel
+          });
+          break;
+        case 'gateway':
+          response = await logsApi.getGatewayLogs({
+            limit: 100,
+            level: logLevel === 'all' ? 'debug' : logLevel
+          });
+          break;
+        case 'api':
+          response = await logsApi.getApiLogs({
+            limit: 100,
+            level: logLevel === 'all' ? 'debug' : logLevel
+          });
+          break;
+        case 'database':
+          response = await logsApi.getDatabaseLogs({
+            limit: 100,
+            level: logLevel === 'all' ? 'debug' : logLevel
+          });
+          break;
+        default:
+          // Fallback auf System-Logs (alle Container)
+          response = await logsApi.getSystemLogs({
+            limit: 100,
+            level: logLevel === 'all' ? 'debug' : logLevel
+          });
+      }
+      
+      if (response.data && response.data.status === 'success') {
+        setSystemLogs(response.data.logs || []);
+      } else {
+        throw new Error(response.data?.error || 'Fehler beim Abrufen der Logs');
+      }
+    } catch (error) {
+      console.error('Fehler beim Abrufen der Logs:', error);
+      setError(`Fehler beim Abrufen der Logs: ${error.message}`);
+      setSystemLogs([]);
+    } finally {
       setLogsLoading(false);
-    }, 1000);
+    }
   };
 
-  // Effekt zum Laden der Logs, wenn sich die ausgewählte Komponente ändert
+  // Effekt zum automatischen Aktualisieren der Logs alle 30 Sekunden
   useEffect(() => {
+    let intervalId;
+    
     if (activeTab === 'system-logs') {
+      // Initiales Laden der Logs
       fetchSystemLogs(selectedComponent);
+      
+      // Automatisches Aktualisieren alle 30 Sekunden
+      intervalId = setInterval(() => {
+        fetchSystemLogs(selectedComponent);
+      }, 30000);
     }
-  }, [selectedComponent, activeTab]);
+    
+    // Cleanup beim Unmounten oder Ändern des Tabs/der Komponente
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [selectedComponent, activeTab, logLevel]);
 
   // Funktion zum Laden einer vorgefertigten Testnachricht
   const useTestMessage = () => {
@@ -138,10 +189,51 @@ const Debugger = () => {
     try {
       const jsonString = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
       navigator.clipboard.writeText(jsonString);
-      alert('JSON in Zwischenablage kopiert!');
+      alert('In Zwischenablage kopiert!');
     } catch (error) {
       console.error('Fehler beim Kopieren in die Zwischenablage:', error);
       alert('Fehler beim Kopieren: ' + error.message);
+    }
+  };
+  
+  // Funktion zum Exportieren von Logs als Datei
+  const exportLogs = (logs, format = 'json') => {
+    try {
+      let content;
+      let mimeType;
+      let fileName;
+      
+      if (format === 'json') {
+        content = JSON.stringify(logs, null, 2);
+        mimeType = 'application/json';
+        fileName = `logs_${selectedComponent}_${new Date().toISOString()}.json`;
+      } else {
+        // Text-Format
+        content = logs.map(log => {
+          const timestamp = new Date(log.timestamp).toLocaleString('de-DE');
+          return `[${timestamp}] [${log.level.toUpperCase()}] [${log.component || 'system'}] ${log.message}`;
+        }).join('\n');
+        mimeType = 'text/plain';
+        fileName = `logs_${selectedComponent}_${new Date().toISOString()}.txt`;
+      }
+      
+      // Erstelle Blob und Download-Link
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      
+      // Erstelle temporären Link zum Herunterladen
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Fehler beim Exportieren der Logs:', error);
+      alert('Fehler beim Exportieren: ' + error.message);
     }
   };
 
@@ -636,14 +728,30 @@ const Debugger = () => {
               <Card.Header>
                 <div className="d-flex justify-content-between align-items-center">
                   <span>Logs: {selectedComponent.charAt(0).toUpperCase() + selectedComponent.slice(1)}</span>
-                  <Button 
-                    variant="outline-secondary" 
-                    size="sm"
-                    onClick={() => alert('Diese Funktion ist noch nicht implementiert')}
-                  >
-                    <FontAwesomeIcon icon={faCopy} className="me-1" />
-                    In Zwischenablage kopieren
-                  </Button>
+                  <div className="d-flex gap-2">
+                    <Button 
+                      variant="outline-secondary" 
+                      size="sm"
+                      onClick={() => copyToClipboard(filteredLogs)}
+                    >
+                      <FontAwesomeIcon icon={faCopy} className="me-1" />
+                      Kopieren
+                    </Button>
+                    <Button 
+                      variant="outline-primary" 
+                      size="sm"
+                      onClick={() => exportLogs(filteredLogs, 'json')}
+                    >
+                      JSON Export
+                    </Button>
+                    <Button 
+                      variant="outline-primary" 
+                      size="sm"
+                      onClick={() => exportLogs(filteredLogs, 'txt')}
+                    >
+                      Text Export
+                    </Button>
+                  </div>
                 </div>
               </Card.Header>
               <Card.Body style={{maxHeight: '700px', overflowY: 'auto'}}>
@@ -665,10 +773,20 @@ const Debugger = () => {
                     </thead>
                     <tbody>
                       {filteredLogs.map((log, index) => (
-                        <tr key={index}>
+                        <tr key={index} className={log.level === 'error' ? 'table-danger' : (log.level === 'warning' ? 'table-warning' : '')}>
                           <td className="text-nowrap">{new Date(log.timestamp).toLocaleString('de-DE')}</td>
                           <td>{renderLogLevel(log.level)}</td>
-                          <td>{log.message}</td>
+                          <td>
+                            <div>
+                              <strong>{log.component || 'System'}: </strong>
+                              {log.message}
+                            </div>
+                            {log.context && Object.keys(log.context).length > 0 && (
+                              <small className="text-muted d-block mt-1">
+                                Kontext: {Object.entries(log.context).map(([key, value]) => `${key}=${value}`).join(', ')}
+                              </small>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

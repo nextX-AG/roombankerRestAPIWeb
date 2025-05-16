@@ -362,12 +362,63 @@ export const systemApi = {
   }
 };
 
-// Exportiere alle API-Funktionen als API-Objekt
-export default {
+// Logs API
+export const logsApi = {
+  /**
+   * Ruft System-Logs ab (aggregiert über alle Container)
+   * @param {Object} params - Parameter für die Anfrage
+   * @param {number} [params.limit=100] - Maximale Anzahl von Logs
+   * @param {string} [params.level='info'] - Minimales Log-Level (debug, info, warning, error, critical)
+   * @param {string} [params.from_time] - ISO 8601 Zeitstempel für Beginn des Zeitraums
+   * @param {string} [params.to_time] - ISO 8601 Zeitstempel für Ende des Zeitraums
+   * @param {string} [params.search] - Suchbegriff für Volltextsuche
+   * @returns {Promise<Object>} - Antwort vom Server mit Logs
+   */
+  getSystemLogs: (params = {}) => apiClient.get('/api/v1/logs/system', { params }),
+
+  /**
+   * Ruft Processor-Logs ab
+   * @param {Object} params - Parameter für die Anfrage
+   * @returns {Promise<Object>} - Antwort vom Server mit Logs
+   */
+  getProcessorLogs: (params = {}) => apiClient.get('/api/v1/logs/processor', { params }),
+
+  /**
+   * Ruft Gateway-Logs ab
+   * @param {Object} params - Parameter für die Anfrage
+   * @returns {Promise<Object>} - Antwort vom Server mit Logs
+   */
+  getGatewayLogs: (params = {}) => apiClient.get('/api/v1/logs/gateway', { params }),
+
+  /**
+   * Ruft API-Server-Logs ab
+   * @param {Object} params - Parameter für die Anfrage
+   * @returns {Promise<Object>} - Antwort vom Server mit Logs
+   */
+  getApiLogs: (params = {}) => apiClient.get('/api/v1/logs/api', { params }),
+
+  /**
+   * Ruft Auth-Server-Logs ab
+   * @param {Object} params - Parameter für die Anfrage
+   * @returns {Promise<Object>} - Antwort vom Server mit Logs
+   */
+  getAuthLogs: (params = {}) => apiClient.get('/api/v1/logs/auth', { params }),
+
+  /**
+   * Ruft Datenbank-Logs ab (MongoDB, Redis)
+   * @param {Object} params - Parameter für die Anfrage
+   * @returns {Promise<Object>} - Antwort vom Server mit Logs
+   */
+  getDatabaseLogs: (params = {}) => apiClient.get('/api/v1/logs/database', { params }),
+};
+
+// Exportiere alle APIs
+export const api = {
   auth: authApi,
-  gateways: gatewayApi,
   customers: customerApi,
-  templates: templateApi,
-  messages: messageApi,
-  system: systemApi
+  gateways: gatewayApi,
+  system: systemApi,
+  message: messageApi,
+  template: templateApi,
+  logs: logsApi,
 }; 

@@ -1076,6 +1076,38 @@ Nachricht → Extraktion → Normalisierung → Filterung → Transformation →
   - [x] Visuelle Darstellung von Fehlern und Warnungen
   - [ ] Export-Funktion für Debug-Informationen und Logs
 
+- [x] **Echte System-Logs-Integration (HÖCHSTE PRIORITÄT)**
+  - [x] Backend-Endpunkte für Systemlogs implementieren
+    - [x] Endpoint `/api/v1/logs/system` für allgemeine Systemlogs (aggregierte Ansicht)
+    - [x] Endpoint `/api/v1/logs/processor` für Processor-Logs und Message-Worker
+    - [x] Endpoint `/api/v1/logs/gateway` für Gateway-Logs und NGINX
+    - [x] Endpoint `/api/v1/logs/api` für API-Server-Logs
+    - [x] Endpoint `/api/v1/logs/auth` für Authentifizierungs-Logs
+    - [x] Endpoint `/api/v1/logs/database` für MongoDB und Redis Operationen
+  - [x] Docker-Container-Log-Extraktion implementieren
+    - [x] Zugriff auf Docker-Logs über Docker API oder Log-Files
+    - [x] Strukturiertes Parsen von Container-Logs (JSON-Format)
+    - [x] Extrahieren relevanter Informationen aus den Log-Zeilen
+    - [x] Vereinheitlichung unterschiedlicher Log-Formate
+  - [x] Log-Filterung im Backend implementieren
+    - [x] Filterung nach Zeitraum (von-bis) mit ISO 8601 Format
+    - [x] Filterung nach Log-Level (error, warning, info, debug)
+    - [x] Filterung nach Komponente und Subkomponente
+    - [x] Filterung nach bestimmten Ereignistypen via Volltextsuche
+    - [x] Volltextsuche im Log-Inhalt
+    - [x] Pagination für große Log-Mengen
+  - [x] Frontend-Integration
+    - [x] API-Client erweitern um Log-Abruf-Funktionen
+    - [x] Ersetzen der simulierten Logs durch echte Backend-Daten
+    - [x] Echtzeit-Aktualisierung von Logs mit Polling
+    - [x] Verbesserte Fehlerbehandlung für Log-Anfragen
+  - [x] Erweiterte Log-Features
+    - [x] Detail-Ansicht für komplexe Log-Einträge mit Kontext-Information
+    - [x] Farbliche Hervorhebung von Warnungen und Fehlern
+    - [x] Log-Export als JSON/TXT
+    - [ ] Log-Historie mit persistenter Speicherung in MongoDB (zukünftige Erweiterung)
+    - [ ] Einstellung der Log-Level für verschiedene Komponenten über UI (zukünftige Erweiterung)
+
 - [ ] **Fehler in Nachrichtenanzeige beheben (DRINGENDER TASK)**
   - [ ] Problem analysieren, warum Nachrichten nur im Dashboard und nicht in der Nachrichtenseite erscheinen
   - [ ] API-Endpunkte für Nachrichtenabfrage überprüfen
