@@ -6,6 +6,7 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from datetime import datetime
 import time
+from typing import Optional, Dict, Any
 
 # Füge das Projektverzeichnis zum Python-Pfad hinzu
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -87,13 +88,73 @@ def init_db():
 # Initialisiere die Datenbank
 init_db()
 
+def get_customer_for_gateway(gateway_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Findet den zugehörigen Kunden basierend auf der Gateway-ID aus der Datenbank
+    
+    Args:
+        gateway_id: Die Gateway-ID/UUID
+        
+    Returns:
+        Kundenkonfiguration als Dict oder None, wenn kein Kunde gefunden wurde
+    """
+    try:
+        # Gateway in der Datenbank suchen
+        gateway = Gateway.find_by_uuid(gateway_id)
+        
+        # Wenn Gateway nicht gefunden, sofort zurück
+        if not gateway:
+            logger.warning(f"Gateway {gateway_id} nicht in der Datenbank gefunden")
+            return None
+        
+        # Wenn Gateway keinem Kunden zugeordnet ist
+        if not gateway.customer_id:
+            logger.warning(f"Gateway {gateway_id} ist keinem Kunden zugeordnet")
+            return None
+        
+        # Kunde in der Datenbank suchen
+        customer = Customer.find_by_id(gateway.customer_id)
+        if not customer:
+            logger.warning(f"Kunde für Gateway {gateway_id} nicht gefunden (ID: {gateway.customer_id})")
+            return None
+        
+        # Kundenobjekt in ein ähnliches Format wie in der customer_config.json umwandeln
+        # für Kompatibilität mit bestehendem Code
+        customer_config = {
+            "name": customer.name,
+            "api_config": {
+                "url": customer.evalarm_url,
+                "username": customer.evalarm_username,
+                "password": customer.evalarm_password,
+                "namespace": customer.evalarm_namespace,
+                "headers": {
+                    "Content-Type": "application/json",
+                    "X-EVALARM-API-VERSION": "2.1.5"  # Standardwert, könnte später konfigurierbar sein
+                }
+            },
+            # Wichtig: gateways-Array auch hier behalten für Kompatibilität
+            "gateways": [gateway_id],
+            # Weitere Kundendaten können hier hinzugefügt werden
+            "status": customer.status,
+            "customer_id": str(customer._id)
+        }
+        
+        logger.info(f"Gateway {gateway_id} zugeordnet zu Kunde {customer.name}")
+        return customer_config
+    
+    except Exception as e:
+        logger.error(f"Fehler beim Abfragen des Kunden für Gateway {gateway_id}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return None
+
 @app.route(get_route('messages', 'process'), methods=['POST'])
 @api_error_handler
 def process_message():
     """
-    Endpunkt zum Verarbeiten und Weiterleiten von Nachrichten (async über Redis Queue)
+    Verarbeitet eine eingehende Nachricht für ein Gateway und leitet sie entsprechend weiter
     """
-    # Extrahiere Nachricht und Template-Name aus der Anfrage
+    # Extrahiere Nachricht und Gateway-ID aus der Anfrage
     data = request.json
     
     # Validiere erforderliche Felder
@@ -101,14 +162,17 @@ def process_message():
     if not data:
         return validation_error_response({"request": "Keine Daten übermittelt"})
     
+    # Extrahiere die Nachricht und Gateway-ID
     if 'message' not in data and not isinstance(data, dict):
         validation_errors['message'] = 'Nachricht ist erforderlich'
     
     if validation_errors:
         return validation_error_response(validation_errors)
     
-    # Extrahiere die Nachricht und Gateway-ID
+    # Extrahiere die Nachricht
     message = data.get('message', data)
+    
+    # Extrahiere Gateway-ID
     gateway_id = data.get('gateway_id')
     
     # Wenn keine gateway_id direkt im Hauptobjekt gefunden wurde, prüfe auf gateway_uuid
@@ -142,50 +206,36 @@ def process_message():
     
     logger.info(f"Verarbeite Nachricht für Gateway: {gateway_id}")
     
-    # Finde den zugehörigen Kunden basierend auf der Gateway-ID
-    customer_config = None
-    with open(os.path.join(PROJECT_DIR, 'templates', 'customer_config.json')) as f:
-        config = json.load(f)
-        for customer_id, customer in config['customers'].items():
-            if gateway_id in customer.get('gateways', []):
-                customer_config = customer
-                logger.info(f"Gateway {gateway_id} zugeordnet zu Kunde {customer.get('name', customer_id)}")
-                break
+    # GEÄNDERT: Finde den zugehörigen Kunden basierend auf der Gateway-ID aus der Datenbank
+    customer_config = get_customer_for_gateway(gateway_id)
     
-    if not customer_config:
-        logger.warning(f"Kein Kunde für Gateway {gateway_id} gefunden")
-        # Speichere die Nachricht zur späteren manuellen Bearbeitung
-        try:
-            security_log_dir = os.path.join(PROJECT_DIR, 'data', 'unassigned_messages')
-            os.makedirs(security_log_dir, exist_ok=True)
-            
-            filename = f"unassigned_{gateway_id}_{int(datetime.now().timestamp())}.json"
-            filepath = os.path.join(security_log_dir, filename)
-            
-            with open(filepath, 'w') as f:
-                json.dump({
-                    'timestamp': datetime.now().isoformat(),
-                    'gateway_id': gateway_id,
-                    'message': message,
-                    'headers': dict(request.headers),
-                    'remote_addr': request.remote_addr
-                }, f, indent=2)
-            
-            logger.info(f"Nachricht von nicht zugeordnetem Gateway in {filepath} gespeichert")
-            
-            # Registriere Gateway in der Datenbank, falls noch nicht vorhanden
-            if Gateway and gateway_id:
-                gateway = Gateway.find_by_uuid(gateway_id)
-                if not gateway:
-                    logger.info(f"Registriere neues unbekanntes Gateway: {gateway_id}")
-                    try:
-                        Gateway.create(uuid=gateway_id, customer_id=None, status="unassigned")
-                        logger.info(f"Gateway {gateway_id} als 'unassigned' registriert")
-                    except Exception as e:
-                        logger.error(f"Fehler bei Gateway-Registrierung: {str(e)}")
-            
-            # Gerät registrieren, falls in der Nachricht enthalten
-            if Device and isinstance(message, dict) and 'subdevicelist' in message:
+    # Registriere oder aktualisiere das Gateway in der Datenbank, falls es nicht existiert
+    try:
+        # Prüfe, ob das Gateway bereits existiert
+        gateway = Gateway.find_by_uuid(gateway_id)
+        
+        if not gateway:
+            # Gateway existiert nicht, erstelle es als "unassigned"
+            logger.info(f"Registriere neues unbekanntes Gateway: {gateway_id}")
+            gateway = Gateway.create(
+                uuid=gateway_id, 
+                customer_id=None,  # Keinem Kunden zugeordnet
+                status="unassigned",
+                name=f"Gateway {gateway_id[-8:]}"
+            )
+            logger.info(f"Gateway {gateway_id} als 'unassigned' registriert")
+        else:
+            # Gateway existiert, aktualisiere den Status auf "online"
+            gateway.update_status("online")
+            logger.info(f"Gateway-Status für {gateway_id} auf 'online' aktualisiert")
+    except Exception as e:
+        logger.error(f"Fehler bei Gateway-Registrierung oder -Aktualisierung: {str(e)}")
+    
+    # Geräteregistrierung sollte unabhängig von der Kundenzuordnung erfolgen
+    try:
+        if isinstance(message, dict):
+            # Format 1: Nachricht mit subdevicelist
+            if 'subdevicelist' in message and isinstance(message['subdevicelist'], list):
                 for device_data in message.get('subdevicelist', []):
                     try:
                         device = register_device_from_message(gateway_id, device_data)
@@ -193,8 +243,9 @@ def process_message():
                             logger.info(f"Gerät für Gateway {gateway_id} registriert: {device.device_id}")
                     except Exception as e:
                         logger.error(f"Fehler bei Geräteregistrierung: {str(e)}")
+            
             # Format 2: Nachricht mit subdeviceid (ohne subdevicelist)
-            elif Device and isinstance(message, dict) and 'subdeviceid' in message:
+            elif 'subdeviceid' in message:
                 try:
                     # Debug-Ausgabe für den exakten Typ und Wert von subdeviceid
                     subdevice_id_value = message['subdeviceid']
@@ -213,7 +264,7 @@ def process_message():
                     
                     # Übertrage relevante Werte in das value-Objekt
                     for key in ['alarmstatus', 'alarmtype', 'currenttemperature', 'currenthumidity', 
-                               'batterystatus', 'onlinestatus', 'electricity', 'armstatus']:
+                              'batterystatus', 'onlinestatus', 'electricity', 'armstatus']:
                         if key in message:
                             device_data['value'][key] = message[key]
                             
@@ -240,6 +291,30 @@ def process_message():
                     logger.error(f"Exception Typ: {type(e).__name__}")
                     import traceback
                     logger.error(f"Stacktrace: {traceback.format_exc()}")
+    except Exception as e:
+        logger.error(f"Fehler bei der Geräteregistrierung: {str(e)}")
+    
+    # Wenn kein Kunde gefunden wurde, speichere die Nachricht und gib eine Warnung zurück
+    if not customer_config:
+        logger.warning(f"Kein Kunde für Gateway {gateway_id} gefunden")
+        # Speichere die Nachricht zur späteren manuellen Bearbeitung
+        try:
+            security_log_dir = os.path.join(PROJECT_DIR, 'data', 'unassigned_messages')
+            os.makedirs(security_log_dir, exist_ok=True)
+            
+            filename = f"unassigned_{gateway_id}_{int(datetime.now().timestamp())}.json"
+            filepath = os.path.join(security_log_dir, filename)
+            
+            with open(filepath, 'w') as f:
+                json.dump({
+                    'timestamp': datetime.now().isoformat(),
+                    'gateway_id': gateway_id,
+                    'message': message,
+                    'headers': dict(request.headers),
+                    'remote_addr': request.remote_addr
+                }, f, indent=2)
+            
+            logger.info(f"Nachricht von nicht zugeordnetem Gateway in {filepath} gespeichert")
             
             # SICHERHEITSWARNUNG zurückgeben statt eines Fehlers
             return success_response({
