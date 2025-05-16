@@ -8,6 +8,7 @@ import './App.css';
 import AppShell from './components/AppShell';
 import GatewayDetailDrawer from './components/GatewayDetailDrawer';
 import CustomerDetailDrawer from './components/CustomerDetailDrawer';
+import DeviceDetailDrawer from './components/DeviceDetailDrawer';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -67,7 +68,10 @@ function AppContent() {
             {/* Verschachtelte Route für Gateway-Detail als Drawer */}
             <Route path=":uuid" element={<GatewayDetailDrawer />} />
           </Route>
-          <Route path="/devices" element={<Devices />} />
+          <Route path="/devices" element={<Devices />}>
+            {/* Verschachtelte Route für Geräte-Detail als Drawer */}
+            <Route path=":gatewayUuid/:deviceId" element={<DeviceDetailDrawer />} />
+          </Route>
           <Route path="/messages" element={<Messages />} />
           <Route path="/debugger" element={<Debugger />} />
           {/* Umleitung von alten Pfaden */}

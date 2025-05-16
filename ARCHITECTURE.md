@@ -918,6 +918,7 @@ Vorteile des Drawer-Patterns:
 Implementierte Drawer-Komponenten:
 - `GatewayDetailDrawer` für Gateway-Details
 - `CustomerDetailDrawer` für Kundendetails
+- `DeviceDetailDrawer` für Gerätedetails
 
 Diese Komponenten wurden in die bestehende Routing-Struktur als verschachtelte Routen integriert:
 
@@ -927,6 +928,9 @@ Diese Komponenten wurden in die bestehende Routing-Struktur als verschachtelte R
 </Route>
 <Route path="/gateways" element={<Gateways />}>
   <Route path=":uuid" element={<GatewayDetailDrawer />} />
+</Route>
+<Route path="/devices" element={<Devices />}>
+  <Route path=":gatewayUuid/:deviceId" element={<DeviceDetailDrawer />} />
 </Route>
 ```
 

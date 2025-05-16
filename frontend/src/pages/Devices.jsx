@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Table, Button, Form, Modal, Alert, Badge, InputGroup } from 'react-bootstrap';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSync, faSearch, faInfoCircle, faEdit, faNetworkWired, faServer, faDesktop, faMicrochip } from '@fortawesome/free-solid-svg-icons';
+import { Outlet, useNavigate } from 'react-router-dom';
+import { Cpu, RefreshCw, Search, Info, Edit } from 'lucide-react';
 import axios from 'axios';
 import JSONPretty from 'react-json-pretty';
 import 'react-json-pretty/themes/monikai.css';
@@ -19,12 +19,12 @@ const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
  * 3. Inhalt in Karten mit konsistenten Headers
  */
 const Devices = () => {
+  const navigate = useNavigate();
   const [devices, setDevices] = useState([]);
   const [gateways, setGateways] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [currentDevice, setCurrentDevice] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
@@ -101,10 +101,9 @@ const Devices = () => {
     setShowEditModal(true);
   };
 
-  // Modal für Gerätedetails öffnen
-  const openDetailsModal = (device) => {
-    setCurrentDevice(device);
-    setShowDetailsModal(true);
+  // Öffne Gerätedetails im Drawer statt im Modal
+  const openDeviceDetail = (device) => {
+    navigate(`/devices/${device.gateway_uuid}/${device.device_id}`);
   };
 
   // Gerätetyp formatieren
@@ -147,7 +146,7 @@ const Devices = () => {
     <>
       {/* 1. Seiten-Titel */}
       <h1 className="page-title mb-4">
-        <FontAwesomeIcon icon={faDesktop} className="icon" />
+        <Cpu size={24} className="me-2" />
         Geräteverwaltung
       </h1>
 
@@ -161,7 +160,7 @@ const Devices = () => {
             <Col md={6}>
               <InputGroup>
                 <InputGroup.Text>
-                  <FontAwesomeIcon icon={faSearch} />
+                  <Search size={16} />
                 </InputGroup.Text>
                 <Form.Control
                   placeholder="Suche nach Name, Geräte-ID, Typ oder Gateway..."
@@ -175,7 +174,7 @@ const Devices = () => {
                 variant="secondary" 
                 onClick={fetchData}
               >
-                <FontAwesomeIcon icon={faSync} className="me-1" /> Aktualisieren
+                <RefreshCw size={16} className="me-1" /> Aktualisieren
               </Button>
             </Col>
           </Row>
@@ -215,16 +214,16 @@ const Devices = () => {
                         variant="outline-info" 
                         size="sm" 
                         className="me-1"
-                        onClick={() => openDetailsModal(device)}
+                        onClick={() => openDeviceDetail(device)}
                       >
-                        <FontAwesomeIcon icon={faInfoCircle} />
+                        <Info size={16} />
                       </Button>
                       <Button 
                         variant="outline-primary" 
                         size="sm"
                         onClick={() => openEditModal(device)}
                       >
-                        <FontAwesomeIcon icon={faEdit} />
+                        <Edit size={16} />
                       </Button>
                     </td>
                   </tr>
@@ -318,60 +317,8 @@ const Devices = () => {
         </Form>
       </Modal>
 
-      {/* Modal: Gerätedetails */}
-      <Modal show={showDetailsModal} onHide={() => setShowDetailsModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <FontAwesomeIcon icon={faMicrochip} className="me-2" />
-            Gerätedetails: {currentDevice?.name || currentDevice?.device_id}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Row className="mb-3">
-            <Col md={6}>
-              <h6>Geräte-ID</h6>
-              <p>{currentDevice?.device_id}</p>
-            </Col>
-            <Col md={6}>
-              <h6>Gateway</h6>
-              <p>{getGatewayName(currentDevice?.gateway_uuid)}</p>
-            </Col>
-          </Row>
-          <Row className="mb-3">
-            <Col md={6}>
-              <h6>Typ</h6>
-              <p>{formatDeviceType(currentDevice?.device_type)}</p>
-            </Col>
-            <Col md={6}>
-              <h6>Letztes Update</h6>
-              <p>{formatDateTime(currentDevice?.last_update)}</p>
-            </Col>
-          </Row>
-          <Row className="mb-3">
-            <Col>
-              <h6>Beschreibung</h6>
-              <p>{currentDevice?.description || 'Keine Beschreibung verfügbar'}</p>
-            </Col>
-          </Row>
-          <Row>
-            <Col>
-              <h6>Status-Daten</h6>
-              {currentDevice?.status ? (
-                <div className="border rounded p-3 bg-light">
-                  <JSONPretty id="json-pretty" data={currentDevice.status} />
-                </div>
-              ) : (
-                <p>Keine Status-Daten vorhanden</p>
-              )}
-            </Col>
-          </Row>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDetailsModal(false)}>
-            Schließen
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      {/* Outlet für verschachtelte Routen (DeviceDetailDrawer) */}
+      <Outlet />
     </>
   );
 };
