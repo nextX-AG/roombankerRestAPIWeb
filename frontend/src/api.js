@@ -374,42 +374,96 @@ export const logsApi = {
    * @param {string} [params.search] - Suchbegriff für Volltextsuche
    * @returns {Promise<Object>} - Antwort vom Server mit Logs
    */
-  getSystemLogs: (params = {}) => apiClient.get('/api/v1/logs/system', { params }),
+  getSystemLogs: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, value);
+      }
+    });
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    return fetchApi(`${API_URL}/v1/logs/system${queryString}`);
+  },
 
   /**
    * Ruft Processor-Logs ab
    * @param {Object} params - Parameter für die Anfrage
    * @returns {Promise<Object>} - Antwort vom Server mit Logs
    */
-  getProcessorLogs: (params = {}) => apiClient.get('/api/v1/logs/processor', { params }),
+  getProcessorLogs: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, value);
+      }
+    });
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    return fetchApi(`${API_URL}/v1/logs/processor${queryString}`);
+  },
 
   /**
    * Ruft Gateway-Logs ab
    * @param {Object} params - Parameter für die Anfrage
    * @returns {Promise<Object>} - Antwort vom Server mit Logs
    */
-  getGatewayLogs: (params = {}) => apiClient.get('/api/v1/logs/gateway', { params }),
+  getGatewayLogs: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, value);
+      }
+    });
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    return fetchApi(`${API_URL}/v1/logs/gateway${queryString}`);
+  },
 
   /**
    * Ruft API-Server-Logs ab
    * @param {Object} params - Parameter für die Anfrage
    * @returns {Promise<Object>} - Antwort vom Server mit Logs
    */
-  getApiLogs: (params = {}) => apiClient.get('/api/v1/logs/api', { params }),
+  getApiLogs: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, value);
+      }
+    });
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    return fetchApi(`${API_URL}/v1/logs/api${queryString}`);
+  },
 
   /**
    * Ruft Auth-Server-Logs ab
    * @param {Object} params - Parameter für die Anfrage
    * @returns {Promise<Object>} - Antwort vom Server mit Logs
    */
-  getAuthLogs: (params = {}) => apiClient.get('/api/v1/logs/auth', { params }),
+  getAuthLogs: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, value);
+      }
+    });
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    return fetchApi(`${API_URL}/v1/logs/auth${queryString}`);
+  },
 
   /**
    * Ruft Datenbank-Logs ab (MongoDB, Redis)
    * @param {Object} params - Parameter für die Anfrage
    * @returns {Promise<Object>} - Antwort vom Server mit Logs
    */
-  getDatabaseLogs: (params = {}) => apiClient.get('/api/v1/logs/database', { params }),
+  getDatabaseLogs: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, value);
+      }
+    });
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    return fetchApi(`${API_URL}/v1/logs/database${queryString}`);
+  },
 };
 
 // Exportiere alle APIs
