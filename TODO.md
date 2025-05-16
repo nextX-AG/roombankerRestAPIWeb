@@ -1164,3 +1164,64 @@ Nachricht → Extraktion → Normalisierung → Filterung → Transformation →
    - [ ] Vollständige Integration in die bestehende Umgebung
    - [ ] Performance-Optimierungen
    - [ ] Dokumentation und Tests vervollständigen
+
+## 16. Standardisierung der Datenhaltung (HÖCHSTE PRIORITÄT)
+
+Ein architektonisches Problem wurde identifiziert: Das System verwendet parallel sowohl JSON-Konfigurationsdateien als auch die MongoDB-Datenbank für die gleichen Daten. Diese duale Datenhaltung führt zu schwer auffindbaren Fehlern und Inkonsistenzen.
+
+### Identifizierte Probleme
+
+- [x] **Inkonsistente Datenspeicherung für Kundenkonfiguration**
+  - `templates/customer_config.json` enthält Gateway-Zuordnungen zu Kunden, die aber nicht mit der Datenbank synchronisiert sind
+  - UI lädt Daten aus der Datenbank, während Nachrichtenverarbeitung die JSON-Datei nutzt
+  - Dadurch erscheinen Gateways nicht in der Benutzeroberfläche, obwohl sie in der JSON-Datei einem Kunden zugeordnet sind
+
+- [ ] **Weitere potenzielle Inkonsistenzen**
+  - [ ] Template-Definitionen möglicherweise in mehreren Speicherorten
+  - [ ] Gateway-Konfigurationen in Dateien und Datenbank
+  - [ ] Geräte-Mapping in verschiedenen Formaten
+
+### Migration zu zentraler Datenbankarchitektur
+
+- [ ] **Phase 1: Kundenspezifische Gateway-Konfiguration migrieren**
+  - [ ] Code-Analyse aller Zugriffe auf `customer_config.json`
+  - [ ] Initialen Migration-Skript für die Übertragung aller Daten von JSON in die Datenbank erstellen
+  - [ ] Code-Stellen identifizieren, die auf die JSON-Datei zugreifen
+
+- [ ] **Phase 2: Code-Refactoring**
+  - [ ] Alle JSON-Datei-Zugriffe entfernen und durch Datenbankzugriffe ersetzen
+  - [ ] Insbesondere den Nachrichtenverarbeitungsprozess in `message_processor.py` aktualisieren
+  - [ ] Überprüfung der Kundenzuordnung aus der Datenbank statt aus der JSON-Datei
+
+- [ ] **Phase 3: Administrative Funktionen hinzufügen**
+  - [ ] UI-Komponente zum Import/Export der Konfiguration für Backup-Zwecke
+  - [ ] Bestehende Admin-Funktionen überprüfen und erweitern
+  - [ ] Konsistenzprüfungen implementieren
+
+- [ ] **Phase 4: Legacy-JSON entfernen**
+  - [ ] Bestätigung, dass keine Code-Stellen mehr auf JSON-Dateien zugreifen
+  - [ ] Legacy-JSON-Dateien archivieren
+  - [ ] Dokumentation aktualisieren
+
+### Implementierungsplan
+
+1. **Analyse (Priorität: HÖCHST)**
+   - [ ] Umfassende Code-Analyse aller JSON-Datei-Zugriffesstellen
+   - [ ] Identifikation aller Daten-Inkonsistenzen zwischen JSON und Datenbank
+   - [ ] Risikobewertung für jeden Migrationsschritt
+
+2. **Migration (Priorität: HÖCHST)**
+   - [ ] Migrationsskripte entwickeln für jeden identifizierten Bereich
+   - [ ] Testumgebung für die Migration einrichten
+   - [ ] Schrittweise Migration mit Validierung nach jedem Schritt
+
+3. **Code-Aktualisierung (Priorität: HÖCHST)**
+   - [ ] Refactoring aller betroffenen Code-Stellen für Datenbankzugriffe
+   - [ ] Besondere Behandlung der kritischen Stelle in `message_processor.py`
+   - [ ] Aktualisierung der Frontend-Komponenten für konsistente Datendarstellung
+
+4. **Tests und Validierung (Priorität: HOCH)**
+   - [ ] Umfassende End-to-End-Tests des gesamten Nachrichtenflusses
+   - [ ] Gateway-Registrierung und Geräteerkennung testen
+   - [ ] Benutzeroberfläche auf Konsistenz prüfen
+   - [ ] Leistungs- und Lasttests durchführen
