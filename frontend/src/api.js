@@ -327,6 +327,13 @@ export const messageApi = {
     return fetchApi(getApiUrl('messages', messageId), {
       method: 'DELETE'
     });
+  },
+  
+  debugMessage: async (message) => {
+    return fetchApi(getApiUrl('messages', 'debug'), {
+      method: 'POST',
+      body: JSON.stringify(message)
+    });
   }
 };
 

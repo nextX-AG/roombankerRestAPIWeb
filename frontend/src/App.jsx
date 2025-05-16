@@ -18,6 +18,7 @@ import Customers from './pages/Customers';
 import Gateways from './pages/Gateways';
 import GatewayDetail from './pages/GatewayDetail';
 import Devices from './pages/Devices';
+import MessageDebugger from './pages/MessageDebugger';
 
 // Auth Context
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -74,6 +75,11 @@ function AppContent() {
           <Route path="/messages" element={
             <ProtectedRoute>
               <Messages />
+            </ProtectedRoute>
+          } />
+          <Route path="/message-debugger" element={
+            <ProtectedRoute>
+              <MessageDebugger />
             </ProtectedRoute>
           } />
           <Route path="/templates" element={

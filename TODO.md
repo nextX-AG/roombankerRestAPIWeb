@@ -1058,12 +1058,12 @@ Nachricht → Extraktion → Normalisierung → Filterung → Transformation →
 
 ### Phase 3: Verbesserte Benutzerschnittstelle
 
-- [ ] **Message-Debugging-Interface (NEUER TASK)**
-  - [ ] Neue dedizierte Debug-Seite für Nachrichtenverarbeitung implementieren
-  - [ ] Visualisierung des Verarbeitungspipeline-Flusses
-  - [ ] Anzeige des Zustands nach jedem Verarbeitungsschritt
-  - [ ] Copy-to-Clipboard Funktionalität für JSON-Daten
-  - [ ] Möglichkeit zum Einreichen einer Nachricht zur erneuten Verarbeitung
+- [x] **Message-Debugging-Interface (NEUER TASK)**
+  - [x] Neue dedizierte Debug-Seite für Nachrichtenverarbeitung implementieren
+  - [x] Visualisierung des Verarbeitungspipeline-Flusses
+  - [x] Anzeige des Zustands nach jedem Verarbeitungsschritt
+  - [x] Copy-to-Clipboard Funktionalität für JSON-Daten
+  - [x] Möglichkeit zum Einreichen einer Nachricht zur erneuten Verarbeitung
 
 - [ ] **Fehler in Nachrichtenanzeige beheben (DRINGENDER TASK)**
   - [ ] Problem analysieren, warum Nachrichten nur im Dashboard und nicht in der Nachrichtenseite erscheinen

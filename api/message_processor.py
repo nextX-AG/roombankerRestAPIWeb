@@ -653,6 +653,165 @@ def get_forwarding_status():
         logger.error(f"Fehler beim Abrufen des Weiterleitungsstatus: {str(e)}")
         return error_response(f"Interner Serverfehler: {str(e)}", 500)
 
+@app.route('/api/v1/messages/debug', methods=['POST'])
+@api_error_handler
+def debug_message():
+    """
+    Debugging-Endpunkt für die Nachrichtenverarbeitung
+    Gibt Details zu jedem Schritt der Pipeline zurück:
+    Nachricht → Extraktion → Normalisierung → Filterung → Transformation → Weiterleitung
+    """
+    logger.info("Starte Debug-Modus für Nachricht")
+    
+    # Request-Daten laden
+    try:
+        data = request.get_json()
+        if not data:
+            raise ValueError("Keine Daten im Request-Body")
+    except Exception as e:
+        return api_error(f"Fehler beim Parsen der Anfragedaten: {str(e)}")
+    
+    # Ergebnis-Dictionary initialisieren
+    result = {
+        "success": True,
+        "gateway_id": None,
+        "extraction_result": None,
+        "normalized_message": None,
+        "filter_result": None,
+        "template_name": None,
+        "transformed_message": None,
+        "forwarding_result": None
+    }
+    
+    try:
+        # 1. EXTRAKTION
+        logger.info("Debug: Führe Extraktion aus")
+        # Hier simulieren wir die Extraktion, indem wir die Gateway-ID extrahieren
+        
+        # Gateway-ID aus verschiedenen möglichen Quellen extrahieren
+        gateway_id = None
+        
+        # Direkt im Hauptobjekt
+        if 'gateway_id' in data:
+            gateway_id = data['gateway_id']
+        elif 'gateway_uuid' in data:
+            gateway_id = data['gateway_uuid']
+        
+        # Oder in einem 'message' oder 'data' Unterobjekt
+        elif 'message' in data and isinstance(data['message'], dict):
+            msg = data['message']
+            if 'gateway_id' in msg:
+                gateway_id = msg['gateway_id']
+            elif 'gateway_uuid' in msg:
+                gateway_id = msg['gateway_uuid']
+        
+        # Wenn keine Gateway-ID gefunden wurde, Testmodus mit fester ID
+        if not gateway_id:
+            gateway_id = "debug-gateway-id"
+            
+        # Extraktionsergebnis speichern
+        result["gateway_id"] = gateway_id
+        result["extraction_result"] = {
+            "gateway_id": gateway_id,
+            "raw_message": data,
+            "timestamp": int(time.time())
+        }
+            
+        # 2. NORMALISIERUNG
+        logger.info("Debug: Führe Normalisierung aus")
+        from utils.message_normalizer import MessageNormalizer
+        
+        normalizer = MessageNormalizer()
+        normalized_message = normalizer.normalize(data)
+        
+        # Normalisierungsergebnis speichern
+        result["normalized_message"] = normalized_message
+        
+        # 3. FILTERUNG
+        logger.info("Debug: Führe Filterung aus")
+        try:
+            from utils.filter_rules import FilterRuleEngine
+            from utils.normalized_template_engine import NormalizedTemplateEngine
+            
+            # Template-Engine initialisieren, um Zugriff auf die Filterregeln zu bekommen
+            template_engine = NormalizedTemplateEngine("./templates", "./templates/filter_rules")
+            
+            # Passende Templates für diese Gateway-ID finden
+            # Im Debugging-Modus verwenden wir evalarm_panic_v2, falls vorhanden
+            template_name = "evalarm_panic_v2"
+            if template_name not in template_engine.get_template_names():
+                # Fallback auf ein anderes Template
+                template_names = template_engine.get_template_names()
+                template_name = template_names[0] if template_names else None
+            
+            # Filterentscheidung treffen
+            should_forward = False
+            matching_rules = []
+            all_rules = []
+            
+            if template_name:
+                # Hole alle Regelnamen für das Debug-Output
+                all_rules = template_engine.filter_engine.get_rule_names()
+                
+                # Führe die Filterprüfung durch
+                should_forward, matching_rules = template_engine.should_forward(
+                    normalized_message, template_name
+                )
+            
+            # Filterergebnis speichern
+            result["filter_result"] = {
+                "should_forward": should_forward,
+                "matching_rules": matching_rules,
+                "all_rules": all_rules,
+                "template_name": template_name
+            }
+            
+            # 4. TRANSFORMATION
+            if should_forward and template_name:
+                logger.info(f"Debug: Führe Transformation mit Template '{template_name}' aus")
+                
+                # Template-Engine für die Transformation verwenden
+                transformed = template_engine.transform(normalized_message, template_name)
+                
+                # Template-Name und transformierte Nachricht speichern
+                result["template_name"] = template_name
+                result["transformed_message"] = transformed
+                
+                # 5. WEITERLEITUNG (nur simuliert)
+                logger.info("Debug: Simuliere Weiterleitung")
+                
+                # Im Debug-Modus simulieren wir nur die Weiterleitung
+                forwarding_result = {
+                    "success": True,
+                    "endpoint": "debug-endpoint",
+                    "response_status": 200,
+                    "response_data": {
+                        "status": "success",
+                        "message": "Simulierte Weiterleitungsantwort"
+                    },
+                    "simulated": True
+                }
+                
+                result["forwarding_result"] = forwarding_result
+            
+        except Exception as filter_error:
+            logger.error(f"Fehler bei Filterung/Transformation: {str(filter_error)}")
+            # Wir geben trotz Fehler ein Ergebnis zurück, aber markieren es als fehlerhaft
+            result["success"] = False
+            result["error"] = str(filter_error)
+    
+    except Exception as e:
+        logger.error(f"Fehler im Debug-Prozess: {str(e)}")
+        import traceback
+        logger.error(f"Stacktrace: {traceback.format_exc()}")
+        
+        # Wir geben trotz Fehler ein Ergebnis zurück, aber markieren es als fehlerhaft
+        result["success"] = False
+        result["error"] = str(e)
+    
+    logger.info("Debug-Prozess abgeschlossen")
+    return api_success(result)
+
 if __name__ == '__main__':
     logger.info("Message Processor wird gestartet...")
     # Port aus der zentralen Konfiguration verwenden
