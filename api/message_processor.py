@@ -349,7 +349,7 @@ def list_all_messages():
                 logger.error(f"Fehler beim Formatieren einer Nachricht: {str(inner_e)}")
         
         # Sortiere nach Timestamp (neueste zuerst)
-        messages.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+        messages.sort(key=lambda x: x.get('received_at', 0), reverse=True)
         
         logger.info(f"{len(messages)} Nachrichten gefunden")
     except Exception as e:
