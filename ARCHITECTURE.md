@@ -967,11 +967,74 @@ Zur Verbesserung der visuellen Konsistenz wurden folgende Maßnahmen umgesetzt:
 - Standardisierte Icon-Verwendung mit lucide-react (18px Standardgröße)
 - Konsistente Verwendung von Status-Badges und Spacing
 
-### 13.4 Geplante Erweiterungen
+### 13.4 TanStack Table
+
+Die Anwendung verwendet TanStack Table (früher React Table) als moderne, headless Tabellenlösung, die erweiterte Funktionen und bessere Performance bietet:
+
+```javascript
+// Beispiel für eine TanStack Table-Konfiguration
+const table = useReactTable({
+  data,
+  columns,
+  state: {
+    globalFilter
+  },
+  onGlobalFilterChange: setGlobalFilter,
+  enableSorting: true,
+  enableGlobalFilter: true,
+  getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+});
+```
+
+#### Vorteile gegenüber nativen Bootstrap-Tabellen:
+
+- **Erweiterte Funktionalität**: Sortierung, Filterung, Paginierung und globale Suche
+- **Headless-Architektur**: Trennung von Logik und Darstellung für maximale Flexibilität 
+- **Bessere Performance**: Optimierte Rendering-Prozesse, besonders bei großen Datenmengen
+- **Virtuelle Scrolling-Möglichkeit**: Für besonders große Tabellen
+- **Keine Festlegung auf ein CSS-Framework**: Funktioniert mit Bootstrap, Tailwind oder eigenem CSS
+
+Die Anwendung implementiert eine wiederverwendbare `BasicTable`-Komponente, die als Wrapper um die TanStack Table-Funktionalität dient und ein konsistentes Erscheinungsbild in der gesamten Anwendung gewährleistet:
+
+```jsx
+<BasicTable 
+  data={customers}
+  columns={columns}
+  isLoading={loading}
+  emptyMessage="Keine Kunden vorhanden."
+  onRowClick={openCustomerDetail}
+/>
+```
+
+#### Spalten-Definition:
+
+Spalten werden mit einer deklarativen API definiert, die eine klare Trennung von Daten und Darstellung ermöglicht:
+
+```javascript
+const columns = [
+  {
+    accessorKey: 'name',
+    header: 'Name',
+    size: 200,
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: ({ row }) => <StatusBadge status={row.original.status} />,
+  },
+  // Weitere Spalten...
+];
+```
+
+Diese Architektur verbessert die Wartbarkeit und Erweiterbarkeit der Tabellenkomponenten erheblich.
+
+### 13.5 Geplante Erweiterungen
 
 Folgende UI-Verbesserungen sind für kommende Iterationen geplant:
 
-- TanStack Table für verbesserte Tabellenfunktionalität
 - Command Palette für schnelle Keyboard-Navigation
 - Toast-Notification-System für einheitliches Feedback
 - Dark-Mode für verbesserte Benutzerfreundlichkeit

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Table, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faTrash, faSync, faBuilding } from '@fortawesome/free-solid-svg-icons';
-import { Building, Plus, Trash, RefreshCw, Edit } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Row, Col, Card, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
+import { Building, Plus, Trash, RefreshCw } from 'lucide-react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { customerApi, gatewayApi } from '../api';
+import BasicTable from '../components/BasicTable';
 
 /**
  * Kundenverwaltungs-Komponente
@@ -153,6 +152,61 @@ const Customers = () => {
       return <Badge bg="secondary">Inaktiv</Badge>;
     }
   };
+  
+  // TanStack Table Spalten-Definition
+  const columns = useMemo(
+    () => [
+      {
+        accessorKey: 'name',
+        header: 'Name',
+        size: 200,
+      },
+      {
+        accessorKey: 'contact_person',
+        header: 'Kontakt',
+        size: 150,
+        cell: ({ row }) => row.original.contact_person || '-',
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        size: 100,
+        cell: ({ row }) => renderStatusBadge(row.original.status),
+      },
+      {
+        accessorKey: 'gateway_count',
+        header: 'Gateways',
+        size: 100,
+        cell: ({ row }) => row.original.gateway_count || 0,
+      },
+      {
+        accessorKey: 'immediate_forwarding',
+        header: 'Weiterleitung',
+        size: 120,
+        cell: ({ row }) => row.original.immediate_forwarding !== false ? 'Sofort' : 'Intervall',
+      },
+      {
+        id: 'actions',
+        header: 'Aktionen',
+        size: 100,
+        cell: ({ row }) => (
+          <div onClick={(e) => e.stopPropagation()}>
+            <Button 
+              variant="outline-danger" 
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                openDeleteConfirm(row.original);
+              }}
+            >
+              <Trash size={16} />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
     <>
@@ -188,54 +242,13 @@ const Customers = () => {
       <Card>
         <Card.Header>Kundenliste</Card.Header>
         <Card.Body>
-          {loading ? (
-            <div className="text-center p-5">Lade Kundendaten...</div>
-          ) : customers.length === 0 ? (
-            <div className="text-center p-5">Keine Kunden vorhanden. Fügen Sie einen neuen Kunden hinzu.</div>
-          ) : (
-            <Table responsive hover>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Kontakt</th>
-                  <th>Status</th>
-                  <th>Gateways</th>
-                  <th>Weiterleitung</th>
-                  <th>Aktionen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((customer) => (
-                  <tr 
-                    key={customer.id} 
-                    onClick={() => openCustomerDetail(customer)}
-                    style={{ cursor: 'pointer' }}
-                    className="cursor-pointer"
-                  >
-                    <td>{customer.name}</td>
-                    <td>{customer.contact_person || '-'}</td>
-                    <td>{renderStatusBadge(customer.status)}</td>
-                    <td>{customer.gateway_count || 0}</td>
-                    <td>
-                      {customer.immediate_forwarding !== false ? 'Sofort' : 'Intervall'}
-                    </td>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <Button 
-                        variant="outline-danger" 
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openDeleteConfirm(customer);
-                        }}
-                      >
-                        <Trash size={16} />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
+          <BasicTable 
+            data={customers}
+            columns={columns}
+            isLoading={loading}
+            emptyMessage="Keine Kunden vorhanden. Fügen Sie einen neuen Kunden hinzu."
+            onRowClick={openCustomerDetail}
+          />
         </Card.Body>
       </Card>
 

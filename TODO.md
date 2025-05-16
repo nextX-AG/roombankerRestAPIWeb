@@ -973,8 +973,9 @@ Die UI soll modernisiert werden, orientiert an modernen Server-Management-Konsol
 ### Phase 2: Erweiterte Komponenten (Sprint 3-4)
 
 - [ ] **TanStack Table einführen**
-  - [ ] Headless Table-Implementation für flexibles Styling
-  - [ ] Sticky Header, Virtual Scrolling, Sort/Filter-API
+  - [x] Headless Table-Implementation für flexibles Styling
+  - [x] Sticky Header, Virtual Scrolling, Sort/Filter-API
+  - [x] Kunden-Komponente als erstes Implementierungsbeispiel
   - [ ] Migration aller Listen-Ansichten auf TanStack Table
   - [ ] Einheitliche Status-Badge-Darstellung
 
