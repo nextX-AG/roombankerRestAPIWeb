@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Table, Button, Form, Alert, InputGroup, Badge, Nav, Tab, Accordion } from 'react-bootstrap';
+import { Row, Col, Card, Table, Button, Form, Alert, InputGroup, Badge, Nav, Tab, Accordion, Modal } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSync, faSearch, faInfoCircle, faExclamationTriangle, faEnvelope, faCopy } from '@fortawesome/free-solid-svg-icons';
+import { faSync, faSearch, faInfoCircle, faExclamationTriangle, faEnvelope, faCopy, faBug, faArrowRight, faCheck, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { messageApi } from '../api';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
@@ -30,6 +30,9 @@ const Messages = () => {
   const [forwardingStatus, setForwardingStatus] = useState([]);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [queueStatus, setQueueStatus] = useState({});
+  const [showDebugModal, setShowDebugModal] = useState(false);
+  const [debugResult, setDebugResult] = useState(null);
+  const [debugLoading, setDebugLoading] = useState(false);
 
   const fetchMessages = async () => {
     try {
@@ -307,6 +310,40 @@ const Messages = () => {
     }
   };
 
+  // Funktion zum Debuggen der ausgewählten Nachricht
+  const handleDebugMessage = async () => {
+    if (!selectedMessage) return;
+    
+    try {
+      setDebugLoading(true);
+      
+      // Extrahiere die tatsächliche Nachricht aus der ausgewählten Nachricht
+      const messageToDebug = selectedMessage.content || selectedMessage;
+      
+      // Sende die Nachricht an den Debug-Endpunkt
+      const response = await messageApi.debugMessage(messageToDebug);
+      
+      if (response.status === 'success') {
+        setDebugResult(response.data);
+        setShowDebugModal(true);
+        setError(null);
+      } else {
+        throw new Error(response.error?.message || 'Ein Fehler ist beim Debuggen der Nachricht aufgetreten');
+      }
+    } catch (error) {
+      console.error('Fehler beim Debuggen der Nachricht:', error);
+      setError('Fehler beim Debuggen der Nachricht: ' + error.message);
+    } finally {
+      setDebugLoading(false);
+    }
+  };
+
+  // Funktion zum Schließen des Debug-Modals
+  const handleCloseDebugModal = () => {
+    setShowDebugModal(false);
+    setDebugResult(null);
+  };
+
   return (
     <>
       {/* 1. Seiten-Titel */}
@@ -468,18 +505,31 @@ const Messages = () => {
                           </tbody>
                         </Table>
 
-                        <h5>Nachrichteninhalt</h5>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <span>Originalnachricht</span>
-                          <Button 
-                            size="sm" 
-                            variant="outline-secondary" 
-                            onClick={() => copyToClipboard(selectedMessage.content || selectedMessage)}
-                          >
-                            <FontAwesomeIcon icon={faCopy} className="me-1" />
-                            Kopieren
-                          </Button>
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <h5 className="mb-0">Nachrichteninhalt</h5>
+                          <div>
+                            <Button 
+                              size="sm" 
+                              variant="outline-secondary" 
+                              className="me-2"
+                              onClick={() => copyToClipboard(selectedMessage.content || selectedMessage)}
+                            >
+                              <FontAwesomeIcon icon={faCopy} className="me-1" />
+                              Kopieren
+                            </Button>
+                            
+                            <Button 
+                              size="sm" 
+                              variant="outline-primary"
+                              onClick={handleDebugMessage}
+                              disabled={debugLoading}
+                            >
+                              <FontAwesomeIcon icon={faBug} className="me-1" />
+                              {debugLoading ? 'Wird analysiert...' : 'Nachricht debuggen'}
+                            </Button>
+                          </div>
                         </div>
+                        
                         <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                           <JsonView data={selectedMessage.content || selectedMessage} />
                         </div>
@@ -591,18 +641,31 @@ const Messages = () => {
                           </tbody>
                         </Table>
                   
-                        <h5>Nachrichteninhalt</h5>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <span>Originalnachricht</span>
-                          <Button 
-                            size="sm" 
-                            variant="outline-secondary" 
-                            onClick={() => copyToClipboard(selectedMessage.content || selectedMessage)}
-                          >
-                            <FontAwesomeIcon icon={faCopy} className="me-1" />
-                            Kopieren
-                          </Button>
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <h5 className="mb-0">Nachrichteninhalt</h5>
+                          <div>
+                            <Button 
+                              size="sm" 
+                              variant="outline-secondary" 
+                              className="me-2"
+                              onClick={() => copyToClipboard(selectedMessage.content || selectedMessage)}
+                            >
+                              <FontAwesomeIcon icon={faCopy} className="me-1" />
+                              Kopieren
+                            </Button>
+                            
+                            <Button 
+                              size="sm" 
+                              variant="outline-primary"
+                              onClick={handleDebugMessage}
+                              disabled={debugLoading}
+                            >
+                              <FontAwesomeIcon icon={faBug} className="me-1" />
+                              {debugLoading ? 'Wird analysiert...' : 'Nachricht debuggen'}
+                            </Button>
+                          </div>
                         </div>
+                        
                         <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                           <JsonView data={selectedMessage.content || selectedMessage} />
                         </div>
@@ -779,18 +842,31 @@ const Messages = () => {
                           </tbody>
                         </Table>
 
-                        <h5>Nachrichteninhalt</h5>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <span>Originalnachricht</span>
-                          <Button 
-                            size="sm" 
-                            variant="outline-secondary" 
-                            onClick={() => copyToClipboard(selectedMessage.content || selectedMessage)}
-                          >
-                            <FontAwesomeIcon icon={faCopy} className="me-1" />
-                            Kopieren
-                          </Button>
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <h5 className="mb-0">Nachrichteninhalt</h5>
+                          <div>
+                            <Button 
+                              size="sm" 
+                              variant="outline-secondary" 
+                              className="me-2"
+                              onClick={() => copyToClipboard(selectedMessage.content || selectedMessage)}
+                            >
+                              <FontAwesomeIcon icon={faCopy} className="me-1" />
+                              Kopieren
+                            </Button>
+                            
+                            <Button 
+                              size="sm" 
+                              variant="outline-primary"
+                              onClick={handleDebugMessage}
+                              disabled={debugLoading}
+                            >
+                              <FontAwesomeIcon icon={faBug} className="me-1" />
+                              {debugLoading ? 'Wird analysiert...' : 'Nachricht debuggen'}
+                            </Button>
+                          </div>
                         </div>
+                        
                         <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                           <JsonView data={selectedMessage.content || selectedMessage} />
                         </div>
@@ -814,6 +890,215 @@ const Messages = () => {
           </Tab.Pane>
         </Tab.Content>
       </Tab.Container>
+      
+      {/* Debug-Modal für die Anzeige der Debug-Ergebnisse */}
+      <Modal 
+        show={showDebugModal} 
+        onHide={handleCloseDebugModal}
+        size="xl"
+        backdrop="static"
+        keyboard={false}
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Nachrichtenverarbeitungs-Debug</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {debugResult ? (
+            <div>
+              <h5 className="mb-3">Verarbeitungs-Pipeline</h5>
+              <div className="d-flex flex-wrap gap-2 align-items-center justify-content-center mb-4">
+                <Badge bg="light" text="dark" className="p-2">Rohe Nachricht</Badge>
+                <FontAwesomeIcon icon={faArrowRight} />
+                <Badge bg="light" text="dark" className="p-2">Extraktion</Badge>
+                <FontAwesomeIcon icon={faArrowRight} />
+                <Badge bg="light" text="dark" className="p-2">Normalisierung</Badge>
+                <FontAwesomeIcon icon={faArrowRight} />
+                <Badge bg="light" text="dark" className="p-2">Filterung</Badge>
+                <FontAwesomeIcon icon={faArrowRight} />
+                <Badge bg="light" text="dark" className="p-2">Transformation</Badge>
+                <FontAwesomeIcon icon={faArrowRight} />
+                <Badge bg="light" text="dark" className="p-2">Weiterleitung</Badge>
+              </div>
+              
+              <Accordion defaultActiveKey="0">
+                {/* 1. Extraktion */}
+                <Accordion.Item eventKey="0">
+                  <Accordion.Header>
+                    <h6 className="mb-0">1. Extrahierte Daten</h6>
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    <p>
+                      In dieser Phase werden grundlegende Informationen aus der Rohnachricht extrahiert, 
+                      wie Gateway-ID und die eigentliche Nutzdaten.
+                    </p>
+                    {debugResult.extraction_result ? (
+                      <div className="border rounded p-3 bg-light mb-3" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                        <JsonView data={debugResult.extraction_result} />
+                      </div>
+                    ) : (
+                      <Alert variant="info">Keine Extraktionsdaten verfügbar</Alert>
+                    )}
+                  </Accordion.Body>
+                </Accordion.Item>
+                
+                {/* 2. Normalisierung */}
+                <Accordion.Item eventKey="1">
+                  <Accordion.Header>
+                    <h6 className="mb-0">2. Normalisierte Nachricht</h6>
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    <p>
+                      In dieser Phase wird die Nachricht in ein standardisiertes internes Format konvertiert,
+                      unabhängig vom ursprünglichen Format der Eingangsnachricht.
+                    </p>
+                    {debugResult.normalized_message ? (
+                      <div className="border rounded p-3 bg-light mb-3" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                        <JsonView data={debugResult.normalized_message} />
+                      </div>
+                    ) : (
+                      <Alert variant="info">Keine normalisierten Daten verfügbar</Alert>
+                    )}
+                  </Accordion.Body>
+                </Accordion.Item>
+                
+                {/* 3. Filterung */}
+                <Accordion.Item eventKey="2">
+                  <Accordion.Header>
+                    <h6 className="mb-0">3. Filterung</h6>
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    <p>
+                      In dieser Phase wird anhand von Filterregeln entschieden, ob die Nachricht 
+                      weitergeleitet werden soll oder nicht.
+                    </p>
+                    {debugResult.filter_result ? (
+                      <>
+                        <div className="mb-3">
+                          <h6>Filterentscheidung:</h6>
+                          {debugResult.filter_result.should_forward ? (
+                            <Alert variant="success">
+                              <FontAwesomeIcon icon={faCheck} className="me-2" />
+                              Diese Nachricht wird weitergeleitet
+                            </Alert>
+                          ) : (
+                            <Alert variant="warning">
+                              <FontAwesomeIcon icon={faTimes} className="me-2" />
+                              Diese Nachricht wird NICHT weitergeleitet
+                            </Alert>
+                          )}
+                        </div>
+                        
+                        <div className="mb-3">
+                          <h6>Zutreffende Filterregeln ({debugResult.filter_result.matching_rules?.length || 0}):</h6>
+                          {debugResult.filter_result.matching_rules?.length > 0 ? (
+                            <ul className="list-group">
+                              {debugResult.filter_result.matching_rules.map((rule, index) => (
+                                <li className="list-group-item" key={index}>
+                                  <Badge bg="success" className="me-2">Trifft zu</Badge>
+                                  {rule}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p>Keine zutreffenden Filterregeln gefunden.</p>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <Alert variant="info">Keine Filterergebnisse verfügbar</Alert>
+                    )}
+                  </Accordion.Body>
+                </Accordion.Item>
+                
+                {/* 4. Transformation */}
+                <Accordion.Item eventKey="3">
+                  <Accordion.Header>
+                    <h6 className="mb-0">4. Transformation</h6>
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    <p>
+                      In dieser Phase wird die normalisierte Nachricht in ein Zielformat (z.B. evAlarm)
+                      transformiert, basierend auf einem Template.
+                    </p>
+                    {debugResult.transformed_message ? (
+                      <>
+                        <h6>Verwendetes Template:</h6>
+                        <p><code>{debugResult.template_name || 'Unbekannt'}</code></p>
+                        
+                        <h6>Transformiertes Ergebnis:</h6>
+                        <div className="border rounded p-3 bg-light mb-3" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                          <JsonView data={debugResult.transformed_message} />
+                        </div>
+                      </>
+                    ) : (
+                      <Alert variant="info">Keine Transformationsdaten verfügbar</Alert>
+                    )}
+                  </Accordion.Body>
+                </Accordion.Item>
+                
+                {/* 5. Weiterleitung */}
+                <Accordion.Item eventKey="4">
+                  <Accordion.Header>
+                    <h6 className="mb-0">5. Weiterleitung</h6>
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    <p>
+                      In dieser Phase wird die transformierte Nachricht an das Zielsystem (z.B. evAlarm) 
+                      weitergeleitet oder die Weiterleitung simuliert.
+                    </p>
+                    {debugResult.forwarding_result ? (
+                      <>
+                        <h6>Weiterleitungsziel:</h6>
+                        <p><code>{debugResult.forwarding_result.endpoint || 'N/A'}</code></p>
+                        
+                        <h6>API-Antwort:</h6>
+                        <Alert variant={debugResult.forwarding_result.success ? 'success' : 'danger'}>
+                          {debugResult.forwarding_result.success ? (
+                            <>
+                              <FontAwesomeIcon icon={faCheck} className="me-2" />
+                              Weiterleitung erfolgreich 
+                              (Status: {debugResult.forwarding_result.response_status || 'N/A'})
+                            </>
+                          ) : (
+                            <>
+                              <FontAwesomeIcon icon={faTimes} className="me-2" />
+                              Weiterleitung fehlgeschlagen 
+                              (Status: {debugResult.forwarding_result.response_status || 'N/A'})
+                            </>
+                          )}
+                        </Alert>
+                        
+                        {debugResult.forwarding_result.response_data && (
+                          <>
+                            <h6>Antwortdaten:</h6>
+                            <div className="border rounded p-3 bg-light mb-3" style={{maxHeight: '200px', overflowY: 'auto'}}>
+                              <JsonView data={debugResult.forwarding_result.response_data} />
+                            </div>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <Alert variant="info">Keine Weiterleitungsdaten verfügbar</Alert>
+                    )}
+                  </Accordion.Body>
+                </Accordion.Item>
+              </Accordion>
+            </div>
+          ) : (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Lädt...</span>
+              </div>
+              <p className="mt-3">Debug-Informationen werden geladen...</p>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseDebugModal}>
+            Schließen
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };

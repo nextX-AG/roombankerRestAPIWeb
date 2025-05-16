@@ -669,7 +669,7 @@ def debug_message():
         if not data:
             raise ValueError("Keine Daten im Request-Body")
     except Exception as e:
-        return api_error(f"Fehler beim Parsen der Anfragedaten: {str(e)}")
+        return error_response(f"Fehler beim Parsen der Anfragedaten: {str(e)}")
     
     # Ergebnis-Dictionary initialisieren
     result = {
@@ -810,7 +810,7 @@ def debug_message():
         result["error"] = str(e)
     
     logger.info("Debug-Prozess abgeschlossen")
-    return api_success(result)
+    return success_response(result)
 
 if __name__ == '__main__':
     logger.info("Message Processor wird gestartet...")

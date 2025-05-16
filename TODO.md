@@ -1064,6 +1064,8 @@ Nachricht → Extraktion → Normalisierung → Filterung → Transformation →
   - [x] Anzeige des Zustands nach jedem Verarbeitungsschritt
   - [x] Copy-to-Clipboard Funktionalität für JSON-Daten
   - [x] Möglichkeit zum Einreichen einer Nachricht zur erneuten Verarbeitung
+  - [x] Integration des Nachrichten-Debuggers in die reguläre Nachrichtenansicht
+  - [x] Debug-Funktion für historische Nachrichten implementiert
 
 - [ ] **Fehler in Nachrichtenanzeige beheben (DRINGENDER TASK)**
   - [ ] Problem analysieren, warum Nachrichten nur im Dashboard und nicht in der Nachrichtenseite erscheinen
