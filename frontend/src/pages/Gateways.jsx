@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Row, Col, Card, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash, RefreshCw, Eye, Router } from 'lucide-react';
+import { Plus, Edit, Trash, RefreshCw, Eye, Router, Server } from 'lucide-react';
 import GatewayStatusIcons from '../components/GatewayStatusIcons';
 import config, { API_VERSION } from '../config';
 import { gatewayApi, customerApi, templateApi } from '../api';
