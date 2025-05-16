@@ -203,25 +203,25 @@ const Devices = () => {
               </thead>
               <tbody>
                 {filteredDevices.map((device) => (
-                  <tr key={`${device.gateway_uuid}-${device.device_id}`}>
+                  <tr 
+                    key={`${device.gateway_uuid}-${device.device_id}`}
+                    onClick={() => openDeviceDetail(device)}
+                    className="cursor-pointer"
+                    style={{ cursor: 'pointer' }}
+                  >
                     <td>{device.device_id}</td>
                     <td>{device.name}</td>
                     <td>{formatDeviceType(device.device_type)}</td>
                     <td>{getGatewayName(device.gateway_uuid)}</td>
                     <td>{formatDateTime(device.last_update)}</td>
-                    <td>
-                      <Button 
-                        variant="outline-info" 
-                        size="sm" 
-                        className="me-1"
-                        onClick={() => openDeviceDetail(device)}
-                      >
-                        <Info size={16} />
-                      </Button>
+                    <td onClick={(e) => e.stopPropagation()}>
                       <Button 
                         variant="outline-primary" 
                         size="sm"
-                        onClick={() => openEditModal(device)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(device);
+                        }}
                       >
                         <Edit size={16} />
                       </Button>

@@ -967,6 +967,7 @@ Die UI soll modernisiert werden, orientiert an modernen Server-Management-Konsol
   - [x] Gateway-Detail als erstes Implementierungsbeispiel
   - [x] Kunden-Detail als zweites Implementierungsbeispiel
   - [x] Geräte-Detail als drittes Implementierungsbeispiel
+  - [x] Klickbare Tabellenzeilen für einfachere Navigation zu Detail-Drawern
   - [ ] Restliche Modals schrittweise migrieren
 
 ### Phase 2: Erweiterte Komponenten (Sprint 3-4)

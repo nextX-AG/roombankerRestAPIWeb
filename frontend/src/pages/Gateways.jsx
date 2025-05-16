@@ -378,7 +378,12 @@ const Gateways = () => {
                   </thead>
                   <tbody>
                     {gateways.map((gateway) => (
-                      <tr key={gateway.uuid}>
+                      <tr 
+                        key={gateway.uuid} 
+                        onClick={() => navigateToDetail(gateway)}
+                        style={{ cursor: 'pointer' }}
+                        className="cursor-pointer"
+                      >
                         <td>{gateway.uuid}</td>
                         <td>{gateway.name}</td>
                         <td>{getCustomerName(gateway.customer_id)}</td>
@@ -390,21 +395,15 @@ const Gateways = () => {
                            GatewayStatusIcons({ gatewayData: gatewayLatestData[gateway.uuid].data }).primary}
                         </td>
                         <td>{formatDateTime(gateway.last_contact)}</td>
-                        <td>
-                          <Button 
-                            variant="outline-info" 
-                            size="sm" 
-                            className="me-1"
-                            onClick={() => navigateToDetail(gateway)}
-                            title="Details anzeigen"
-                          >
-                            <Info size={16} />
-                          </Button>
+                        <td onClick={(e) => e.stopPropagation()}>
                           <Button 
                             variant="outline-secondary" 
                             size="sm" 
                             className="me-1"
-                            onClick={() => fetchDevices(gateway)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              fetchDevices(gateway);
+                            }}
                             title="Geräte anzeigen"
                           >
                             <Eye size={16} />
@@ -413,7 +412,10 @@ const Gateways = () => {
                             variant="outline-primary" 
                             size="sm" 
                             className="me-1"
-                            onClick={() => openEditModal(gateway)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditModal(gateway);
+                            }}
                             title="Bearbeiten"
                           >
                             <Edit size={16} />
@@ -421,7 +423,10 @@ const Gateways = () => {
                           <Button 
                             variant="outline-danger" 
                             size="sm"
-                            onClick={() => openDeleteConfirm(gateway)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDeleteConfirm(gateway);
+                            }}
                             title="Löschen"
                           >
                             <Trash size={16} />

@@ -915,7 +915,7 @@ Vorteile des Drawer-Patterns:
 - Verbesserte Navigation durch Beibehaltung des Kontexts
 - Konsistentes UX-Pattern in der gesamten Anwendung
 
-Implementierte Drawer-Komponenten:
+#### Implementierte Drawer-Komponenten:
 - `GatewayDetailDrawer` für Gateway-Details
 - `CustomerDetailDrawer` für Kundendetails
 - `DeviceDetailDrawer` für Gerätedetails
@@ -933,6 +933,29 @@ Diese Komponenten wurden in die bestehende Routing-Struktur als verschachtelte R
   <Route path=":gatewayUuid/:deviceId" element={<DeviceDetailDrawer />} />
 </Route>
 ```
+
+#### Klickbare Tabellenzeilen
+Als Ergänzung zum Drawer-Pattern wurden Tabellenzeilen klickbar gemacht, um eine intuitivere Navigation zu den Detail-Drawern zu ermöglichen:
+
+```javascript
+<tr 
+  key={gateway.uuid} 
+  onClick={() => navigateToDetail(gateway)}
+  style={{ cursor: 'pointer' }}
+  className="cursor-pointer"
+>
+  {/* Zelleninhalt */}
+  <td onClick={(e) => e.stopPropagation()}>
+    {/* Aktionsbuttons mit stopPropagation */}
+  </td>
+</tr>
+```
+
+Vorteile der klickbaren Zeilen:
+- Größere Klickfläche für eine einfachere Bedienung
+- Intuitivere Benutzerführung
+- Weniger Buttons in der Benutzeroberfläche
+- Konsistenz mit modernen Web-Anwendungen
 
 ### 13.3 Einheitliches Styling
 

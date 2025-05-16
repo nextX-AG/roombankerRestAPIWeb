@@ -206,7 +206,12 @@ const Customers = () => {
               </thead>
               <tbody>
                 {customers.map((customer) => (
-                  <tr key={customer.id}>
+                  <tr 
+                    key={customer.id} 
+                    onClick={() => openCustomerDetail(customer)}
+                    style={{ cursor: 'pointer' }}
+                    className="cursor-pointer"
+                  >
                     <td>{customer.name}</td>
                     <td>{customer.contact_person || '-'}</td>
                     <td>{renderStatusBadge(customer.status)}</td>
@@ -214,19 +219,14 @@ const Customers = () => {
                     <td>
                       {customer.immediate_forwarding !== false ? 'Sofort' : 'Intervall'}
                     </td>
-                    <td>
-                      <Button 
-                        variant="outline-primary" 
-                        size="sm" 
-                        className="me-1"
-                        onClick={() => openCustomerDetail(customer)}
-                      >
-                        <Edit size={16} />
-                      </Button>
+                    <td onClick={(e) => e.stopPropagation()}>
                       <Button 
                         variant="outline-danger" 
                         size="sm"
-                        onClick={() => openDeleteConfirm(customer)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDeleteConfirm(customer);
+                        }}
                       >
                         <Trash size={16} />
                       </Button>
