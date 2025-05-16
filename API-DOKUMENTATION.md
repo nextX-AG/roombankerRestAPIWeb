@@ -44,12 +44,11 @@ Eingehende Nachrichten von IoT-Gateways können über verschiedene Wege ins Syst
 | Endpunkt | Methode | Beschreibung | Implementierung |
 |----------|---------|--------------|-----------------|
 | `/api/v1/messages/process` | POST | **Aktiver Hauptendpunkt** für Gateway-Nachrichten, der Gateway-Registrierung, Geräteerkennung und Weiterleitung kombiniert | `processor_service.py` |
-| `/api/v1/process` | POST | Vereinheitlichter Endpunkt für Gateway-Nachrichten (funktioniert derzeit nicht für direkte Kommunikation) | `processor_service.py` |
 | `/api/test` | POST | Legacy-Eingangspunkt für Gateway-Nachrichten | `app.py` |
 | `/api/process-message` | POST | Legacy-Endpunkt: Verarbeitet Nachrichten und registriert Geräte | `routes.py` |
 | `/api/process` | POST | Legacy-Endpunkt: Verarbeitet und leitet Nachrichten an Template-Engine weiter | `message_processor.py` |
 
-**Hinweis**: Trotz der internen Code-Bezeichnung als "Legacy" sollte der Endpunkt `/api/v1/messages/process` für alle Gateway-Kommunikation verwendet werden, da nur dieser zuverlässig funktioniert. Die anderen Endpunkte werden aus Gründen der Abwärtskompatibilität beibehalten, bieten jedoch nicht die gleiche Funktionalität.
+**Hinweis**: Der Endpunkt `/api/v1/messages/process` ist der einzige aktive und korrekt funktionierende Endpunkt und sollte für alle Gateway-Kommunikation verwendet werden. Die anderen Endpunkte werden aus Gründen der Abwärtskompatibilität beibehalten, bieten jedoch nicht die gleiche Funktionalität.
 
 ### Nachrichtenformat für `/api/v1/messages/process`
 
@@ -79,15 +78,15 @@ Alternative Gateway-ID-Formate werden ebenfalls unterstützt:
 - `uuid`
 - `id`
 
-### Funktionsweise des `/api/v1/process`-Endpunkts
+### Funktionsweise des `/api/v1/messages/process`-Endpunkts
 
 1. **Gateway-Erkennung**: Extrahiert die Gateway-ID aus der Nachricht
 2. **Gateway-Registrierung**: Registriert das Gateway oder aktualisiert seinen Status
-3. **Geräteregistrierung**: Erkennt und registriert Geräte aus der `subdevicelist`
+3. **Geräteregistrierung**: Erkennt und registriert Geräte aus der `subdevicelist` oder bei Panic-Button-Nachrichten aus dem `subdeviceid`-Feld
 4. **Sicherheitsprüfung**: Überprüft, ob das Gateway einem Kunden zugeordnet ist
 5. **Nachrichtenweiterleitung**: Leitet die Nachricht nur bei zugeordneten Gateways an evAlarm weiter
 
-### Antwortformat für `/api/v1/process`
+### Antwortformat für `/api/v1/messages/process`
 
 Erfolgreiche Antwort mit registrierten Geräten und Weiterleitung:
 ```json
@@ -270,6 +269,21 @@ Erfolgreiche Antwort ohne Weiterleitung (Gateway keinem Kunden zugeordnet):
       }
     }
   ]
+}
+```
+
+### Panic-Button Nachrichtenformat
+
+```json
+{
+  "gateway_id": "gw-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "message": {
+    "code": 2030,
+    "subdeviceid": 1234567890123456,
+    "alarmstatus": "alarm",
+    "alarmtype": "panic",
+    "ts": 1234567890
+  }
 }
 ```
 

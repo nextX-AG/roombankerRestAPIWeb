@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 import uuid
 import requests
+import time
 
 # Konfiguriere Logging
 logging.basicConfig(
@@ -105,6 +106,11 @@ class TemplateEngine:
             # Extrahiere Daten aus der Nachricht
             data = message if isinstance(message, dict) else {}
             
+            # Debug-Logging zum besseren Verständnis der Nachrichtenstruktur
+            logger.info(f"Transformiere Nachricht mit Template '{template_name}'")
+            logger.info(f"Nachrichtentyp: {type(message).__name__}")
+            logger.info(f"Nachrichteninhalt kurz: {str(message)[:200]}")
+            
             # Gateway-ID aus verschiedenen möglichen Quellen extrahieren
             gateway_id = None
             for key in ['gateway_uuid', 'gateway_id', 'gateway']:
@@ -127,60 +133,74 @@ class TemplateEngine:
                             gateway_id = data_inner[key]['id']
                             break
             
-            # Extrahiere Alarm-Status und Alarm-Typ
-            alarm_status = "unknown"
-            alarm_type = "unknown"
+            if not gateway_id:
+                gateway_id = "unknown"  # Fallback für unbekannte Gateway-IDs
             
-            # Aus Gateway-Status
-            if 'gateway' in data and isinstance(data['gateway'], dict):
-                if 'alarmstatus' in data['gateway']:
-                    alarm_status = data['gateway']['alarmstatus']
-                if 'alarmtype' in data['gateway']:
-                    alarm_type = data['gateway']['alarmtype']
+            # UUID für die Nachricht generieren
+            uuid_str = str(uuid.uuid4())
             
-            # Aus Subdevicelist (Priorität über Gateway-Status)
-            if 'subdevicelist' in data and isinstance(data['subdevicelist'], list) and len(data['subdevicelist']) > 0:
-                for device in data['subdevicelist']:
-                    if isinstance(device, dict):
-                        if 'value' in device and isinstance(device['value'], dict):
-                            values = device['value']
-                            if 'alarmstatus' in values:
-                                alarm_status = values['alarmstatus']
-                            if 'alarmtype' in values:
-                                alarm_type = values['alarmtype']
+            # Template-Daten laden
+            template_data = self.templates[template_name]['data']
             
-            # Erstelle Kontext für Template-Rendering
+            # Jinja2-Umgebung für das Template vorbereiten
+            env = jinja2.Environment(autoescape=True)
+            
+            # VERBESSERTE BEHANDLUNG FÜR VERSCHIEDENE NACHRICHTENFORMATE
+            # Besondere Behandlung für Panic-Button-Nachrichten (Code 2030)
+            if template_name == 'evalarm_panic' and isinstance(message, dict):
+                # Format 2: Direktes subdeviceid-Format (Panic Button)
+                if 'subdeviceid' in message:
+                    device_id = message['subdeviceid']
+                    logger.info(f"Panic-Button mit subdeviceid gefunden: {device_id}")
+                    
+                    # Stellen sicher, dass message.subdevicelist existiert, auch als leere Liste
+                    if 'subdevicelist' not in message:
+                        message['subdevicelist'] = [
+                            {
+                                "id": device_id,
+                                "value": {
+                                    "alarmstatus": message.get("alarmstatus", "alarm"),
+                                    "alarmtype": message.get("alarmtype", "panic")
+                                }
+                            }
+                        ]
+                        logger.info(f"Synthetische subdevicelist erstellt für device_id {device_id}")
+                
+                # Format 1: Prüfe, ob subdevicelist vorhanden aber leer ist
+                if 'subdevicelist' in message and (
+                    not isinstance(message['subdevicelist'], list) or 
+                    len(message['subdevicelist']) == 0
+                ):
+                    logger.warning(f"subdevicelist ist leer oder kein Array, füge Dummy-Eintrag hinzu")
+                    message['subdevicelist'] = [{"id": "unknown", "value": {}}]
+            
+            # Kontext vorbereiten
             context = {
-                'message': data,
-                'ts': data.get('ts', int(datetime.now().timestamp())),
-                'gateway_id': gateway_id or "unknown_gateway",
-                'device_id': self._extract_device_id(data),
-                'alarm_type': alarm_type,
-                'alarm_status': alarm_status,
-                'uuid': str(uuid.uuid4()),
-                'timestamp': int(datetime.now().timestamp()),
-                'iso_timestamp': datetime.now().isoformat(),
-                'namespace': customer_config['api_config']['namespace'] if customer_config and 'api_config' in customer_config and 'namespace' in customer_config['api_config'] else 'eva.herford',
+                'message': message,  # Direkter Zugriff auf die Nachricht
+                'uuid': uuid_str,
+                'timestamp': int(time.time()),
+                'gateway_id': gateway_id,
                 'customer_config': customer_config
             }
             
-            # Rendere Template
-            template_str = json.dumps(self.templates[template_name]['data'])
-            template = jinja2.Template(template_str)
-            rendered = template.render(**context)
+            # Transformation durchführen
+            result = self._transform_recursive(template_data.get('transform', {}), env, context)
             
-            # Parse gerenderte Nachricht zurück zu JSON
-            transformed_message = json.loads(rendered)
+            # Falls ein Gateway-Value in der Nachricht enthalten ist, übernehmen
+            if 'gateway' in data and isinstance(data['gateway'], dict):
+                result['gateway'] = data['gateway']
             
-            # Extrahiere nur den transform-Teil, wenn vorhanden
-            if isinstance(transformed_message, dict) and 'transform' in transformed_message:
-                transformed_message = transformed_message['transform']
+            # UUID und Timestamp hinzufügen
+            result['_uuid'] = uuid_str
+            result['_timestamp'] = int(time.time())
             
-            logger.info(f"Nachricht mit Template '{template_name}' transformiert")
-            return transformed_message
+            logger.info(f"Transformation mit Template '{template_name}' erfolgreich")
+            return result
         
         except Exception as e:
             logger.error(f"Fehler bei der Transformation mit Template '{template_name}': {str(e)}")
+            import traceback
+            logger.error(f"Stacktrace: {traceback.format_exc()}")
             return None
     
     def _extract_gateway_id(self, data):
@@ -220,6 +240,31 @@ class TemplateEngine:
             if 'values' in device and 'alarmstatus' in device['values']:
                 return device['values']['alarmstatus']
         return "unknown"
+
+    def _transform_recursive(self, transform, env, context):
+        """
+        Hilfsfunktion zur rekursiven Transformation von Nachrichten
+        
+        Args:
+            transform: Transformations-Daten
+            env: Jinja2-Umgebung
+            context: Transformationskontext
+            
+        Returns:
+            Transformierte Nachricht
+        """
+        if isinstance(transform, dict):
+            result = {}
+            for key, value in transform.items():
+                result[key] = self._transform_recursive(value, env, context)
+            return result
+        elif isinstance(transform, list):
+            return [self._transform_recursive(item, env, context) for item in transform]
+        elif isinstance(transform, str):
+            template = env.from_string(transform)
+            return template.render(**context)
+        else:
+            return transform
 
 class MessageForwarder:
     """

@@ -88,10 +88,10 @@ except (ImportError, redis.ConnectionError) as e:
 
 # Endpunkte für Message Processor
 
-@app.route('/api/v1/process', methods=['POST'])
-def unified_process_endpoint():
+@app.route('/api/v1/messages/process', methods=['POST'])
+def process_message_endpoint():
     """
-    Vereinheitlichter Endpunkt für Gateway-Nachrichten:
+    Hauptendpunkt für die Verarbeitung von Gateway-Nachrichten:
     1. Empfängt Nachrichten von Gateways
     2. Registriert oder aktualisiert das Gateway
     3. Erkennt und registriert Geräte
@@ -450,8 +450,7 @@ def list_endpoints():
     Listet alle verfügbaren Endpunkte des Processor-Service auf
     """
     endpoints = [
-        {'path': '/api/v1/process', 'method': 'POST', 'description': 'Vereinheitlichter Endpunkt für Gateway-Nachrichten'},
-        {'path': '/api/v1/messages/process', 'method': 'POST', 'description': 'Verarbeitet eine eingehende Nachricht (Legacy)'},
+        {'path': '/api/v1/messages/process', 'method': 'POST', 'description': 'Hauptendpunkt für Gateway-Nachrichten'},
         {'path': '/api/v1/messages/queue_status', 'method': 'GET', 'description': 'Status der Nachrichtenqueue'},
         {'path': '/api/v1/health', 'method': 'GET', 'description': 'Processor Health-Status'},
         {'path': '/api/v1/system/health', 'method': 'GET', 'description': 'Systemweiter Gesundheitsstatus'},
@@ -609,14 +608,14 @@ def create_test_message():
         'message': 'Test-Nachricht erfolgreich erstellt'
     })
 
-@app.route('/api/v1/messages/process', methods=['POST'])
+@app.route('/api/v1/process', methods=['POST'])
 def legacy_process_endpoint():
     """
-    Legacy-Endpunkt, der Anfragen an den neuen vereinheitlichten Endpunkt weiterleitet.
-    VERALTET: Bitte verwenden Sie stattdessen /api/v1/process
+    Legacy-Endpunkt, der Anfragen an den neuen Hauptendpunkt /api/v1/messages/process weiterleitet.
+    VERALTET: Bitte verwenden Sie stattdessen /api/v1/messages/process
     """
-    logger.warning(f"VERALTET: /api/v1/messages/process wurde aufgerufen. Bitte verwenden Sie stattdessen /api/v1/process.")
-    return unified_process_endpoint()
+    logger.warning(f"VERALTET: /api/v1/process wurde aufgerufen. Bitte verwenden Sie stattdessen /api/v1/messages/process.")
+    return process_message_endpoint()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PROCESSOR_PORT', 8082))

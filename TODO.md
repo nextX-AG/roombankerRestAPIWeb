@@ -985,6 +985,11 @@ Die vollständige Ende-zu-Ende-Validierung des Nachrichtenflusses ist notwendig,
   - [x] Erweiterung implementiert für Nachrichten mit `subdeviceid`-Feld (Code 2030)
   - [x] Spezielle Behandlung für Panic-Button-Nachrichten mit Code 2030 hinzugefügt
   - [x] Verbesserte Fehlerprotokollierung für Geräteregistrierungsprobleme
+  - [x] Volle Unterstützung für unterschiedliche Nachrichtenformate implementiert:
+    - Format 1: `{ "subdevicelist": [ { "id": 673922542395461, "value": { ... } } ] }`
+    - Format 2: `{ "code": 2030, "subdeviceid": 673922542395461, ... }`
+  - [x] Implementierung sowohl in `processor_service.py` als auch in `message_processor.py`
+  - [x] Erfolgsbestätigung: Beide Nachrichtenformate führen jetzt zur korrekten Geräteregistrierung
 
 ### Verbleibende Aufgaben
 
@@ -1002,3 +1007,110 @@ Die vollständige Ende-zu-Ende-Validierung des Nachrichtenflusses ist notwendig,
   - [ ] Interne Entwicklerdokumentation aktualisieren
   - [ ] Kommentare im Code anpassen
   - [ ] Beispiele für API-Nutzung erstellen
+
+## 15. Implementierung der verbesserten Nachrichtenverarbeitungsarchitektur (HÖCHSTE PRIORITÄT)
+
+Die aktuelle Implementierung der Nachrichtenverarbeitung ist zu sehr auf bestimmte Gerätetypen (insbesondere Panic-Buttons) zugeschnitten und nicht flexibel genug für ein wachsendes System mit diversen Geräten. Es wird eine neue, generische Architektur implementiert, die auf dem folgenden Datenfluss basiert:
+
+```
+Nachricht → Extraktion → Normalisierung → Filterung → Transformation → Weiterleitung
+```
+
+### Phase 1: Generische Extraktions- und Normalisierungsschicht
+
+- [ ] **Generischer Message-Extraktor implementieren**
+  - [ ] Gateway-ID aus beliebigem Format extrahieren
+  - [ ] Geräte-IDs aus beliebigen Formaten extrahieren
+  - [ ] Gerätewerte aus verschiedenen Nachrichtenformaten extrahieren
+  - [ ] Automatische Typ-Bestimmung für Geräte basierend auf vorhandenen Werten
+
+- [ ] **Normalisierungsschicht entwickeln**
+  - [ ] Einheitliches internes Datenformat definieren
+  - [ ] Extraktion von Gateway- und Gerätedaten in das normalisierte Format
+  - [ ] Transformation von Werten in konsistente Datentypen
+  - [ ] Behandlung von fehlenden oder ungültigen Daten
+
+- [ ] **Zwischenspeicherung normalisierter Daten**
+  - [ ] Datenbankschema für normalisierte Daten erstellen
+  - [ ] Speichern von normalisierten Daten vor der Transformation
+  - [ ] Historische Daten für Analyse und Debugging bewahren
+
+### Phase 2: Regelbasierte Filterung und Template-System
+
+- [ ] **Filterregelsystem implementieren**
+  - [ ] JSON-Schema für Filterregeln definieren
+  - [ ] Min/Max-Werteprüfung implementieren
+  - [ ] Präzise Werteübereinstimmungsprüfungen
+  - [ ] Listen-basierte Werte-Filterung
+  - [ ] Logische Verknüpfungen zwischen Regeln (UND/ODER)
+
+- [ ] **Erweitertes Template-System**
+  - [ ] Templates mit integrierten Filterregeln
+  - [ ] Zugriff auf alle normalisierten Daten in Templates
+  - [ ] Erweiterte Jinja2-Funktionen für Datentransformation
+  - [ ] Versionierung von Templates
+
+- [ ] **Automatische Template-Generierung**
+  - [ ] Generierung von Template-Grundgerüsten aus normalisierten Daten
+  - [ ] Erkennung typischer Variablen und ihrer Typen
+  - [ ] Vorschläge für sinnvolle Filterregeln basierend auf beobachteten Werten
+  - [ ] Unterstützung für Template-Bearbeitung und -Anpassung
+
+### Phase 3: Verbesserte Benutzerschnittstelle
+
+- [ ] **Verbesserte Dashboard-Widgets**
+  - [ ] Anzeige normalisierter Daten für eingehende Nachrichten
+  - [ ] Live-Vorschau der Transformationen mit verschiedenen Templates
+  - [ ] Visualisierung der Filterwirkung auf reale Daten
+
+- [ ] **Template- und Filter-Editor**
+  - [ ] Grafischer Editor für Template-Bearbeitung
+  - [ ] Visuelles Interface zur Konfiguration von Filterregeln
+  - [ ] Min/Max-Slider für numerische Werte
+  - [ ] Dropdown-Menüs für kategorische Werte
+  - [ ] Echtzeit-Vorschau der Transformation
+
+- [ ] **Debugger für Nachrichtenverarbeitung**
+  - [ ] Detaillierte Protokollierung der Verarbeitungsschritte
+  - [ ] Visualisierung des Datenflusses durch die Pipeline
+  - [ ] Anzeige von Filterentscheidungen und deren Begründung
+  - [ ] Historische Nachrichtenanalyse
+
+### Phase 4: Systemintegration und Optimierung
+
+- [ ] **Integration mit dem bestehenden System**
+  - [ ] Parallelbetrieb mit dem aktuellen System während der Umstellung
+  - [ ] Migration bestehender Templates und Konfigurationen
+  - [ ] Kompatibilitätsschicht für ältere API-Clients
+
+- [ ] **Performance-Optimierung**
+  - [ ] Effiziente Verarbeitung großer Nachrichtenmengen
+  - [ ] Caching von häufig verwendeten Templates und Filterregeln
+  - [ ] Optimierung der Datenbankzugriffe für normalisierte Daten
+
+- [ ] **Dokumentation und Tests**
+  - [ ] Umfassende Dokumentation der neuen Architektur
+  - [ ] Automatisierte Tests für alle Komponenten
+  - [ ] Belastungstests für Hochlastsituationen
+
+### Implementierungsplan
+
+1. **Stufe 1: Grundlegende Neuarchitektur (Priorität: HÖCHST)**
+   - [ ] Entwurf und Implementierung der Extraktions- und Normalisierungsschicht
+   - [ ] Speicherung normalisierter Daten
+   - [ ] Anpassung der bestehenden Prozessor-Komponente
+
+2. **Stufe 2: Erweitertes Filtersystem (Priorität: HOCH)**
+   - [ ] Implementierung des Filterregelsystems
+   - [ ] Erweiterung des Template-Systems um Filterunterstützung
+   - [ ] Backend-API für Filterregelkonfiguration
+
+3. **Stufe 3: Template-Generierung und UI (Priorität: MITTEL)**
+   - [ ] Automatische Template-Generierung aus normalisierten Daten
+   - [ ] UI-Komponenten für Template- und Filterbearbeitung
+   - [ ] Entwicklung des Nachrichtenverarbeitungs-Debuggers
+
+4. **Stufe 4: Systemintegration und Optimierung (Priorität: NIEDRIG)**
+   - [ ] Vollständige Integration in die bestehende Umgebung
+   - [ ] Performance-Optimierungen
+   - [ ] Dokumentation und Tests vervollständigen

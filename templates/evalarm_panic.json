@@ -1,7 +1,7 @@
 {
     "name": "evalarm_panic",
     "description": "Template für Panic-Button-Nachrichten im evAlarm-Format",
-    "version": "1.0",
+    "version": "2.0",
     "transform": {
         "events": [
             {
@@ -9,8 +9,8 @@
                 "address": "0",
                 "namespace": "{{ customer_config.api_config.namespace }}",
                 "id": "{{ timestamp }}_{{ uuid }}",
-                "device_id": "{{ message.subdevicelist[0].id }}"
+                "device_id": "{% if message.subdeviceid is defined %}{{ message.subdeviceid }}{% elif message.subdevicelist is defined and message.subdevicelist|length > 0 %}{{ message.subdevicelist[0].id }}{% else %}unknown{% endif %}"
             }
         ]
     }
-} 
+}

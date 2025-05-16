@@ -110,7 +110,10 @@ def process_message():
     message = data.get('message', data)
     gateway_id = data.get('gateway_id')
     
-    # Wenn keine gateway_id direkt im Hauptobjekt gefunden wurde, versuche, sie aus der message zu extrahieren
+    # Wenn keine gateway_id direkt im Hauptobjekt gefunden wurde, prüfe auf gateway_uuid
+    if not gateway_id:
+        gateway_id = data.get('gateway_uuid')
+    # Wenn keine gateway_id oder gateway_uuid direkt im Hauptobjekt gefunden wurde, versuche, sie aus der message zu extrahieren
     if not gateway_id and isinstance(message, dict):
         # Versuche verschiedene Felder
         gateway_id = message.get('gateway_id')
@@ -192,9 +195,18 @@ def process_message():
             # Format 2: Nachricht mit subdeviceid (ohne subdevicelist)
             elif Device and isinstance(message, dict) and 'subdeviceid' in message:
                 try:
+                    # Debug-Ausgabe für den exakten Typ und Wert von subdeviceid
+                    subdevice_id_value = message['subdeviceid']
+                    subdevice_id_type = type(subdevice_id_value).__name__
+                    logger.info(f"DEBUG: subdeviceid als {subdevice_id_type} gefunden: {subdevice_id_value}")
+                    
+                    # Stelle sicher, dass die ID immer als String verarbeitet wird
+                    subdevice_id_str = str(subdevice_id_value)
+                    logger.info(f"DEBUG: subdeviceid in String konvertiert: '{subdevice_id_str}'")
+                    
                     # Erstelle ein synthetisches device_data im Format, das register_device_from_message erwartet
                     device_data = {
-                        "id": str(message['subdeviceid']),
+                        "id": subdevice_id_str,
                         "value": {}
                     }
                     
@@ -206,15 +218,22 @@ def process_message():
                             
                     # Code-basierte Alarmtypen
                     if 'code' in message:
-                        if message['code'] == 2030:  # Panic-Button-Code
+                        code_value = message['code']
+                        logger.info(f"DEBUG: code Wert: {code_value}, Typ: {type(code_value).__name__}")
+                        
+                        # Vergleich mit Integer und String
+                        if code_value == 2030 or code_value == "2030":
                             device_data['value']['alarmstatus'] = 'alarm'
                             device_data['value']['alarmtype'] = 'panic'
+                            logger.info(f"DEBUG: Panic-Button-Code erkannt: {code_value}")
                     
                     logger.info(f"Gerät aus subdeviceid extrahiert: {device_data}")
                     
                     device = register_device_from_message(gateway_id, device_data)
                     if device:
                         logger.info(f"Gerät aus subdeviceid für Gateway {gateway_id} registriert: {device.device_id}")
+                    else:
+                        logger.error(f"Geräteregistrierung fehlgeschlagen, obwohl keine Exception geworfen wurde")
                 except Exception as e:
                     logger.error(f"Fehler bei der Registrierung des Geräts mit subdeviceid: {str(e)}")
                     logger.error(f"Exception Typ: {type(e).__name__}")

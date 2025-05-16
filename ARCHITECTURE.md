@@ -466,4 +466,190 @@ Die Container starten in der folgenden Reihenfolge:
 3. API-Gateway (abhängig von Backend-Services)
 4. Frontend (abhängig vom API-Gateway)
 
-Diese Abhängigkeiten werden über `depends_on` mit Bedingungen in docker-compose.yml gesteuert. 
+Diese Abhängigkeiten werden über `depends_on` mit Bedingungen in docker-compose.yml gesteuert.
+
+## 10. Flexible Nachrichtenverarbeitungs-Pipeline (Neue Architektur)
+
+Die Nachrichtenverarbeitungs-Pipeline wurde neu konzipiert, um eine maximale Flexibilität bei der Verarbeitung verschiedener Gerätetypen und Nachrichtenformate zu gewährleisten. Die neue Architektur folgt einem klaren, mehrstufigen Prozess, der eine saubere Trennung von Verantwortlichkeiten ermöglicht und die Erweiterbarkeit des Systems deutlich verbessert.
+
+### 10.1 Pipeline-Übersicht
+
+```
+Nachricht → Extraktion → Normalisierung → Filterung → Transformation → Weiterleitung
+```
+
+Jede dieser Stufen hat eine klar definierte Verantwortung und Schnittstelle:
+
+#### 1. Extraktion
+- Empfang der Nachrichten im Rohformat von verschiedenen Gateway-Typen
+- Identifikation des Gateway und Bestimmung des Nachrichtentyps
+- Extraktion von Gateway-ID und grundlegenden Metadaten
+- Keine formatspezifische Transformationslogik in dieser Stufe
+
+#### 2. Normalisierung
+- Konvertierung der Rohdaten in ein standardisiertes internes Format
+- Extrahieren aller Gerätedaten, unabhängig vom ursprünglichen Format
+- Typenkonvertierung und Validierung von Werten
+- Erzeugung eines normalisierten Datenmodells mit einheitlicher Struktur
+
+#### 3. Filterung
+- Anwendung konfigurierbarer Filterregeln auf normalisierte Daten
+- Entscheidung, ob Nachrichten weitergeleitet werden sollen
+- Min/Max-Werte-Prüfungen und spezifische Wertefilterung
+- Protokollierung der Filterentscheidungen für Analyse und Debugging
+
+#### 4. Transformation
+- Anwendung von Templates auf die normalisierten Daten
+- Umwandlung in das Zielformat (z.B. evAlarm-Format)
+- Zugriff auf alle normalisierten Daten im Template
+- Versionierte und kundenspezifische Templates
+
+#### 5. Weiterleitung
+- Authentifizierung mit dem Zielsystem (z.B. evAlarm-API)
+- Protokollierung des Weiterleitungserfolgs
+- Umgang mit Fehlern und Wiederholungsversuchen
+- Statistiken zur Weiterleitungsperformance
+
+### 10.2 Normalisiertes Datenmodell
+
+Das Herzstück der neuen Architektur ist das standardisierte, normalisierte Datenmodell:
+
+```json
+{
+  "gateway": {
+    "id": "gw-c490b022-cc18-407e-a07e-a355747a8fdd",
+    "type": "roombanker_gateway",
+    "metadata": {
+      "dbm": "-117",
+      "electricity": 100,
+      "batterystatus": "connected",
+      "last_seen": "2025-05-15T21:52:32.675Z"
+    }
+  },
+  "devices": [
+    {
+      "id": "673922542395461",
+      "type": "panic_button",
+      "values": {
+        "alarmstatus": "alarm",
+        "alarmtype": "panic",
+        "batterystatus": "connected",
+        "onlinestatus": "online"
+      },
+      "last_seen": "2025-05-15T21:52:32.675Z"
+    }
+  ],
+  "raw_message": { ... },
+  "metadata": {
+    "received_at": "2025-05-15T21:52:32.675Z",
+    "source_ip": "192.168.1.100",
+    "format_type": "roombanker_subdevicelist"
+  }
+}
+```
+
+Dieses Modell bietet:
+- Einheitliche Zugriffsstruktur für Templates
+- Klar getrennte Gateway- und Gerätedaten
+- Typisierte und validierte Werte
+- Erhaltung der Originalnachricht für Debugging
+
+### 10.3 Filterregel-System
+
+Das neue Filterregel-System ermöglicht eine detaillierte Konfiguration, welche Nachrichten weitergeleitet werden:
+
+```json
+{
+  "name": "evalarm_panic_filter",
+  "description": "Weiterleitung von Panic-Button-Alarmen",
+  "device_rules": [
+    {
+      "device_type": "panic_button",
+      "conditions": [
+        {
+          "field": "alarmstatus",
+          "operator": "equals",
+          "value": "alarm",
+          "action": "forward"
+        },
+        {
+          "field": "batterystatus",
+          "operator": "equals",
+          "value": "low",
+          "action": "forward"
+        }
+      ],
+      "combine_with": "OR"
+    }
+  ],
+  "gateway_rules": [
+    {
+      "field": "dbm",
+      "operator": "outside_range",
+      "min": -120,
+      "max": -30,
+      "action": "forward"
+    }
+  ]
+}
+```
+
+Diese Regeln werden auf die normalisierten Daten angewendet und bestimmen, ob eine Weiterleitung erfolgt.
+
+### 10.4 Automatische Template-Generierung
+
+Ein Kernfeature der neuen Architektur ist die Fähigkeit, aus eingehenden normalisierten Daten automatisch Templates zu generieren:
+
+1. **Erkennung der Variablen und Typen**:
+   - Analyse der normalisierten Daten
+   - Bestimmung von Variablentypen (Strings, Zahlen, Booleans)
+   - Erkennung von Wertemustern und üblichen Bereichen
+
+2. **Generierung des Template-Grundgerüsts**:
+   - Erstellung eines Basis-Templates mit erkannten Variablen
+   - Konfiguration von Standardfilterregeln
+   - Vorausfüllung der Transformationslogik
+
+3. **Anpassung durch Benutzer**:
+   - Grafische Bearbeitung des generierten Templates
+   - Anpassung der Filterregeln
+   - Erweiterung der Transformationslogik
+
+4. **Versionierung und Testen**:
+   - Speicherung verschiedener Versionen eines Templates
+   - Tests mit historischen Daten
+   - A/B-Tests zwischen Template-Versionen
+
+### 10.5 Integration in die Systemarchitektur
+
+Die neue Nachrichtenverarbeitungs-Pipeline ist vollständig in die bestehende Systemarchitektur integriert:
+
+1. **API-Gateway** empfängt Nachrichten über den einheitlichen Endpunkt `/api/v1/messages/process`
+2. **Processor-Service** führt die Extraktion und Normalisierung durch
+3. **Redis** speichert normalisierte Daten temporär und verwaltet die Nachrichtenqueue
+4. **MongoDB** speichert Templates, Filterregeln und historische Daten
+5. **Frontend** bietet Oberflächen für Template-Generierung, Filterregelkonfiguration und Debugging
+
+Während der Übergangsphase läuft das System parallel zur bestehenden Implementierung, um einen reibungslosen Wechsel zu gewährleisten.
+
+### 10.6 Vorteile der neuen Architektur
+
+1. **Maximale Flexibilität**:
+   - Unterstützung beliebiger Gateway- und Gerätetypen ohne Codeänderungen
+   - Konfigurierbare Filterung und Weiterleitung
+   - Kundenspezifische Templates und Regeln
+
+2. **Verbesserte Wartbarkeit**:
+   - Klare Trennung der Verantwortlichkeiten
+   - Standardisiertes internes Datenmodell
+   - Reduzierte Abhängigkeiten zwischen Komponenten
+
+3. **Erweiterte Diagnose-Möglichkeiten**:
+   - Detaillierte Protokollierung jeder Verarbeitungsstufe
+   - Nachvollziehbarkeit von Filterentscheidungen
+   - Historische Daten für Analyse und Optimierung
+
+4. **Leistungsfähigkeit**:
+   - Optimierte Verarbeitung großer Nachrichtenmengen
+   - Parallele Verarbeitung durch klare Pipelinetrennung
+   - Effiziente Datenspeicherung und -abfrage 
