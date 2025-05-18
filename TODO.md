@@ -1099,3 +1099,25 @@ Eine Drawer-Komponente soll für die Anzeige und Bearbeitung von Templates imple
   - [x] Code-Editor-Komponente integrieren
   - [x] Test-Funktionalität verbessern
   - [ ] Historien-Ansicht implementieren
+
+## 11. Bugfixing für das Template-System (ABGESCHLOSSEN)
+
+- [x] **Template-API-Endpunkte korrigieren**
+  - [x] Implementierung des `/api/v1/templates` Endpunkts aktualisiert, um vollständige Template-Objekte zurückzugeben
+  - [x] Endpunkt für einzelne Template-Details unter `/api/v1/templates/<template_id>` implementiert
+  - [x] Fehlerbehandlung für ungültige Template-IDs verbessert
+
+- [x] **Frontend-API-Nutzung standardisieren**
+  - [x] Aktualisierung aller Template-bezogenen Komponenten zur Verwendung des zentralen templateApi-Clients
+  - [x] Implementierung von Fallback-Mechanismen für das Laden von Template-Details
+  - [x] Verbesserte Fehlerbehandlung im Frontend für Template-Operationen
+
+- [x] **Template-Verwaltungskomponenten verbessern**
+  - [x] TemplateDetailDrawer-Komponente robuster gemacht
+  - [x] Fehler "Template konnte nicht geladen werden: Interner Serverfehler" behoben
+  - [x] Template-Datenmodell zwischen Frontend und Backend synchronisiert
+
+- [x] **Prozessor-Service stabiler machen**
+  - [x] Fehlerbehebung im Prozessor-Container für bessere Stabilität
+  - [x] Korrektur der API-Route für Template-Details im Prozessor-Service
+  - [x] Verbesserte Fehlerbehandlung im Prozessor-Service
