@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Row, Col, Card, Form, Button, Alert, Tab, Tabs } from 'react-bootstrap';
 import { FileCode, Plus, Search, RefreshCw } from 'lucide-react';
-import axios from 'axios';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import BasicTable from '../components/BasicTable';
 import config, { API_VERSION } from '../config';
 import { useNavigate, useParams, Outlet } from 'react-router-dom';
+import { templateApi } from '../api';
 
 // Verwende die konfigurierte API-URL mit Version
 const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
@@ -43,17 +43,23 @@ const Templates = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await axios.get(`${API_URL}/templates`);
+        console.log("Rufe Templates-Liste ab...");
+        const response = await templateApi.list();
+        console.log("Templates-Antwort erhalten:", response);
         
-        if (response.data?.status === 'success') {
-          const templatesList = response.data?.data || [];
-          setTemplates(Array.isArray(templatesList) ? templatesList : []);
+        if (response.status === 'success') {
+          // Templates aus der Antwort extrahieren
+          const templatesList = response.data || [];
+          console.log("Template-Daten:", templatesList);
+          setTemplates(templatesList);
+          console.log("Templates gesetzt:", templatesList.length);
         } else {
-          throw new Error(response.data?.error?.message || 'Fehler beim Laden der Templates');
+          console.error("Fehlerhafte API-Antwort:", response);
+          throw new Error(response.error?.message || 'Fehler beim Laden der Templates');
         }
       } catch (error) {
         console.error('Fehler beim Abrufen der Templates:', error);
-        setError('Fehler beim Laden der Templates: ' + (error.response?.data?.error?.message || error.message));
+        setError('Fehler beim Laden der Templates: ' + (error.message || 'Unbekannter Fehler'));
         setTemplates([]);
       } finally {
         setLoading(false);
@@ -69,21 +75,21 @@ const Templates = () => {
     const fetchTemplates = async () => {
       try {
         setError(null);
-        const response = await axios.get(`${API_URL}/templates`);
+        const response = await templateApi.list();
         
-        if (response.data?.status === 'success') {
-          const templatesList = response.data?.data || [];
-          setTemplates(Array.isArray(templatesList) ? templatesList : []);
+        if (response.status === 'success') {
+          const templatesList = response.data || [];
+          setTemplates(templatesList);
           setSuccess('Templates erfolgreich aktualisiert');
           
           // Erfolgsbenachrichtigung nach 3 Sekunden ausblenden
           setTimeout(() => setSuccess(null), 3000);
         } else {
-          throw new Error(response.data?.error?.message || 'Fehler beim Laden der Templates');
+          throw new Error(response.error?.message || 'Fehler beim Laden der Templates');
         }
       } catch (error) {
         console.error('Fehler beim Abrufen der Templates:', error);
-        setError('Fehler beim Laden der Templates: ' + (error.response?.data?.error?.message || error.message));
+        setError('Fehler beim Laden der Templates: ' + (error.message || 'Unbekannter Fehler'));
         setTemplates([]);
       } finally {
         setLoading(false);

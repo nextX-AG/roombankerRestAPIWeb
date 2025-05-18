@@ -6,7 +6,7 @@ import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { FileCode, Save, Copy, ArrowLeft, PlayCircle, Trash, Edit } from 'lucide-react';
 import SimpleCodeEditor from './CodeEditor';
-import axios from 'axios';
+import { templateApi } from '../api';
 import config, { API_VERSION } from '../config';
 
 // API-URL-Konfiguration
@@ -106,7 +106,10 @@ const TemplateDetailDrawer = () => {
   // Lade das Template beim ersten Rendern
   useEffect(() => {
     const fetchTemplate = async () => {
-      if (!id) return;
+      if (!id) {
+        console.log("Keine Template-ID vorhanden, überspringe Abruf");
+        return;
+      }
       
       // Wenn die ID "new" ist, handelt es sich um ein neues Template
       if (id === 'new') {
@@ -119,22 +122,57 @@ const TemplateDetailDrawer = () => {
         return;
       }
       
+      // Prüfe auf ungültige ID-Werte
+      if (id === 'undefined' || id === 'null') {
+        console.error(`Ungültige Template-ID: ${id}`);
+        setError(`Ungültige Template-ID: ${id}`);
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
+      console.log(`Lade Template-Details für ID: ${id}`);
       try {
-        const response = await axios.get(`${API_URL}/templates/${id}`);
+        // Hole zunächst die komplette Template-Liste
+        const templatesResponse = await templateApi.list();
+        console.log("Template-Liste erhalten:", templatesResponse);
         
-        if (response.data?.status === 'success' && response.data?.data) {
-          const templateData = response.data.data;
+        if (templatesResponse.status === 'success' && Array.isArray(templatesResponse.data)) {
+          // Finde das Template mit der passenden ID oder dem passenden Namen
+          const foundTemplate = templatesResponse.data.find(template => 
+            template.id === id || template.name === id
+          );
+          
+          if (foundTemplate) {
+            console.log("Template gefunden:", foundTemplate);
+            setTemplate(foundTemplate);
+            setTemplateName(foundTemplate.name || id);
+            setTemplateCode(foundTemplate.template_code || '{}');
+            setProviderType(foundTemplate.provider_type || 'generic');
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // Wenn über die Liste kein Template gefunden wurde, versuche direkten API-Aufruf
+        const response = await templateApi.detail(id);
+        console.log("Template-Detail-Antwort:", response);
+        
+        if (response.status === 'success' && response.data) {
+          const templateData = response.data;
+          console.log("Template-Daten erhalten:", templateData);
           setTemplate(templateData);
-          setTemplateName(templateData.name);
-          setTemplateCode(templateData.template_code);
+          setTemplateName(templateData.name || id);
+          setTemplateCode(templateData.template_code || '{}');
           setProviderType(templateData.provider_type || 'generic');
         } else {
-          throw new Error(response.data?.error?.message || 'Fehler beim Laden des Templates');
+          console.error("Fehlerhafte API-Antwort:", response);
+          throw new Error(response.error?.message || 'Fehler beim Laden des Templates');
         }
       } catch (error) {
         console.error('Fehler beim Laden des Template-Details:', error);
-        setError('Template konnte nicht geladen werden: ' + (error.response?.data?.error?.message || error.message));
+        setError('Template konnte nicht geladen werden: ' + (error.message || 'Unbekannter Fehler'));
+        setTemplate(null);
       } finally {
         setLoading(false);
       }
@@ -184,22 +222,22 @@ const TemplateDetailDrawer = () => {
       
       // Wenn die ID "new" ist, erstellen wir ein neues Template
       if (id === 'new') {
-        response = await axios.post(`${API_URL}/templates`, templateData);
+        response = await templateApi.create(templateData);
         
-        if (response.data?.status === 'success') {
-          const newTemplateData = response.data?.data;
+        if (response.status === 'success') {
+          const newTemplateData = response.data;
           setSuccess('Template erfolgreich erstellt');
           // Navigiere zum neuen Template mit der korrekten ID
           navigate(`/templates/${newTemplateData.id}`, { replace: true });
         } else {
-          throw new Error(response.data?.error?.message || 'Template konnte nicht erstellt werden');
+          throw new Error(response.error?.message || 'Template konnte nicht erstellt werden');
         }
       } else {
         // Bestehendes Template aktualisieren
-        response = await axios.put(`${API_URL}/templates/${id}`, templateData);
+        response = await templateApi.update(id, templateData);
         
-        if (response.data?.status === 'success') {
-          const updatedTemplateData = response.data?.data;
+        if (response.status === 'success') {
+          const updatedTemplateData = response.data;
           setTemplate(updatedTemplateData);
           setTemplateName(updatedTemplateData.name);
           setTemplateCode(updatedTemplateData.template_code);
@@ -207,12 +245,12 @@ const TemplateDetailDrawer = () => {
           setSuccess('Template erfolgreich aktualisiert');
           setIsEditing(false);
         } else {
-          throw new Error(response.data?.error?.message || 'Template konnte nicht aktualisiert werden');
+          throw new Error(response.error?.message || 'Template konnte nicht aktualisiert werden');
         }
       }
     } catch (error) {
       console.error('Fehler beim Speichern des Templates:', error);
-      setError('Fehler beim Speichern: ' + (error.response?.data?.error?.message || error.message));
+      setError('Fehler beim Speichern: ' + (error.message || 'Unbekannter Fehler'));
     }
   };
 
@@ -220,16 +258,16 @@ const TemplateDetailDrawer = () => {
   const handleDeleteTemplate = async () => {
     if (window.confirm('Möchten Sie dieses Template wirklich löschen?')) {
       try {
-        const response = await axios.delete(`${API_URL}/templates/${id}`);
+        const response = await templateApi.delete(id);
         
-        if (response.data?.status === 'success') {
+        if (response.status === 'success') {
           navigate('/templates');
         } else {
-          throw new Error(response.data?.error?.message || 'Template konnte nicht gelöscht werden');
+          throw new Error(response.error?.message || 'Template konnte nicht gelöscht werden');
         }
       } catch (error) {
         console.error('Fehler beim Löschen des Templates:', error);
-        setError('Fehler beim Löschen: ' + (error.response?.data?.error?.message || error.message));
+        setError('Fehler beim Löschen: ' + (error.message || 'Unbekannter Fehler'));
       }
     }
   };
@@ -272,19 +310,19 @@ const TemplateDetailDrawer = () => {
         return;
       }
       
-      const response = await axios.post(`${API_URL}/templates/${id}/test`, {
+      const response = await templateApi.test(id, {
         message: testMessage
       });
       
-      if (response.data?.status === 'success') {
-        setTransformedMessage(response.data?.data);
+      if (response.status === 'success') {
+        setTransformedMessage(response.data);
         setError(null);
       } else {
-        throw new Error(response.data?.error?.message || 'Transformation fehlgeschlagen');
+        throw new Error(response.error?.message || 'Transformation fehlgeschlagen');
       }
     } catch (error) {
       console.error('Fehler bei der Transformation:', error);
-      setError('Fehler bei der Transformation: ' + (error.response?.data?.error?.message || error.message));
+      setError('Fehler bei der Transformation: ' + (error.message || 'Unbekannter Fehler'));
       setTransformedMessage(null);
     } finally {
       setTestLoading(false);
