@@ -285,6 +285,52 @@ class NormalizedTemplateEngine:
         """
         return list(self.templates.keys())
     
+    def get_template(self, template_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Gibt die Details eines spezifischen Templates zurück
+        
+        Args:
+            template_name: Name des Templates
+            
+        Returns:
+            Dictionary mit Template-Details oder None, wenn das Template nicht existiert
+        """
+        if template_name not in self.templates:
+            logger.warning(f"Template '{template_name}' nicht gefunden")
+            return None
+            
+        template_data = self.templates[template_name]
+        
+        # Extrahiere Dateiinhalt
+        with open(template_data['path'], 'r') as f:
+            if template_data['path'].endswith('.json'):
+                template_code = f.read()
+            else:
+                template_code = f.read()
+        
+        # Ermittle Provider-Typ anhand von Dateiname oder Inhalt
+        provider_type = 'generic'
+        if 'evalarm' in template_name:
+            provider_type = 'evalarm'
+        elif 'roombanker' in template_name:
+            provider_type = 'roombanker'
+        elif 'becker' in template_name:
+            provider_type = 'becker-antriebe'
+        
+        # Erstelle Zeitstempel
+        created_at = datetime.now().isoformat()
+        
+        # Erstelle strukturiertes Template-Objekt für das Frontend
+        return {
+            'id': template_name,
+            'name': template_name,
+            'template_code': template_code,
+            'provider_type': provider_type,
+            'created_at': created_at,
+            'path': template_data['path'],
+            'filter_rules': template_data.get('filter_rules', [])
+        }
+    
     def should_forward(self, normalized_message: Dict[str, Any], template_name: str) -> Tuple[bool, List[str]]:
         """
         Prüft, ob eine Nachricht basierend auf den Filterregeln weitergeleitet werden soll

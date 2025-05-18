@@ -12,7 +12,7 @@ from typing import Optional, Dict, Any
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Importiere die zentrale API-Konfiguration und API-Handler
-from utils.api_config import get_route, API_VERSION
+from utils.api_config import get_route, API_VERSION, API_BASE
 from utils.api_handlers import (
     success_response, error_response, 
     not_found_response, validation_error_response,
@@ -557,9 +557,32 @@ def get_templates():
     """
     Endpunkt zum Abrufen aller verfügbaren Templates
     """
-    template_names = template_engine.get_template_names()
-    logger.info(f"{len(template_names)} Templates gefunden")
-    return success_response(template_names)
+    try:
+        logger.info("Template-Liste angefordert")
+        template_names = template_engine.get_template_names()
+        logger.info(f"{len(template_names)} Templates gefunden: {', '.join(template_names)}")
+        
+        # Strukturierte Template-Objekte erstellen statt nur Namen zurückzugeben
+        template_objects = []
+        for template_name in template_names:
+            try:
+                template = template_engine.get_template(template_name)
+                if template:
+                    template_objects.append(template)
+                    logger.info(f"Template {template_name} erfolgreich verarbeitet")
+                else:
+                    logger.warning(f"Template {template_name} konnte nicht geladen werden (None zurückgegeben)")
+            except Exception as template_error:
+                logger.error(f"Fehler beim Verarbeiten des Templates {template_name}: {str(template_error)}")
+                continue
+        
+        logger.info(f"{len(template_objects)} Template-Objekte zurückgegeben")
+        return success_response(template_objects)
+    except Exception as e:
+        logger.error(f"Kritischer Fehler beim Abrufen der Templates: {str(e)}")
+        import traceback
+        logger.error(f"Stacktrace: {traceback.format_exc()}")
+        return error_response("Fehler beim Laden der Templates", 500)
 
 @app.route(get_route('system', 'endpoints'), methods=['GET'])
 @api_error_handler
@@ -583,6 +606,24 @@ def reload_templates():
     return success_response({
         'templates': template_names
     }, 'Templates wurden neu geladen')
+
+@app.route(f"{API_BASE}/templates/<template_id>", methods=['GET'])
+@api_error_handler
+def get_template(template_id):
+    """
+    Endpunkt zum Abrufen eines einzelnen Templates nach ID
+    """
+    if not template_id or template_id == "undefined" or template_id == "null":
+        logger.error(f"Ungültige Template-ID angefordert: '{template_id}'")
+        return error_response(f"Ungültige Template-ID: '{template_id}'", 400)
+        
+    template = template_engine.get_template(template_id)
+    if not template:
+        logger.warning(f"Template {template_id} nicht gefunden")
+        return not_found_response("Template", template_id)
+        
+    logger.info(f"Template {template_id} erfolgreich abgerufen")
+    return success_response(template)
 
 @app.route(get_route('templates', 'test'), methods=['POST'])
 @api_error_handler
