@@ -21,6 +21,7 @@ const Devices = () => {
   const navigate = useNavigate();
   const [devices, setDevices] = useState([]);
   const [gateways, setGateways] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -40,23 +41,27 @@ const Devices = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [devicesResponse, gatewaysResponse] = await Promise.all([
+      const [devicesResponse, gatewaysResponse, customersResponse] = await Promise.all([
         axios.get(`${API_URL}/devices`),
-        axios.get(`${API_URL}/gateways`)
+        axios.get(`${API_URL}/gateways`),
+        axios.get(`${API_URL}/customers`)
       ]);
       
       // Extrahiere die Daten aus dem data-Feld der Antworten
       const devicesList = devicesResponse.data?.data || [];
       const gatewaysList = gatewaysResponse.data?.data || [];
+      const customersList = customersResponse.data?.data || [];
       
       setDevices(Array.isArray(devicesList) ? devicesList : []);
       setGateways(Array.isArray(gatewaysList) ? gatewaysList : []);
+      setCustomers(Array.isArray(customersList) ? customersList : []);
       setError(null);
     } catch (err) {
       console.error('Fehler beim Laden der Daten:', err);
       setError('Daten konnten nicht geladen werden. Bitte versuchen Sie es später erneut.');
       setDevices([]);
       setGateways([]);
+      setCustomers([]);
     } finally {
       setLoading(false);
     }
@@ -117,7 +122,16 @@ const Devices = () => {
   // Gateway-Name aus UUID
   const getGatewayName = (gatewayUuid) => {
     const gateway = gateways.find(g => g.uuid === gatewayUuid);
-    return gateway ? gateway.name : gatewayUuid;
+    return gateway ? gateway.name || gateway.uuid : gatewayUuid;
+  };
+
+  // Kundenname für ein Gateway
+  const getCustomerNameForGateway = (gatewayUuid) => {
+    const gateway = gateways.find(g => g.uuid === gatewayUuid);
+    if (!gateway || !gateway.customer_id) return 'Nicht zugeordnet';
+    
+    const customer = customers.find(c => c.id === gateway.customer_id);
+    return customer ? customer.name : 'Unbekannt';
   };
 
   // Zeitstempel formatieren
@@ -127,41 +141,63 @@ const Devices = () => {
     return date.toLocaleString('de-DE');
   };
 
+  // Erweitere die Suche für globalen Filter
+  const enhanceSearchData = (devices) => {
+    return devices.map(device => {
+      const customerName = getCustomerNameForGateway(device.gateway_uuid);
+      const gatewayName = getGatewayName(device.gateway_uuid);
+      
+      return {
+        ...device,
+        // Zusätzliche Suchfelder für den globalen Filter
+        customerName,
+        gatewayName,
+        formattedType: formatDeviceType(device.device_type)
+      };
+    });
+  };
+
   // TanStack Table Spalten-Definition
   const columns = useMemo(
     () => [
       {
         accessorKey: 'device_id',
         header: 'Geräte-ID',
-        size: 180,
+        size: 150,
       },
       {
         accessorKey: 'name',
         header: 'Name',
-        size: 150,
+        size: 120,
       },
       {
         accessorKey: 'device_type',
         header: 'Typ',
-        size: 150,
+        size: 120,
         cell: ({ row }) => formatDeviceType(row.original.device_type),
+      },
+      {
+        accessorKey: 'customerName',
+        header: 'Kunde',
+        size: 150,
+        cell: ({ row }) => getCustomerNameForGateway(row.original.gateway_uuid),
       },
       {
         accessorKey: 'gateway_uuid',
         header: 'Gateway',
-        size: 180,
+        size: 150,
         cell: ({ row }) => getGatewayName(row.original.gateway_uuid),
       },
       {
         accessorKey: 'last_update',
         header: 'Letztes Update',
-        size: 150,
+        size: 120,
         cell: ({ row }) => formatDateTime(row.original.last_update),
       },
       {
         id: 'actions',
         header: 'Aktionen',
-        size: 100,
+        size: 80,
         cell: ({ row }) => {
           const device = row.original;
           return (
@@ -181,8 +217,11 @@ const Devices = () => {
         },
       },
     ],
-    [gateways]
+    [gateways, customers]
   );
+
+  // Erweiterte Suchdaten für den Filter
+  const enhancedData = useMemo(() => enhanceSearchData(devices), [devices, gateways, customers]);
 
   return (
     <>
@@ -212,11 +251,12 @@ const Devices = () => {
         <Card.Header>Geräteliste</Card.Header>
         <Card.Body>
           <BasicTable 
-            data={devices}
+            data={enhancedData}
             columns={columns}
             isLoading={loading}
             emptyMessage="Keine Geräte vorhanden."
             onRowClick={openDeviceDetail}
+            filterPlaceholder="Suche nach ID, Name, Typ, Kunde, Gateway..."
           />
         </Card.Body>
       </Card>
@@ -245,6 +285,18 @@ const Devices = () => {
                   <Form.Control
                     type="text"
                     value={getGatewayName(currentDevice?.gateway_uuid)}
+                    disabled
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={12}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Kunde</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={getCustomerNameForGateway(currentDevice?.gateway_uuid)}
                     disabled
                   />
                 </Form.Group>

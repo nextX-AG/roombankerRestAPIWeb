@@ -23,6 +23,7 @@ import { Search, ChevronUp, ChevronDown, ArrowLeft, ArrowRight } from 'lucide-re
  * @param {boolean} props.enableSorting Aktiviert die Sortierung
  * @param {string} props.className Zusätzliche CSS-Klassen für die Tabelle
  * @param {Function} props.onRowClick Funktion, die aufgerufen wird, wenn eine Zeile angeklickt wird (row) => void
+ * @param {string} props.filterPlaceholder Platzhaltertext für das Suchfeld
  */
 const BasicTable = ({
   data = [],
@@ -33,7 +34,8 @@ const BasicTable = ({
   enablePagination = true,
   enableSorting = true,
   className = '',
-  onRowClick = null
+  onRowClick = null,
+  filterPlaceholder = 'Suchen...'
 }) => {
   // State für globalen Filter
   const [globalFilter, setGlobalFilter] = useState('');
@@ -86,7 +88,7 @@ const BasicTable = ({
               <Search size={16} />
             </InputGroup.Text>
             <Form.Control
-              placeholder="Suchen..."
+              placeholder={filterPlaceholder}
               value={globalFilter || ''}
               onChange={(e) => setGlobalFilter(e.target.value)}
             />

@@ -321,21 +321,35 @@ const Gateways = () => {
     navigate(`/gateways/${gateway.uuid}`);
   };
 
+  // Erweitere die Suche für globalen Filter
+  const enhanceSearchData = (gateways) => {
+    return gateways.map(gateway => {
+      const customerName = getCustomerName(gateway.customer_id);
+      
+      return {
+        ...gateway,
+        // Zusätzliche Suchfelder für den globalen Filter
+        customerName,
+        formattedStatus: gateway.status
+      };
+    });
+  };
+
   // TanStack Table Spalten-Definition
   const columns = useMemo(
     () => [
       {
         accessorKey: 'uuid',
         header: 'UUID',
-        size: 180,
+        size: 150,
       },
       {
         accessorKey: 'name',
         header: 'Name',
-        size: 150,
+        size: 120,
       },
       {
-        accessorKey: 'customer_id',
+        accessorKey: 'customerName',
         header: 'Kunde',
         size: 150,
         cell: ({ row }) => getCustomerName(row.original.customer_id),
@@ -349,7 +363,7 @@ const Gateways = () => {
       {
         id: 'status_icons',
         header: 'Status-Icons',
-        size: 130,
+        size: 120,
         cell: ({ row }) => {
           const gateway = row.original;
           return (
@@ -365,33 +379,13 @@ const Gateways = () => {
         header: 'Letzter Kontakt',
         size: 150,
         cell: ({ row }) => formatDateTime(row.original.last_contact),
-      },
-      {
-        id: 'actions',
-        header: 'Aktionen',
-        size: 60, // Reduzierte Größe, da nur ein Button
-        cell: ({ row }) => {
-          const gateway = row.original;
-          return (
-            <div onClick={(e) => e.stopPropagation()}>
-              <Button 
-                variant="outline-secondary" 
-                size="sm" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  fetchDevices(gateway);
-                }}
-                title="Geräte anzeigen"
-              >
-                <Eye size={16} />
-              </Button>
-            </div>
-          );
-        },
-      },
+      }
     ],
     [gatewayLatestData, customers]
   );
+
+  // Erweiterte Suchdaten für den Filter
+  const enhancedData = useMemo(() => enhanceSearchData(gateways), [gateways, customers]);
 
   return (
     <>
@@ -433,11 +427,12 @@ const Gateways = () => {
             <Card.Header>Gateways</Card.Header>
             <Card.Body>
               <BasicTable 
-                data={gateways}
+                data={enhancedData}
                 columns={columns}
                 isLoading={loading}
                 emptyMessage="Keine Gateways vorhanden. Fügen Sie ein neues Gateway hinzu."
                 onRowClick={navigateToDetail}
+                filterPlaceholder="Suche nach UUID, Name, Kunde, Status..."
               />
             </Card.Body>
           </Card>
