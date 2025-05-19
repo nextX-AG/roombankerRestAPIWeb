@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Drawer from './Drawer';
-import { Table, Badge, Button, Alert, Nav, Tab } from 'react-bootstrap';
+import { Table, Badge, Button, Alert, Card } from 'react-bootstrap';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { Copy, ArrowLeft, Check, X } from 'lucide-react';
@@ -18,7 +18,6 @@ const MessageDetailDrawer = () => {
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('raw');
   const [debugResult, setDebugResult] = useState(null);
   const [debugLoading, setDebugLoading] = useState(false);
 
@@ -146,10 +145,10 @@ const MessageDetailDrawer = () => {
     return formatTimestamp(message.timestamp);
   };
   
-  const copyToClipboard = (data) => {
+  const copyToClipboard = (data, title = '') => {
     try {
       navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-      alert('JSON in Zwischenablage kopiert!');
+      alert(`${title || 'JSON'} in Zwischenablage kopiert!`);
     } catch (error) {
       console.error('Fehler beim Kopieren in die Zwischenablage:', error);
       alert('Fehler beim Kopieren: ' + error.message);
@@ -168,6 +167,32 @@ const MessageDetailDrawer = () => {
     } else {
       return <Badge bg="secondary">{statusCode}</Badge>;
     }
+  };
+
+  // Render eine JSON-Sektion mit Titel, Copy-Button und Inhalt
+  const renderJsonSection = (title, data, expanded = false) => {
+    if (!data) return null;
+    
+    return (
+      <Card className="mb-3">
+        <Card.Header className="d-flex justify-content-between align-items-center bg-light">
+          <h6 className="mb-0">{title}</h6>
+          <Button 
+            size="sm" 
+            variant="outline-secondary"
+            onClick={() => copyToClipboard(data, title)}
+          >
+            <Copy size={16} className="me-1" />
+            Kopieren
+          </Button>
+        </Card.Header>
+        <Card.Body className="p-0">
+          <div className="border-0 rounded-0 bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            <JsonView data={data} />
+          </div>
+        </Card.Body>
+      </Card>
+    );
   };
 
   const drawerContent = () => {
@@ -200,7 +225,7 @@ const MessageDetailDrawer = () => {
     }
     
     return (
-      <>
+      <div className="message-detail-content" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
         <h5>Metadaten</h5>
         <Table bordered size="sm" className="mb-3">
           <tbody>
@@ -237,107 +262,62 @@ const MessageDetailDrawer = () => {
           </tbody>
         </Table>
 
-        <Tab.Container id="message-details-tabs" activeKey={activeTab} onSelect={setActiveTab}>
-          <Nav variant="tabs" className="mb-3">
-            <Nav.Item>
-              <Nav.Link eventKey="raw">Empfangene Nachricht</Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="normalized" disabled={!debugResult?.normalized_data}>
-                Normalisierte Daten {debugLoading ? '(lädt...)' : ''}
-              </Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="transformed" disabled={!message.result?.transformed_message && !debugResult?.transformed_message}>
-                Transformierte Nachricht {debugLoading ? '(lädt...)' : ''}
-              </Nav.Link>
-            </Nav.Item>
-            <Nav.Item>
-              <Nav.Link eventKey="response" disabled={!message.result?.api_response && !debugResult?.api_response}>
-                API Response {debugLoading ? '(lädt...)' : ''}
-              </Nav.Link>
-            </Nav.Item>
-          </Nav>
-          
-          <div className="mb-2 d-flex justify-content-end">
-            <Button 
-              size="sm" 
-              variant="outline-secondary"
-              onClick={() => copyToClipboard(
-                activeTab === 'raw' ? (message.content || message) :
-                activeTab === 'normalized' ? debugResult?.normalized_data :
-                activeTab === 'transformed' ? (message.result?.transformed_message || debugResult?.transformed_message) :
-                activeTab === 'response' ? (message.result?.api_response || debugResult?.api_response) :
-                message
-              )}
-            >
-              <Copy size={16} className="me-1" />
-              Kopieren
-            </Button>
-          </div>
-          
-          <Tab.Content>
-            <Tab.Pane eventKey="raw">
-              <div className="border rounded bg-light" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                <JsonView data={message.content || message} />
-              </div>
-            </Tab.Pane>
-            
-            <Tab.Pane eventKey="normalized">
-              {debugResult?.normalized_data ? (
-                <div className="border rounded bg-light" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                  <JsonView data={debugResult.normalized_data} />
-                </div>
-              ) : (
-                <Alert variant="info">
-                  Keine normalisierten Daten verfügbar
-                  {debugLoading && ' (Lade Daten...)'}
-                </Alert>
-              )}
-            </Tab.Pane>
-            
-            <Tab.Pane eventKey="transformed">
-              {message.result?.transformed_message || debugResult?.transformed_message ? (
-                <div className="border rounded bg-light" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                  <JsonView data={message.result?.transformed_message || debugResult?.transformed_message} />
-                </div>
-              ) : (
-                <Alert variant="info">
-                  Keine transformierte Nachricht verfügbar
-                  {debugLoading && ' (Lade Daten...)'}
-                </Alert>
-              )}
-            </Tab.Pane>
-            
-            <Tab.Pane eventKey="response">
-              {message.result?.api_response || debugResult?.api_response ? (
-                <div className="border rounded bg-light" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                  <JsonView data={message.result?.api_response || debugResult?.api_response} />
-                </div>
-              ) : (
-                <Alert variant="info">
-                  Keine API-Antwort verfügbar
-                  {debugLoading && ' (Lade Daten...)'}
-                </Alert>
-              )}
-            </Tab.Pane>
-          </Tab.Content>
-        </Tab.Container>
+        {/* Empfangene Nachricht */}
+        {renderJsonSection('Empfangene Nachricht', message.content || message, true)}
+        
+        {/* Extrahierte Nachrichten-Eigenschaften (falls verfügbar) */}
+        {debugResult?.extracted_properties && renderJsonSection('Extrahierte Eigenschaften', debugResult.extracted_properties)}
+        
+        {/* Normalisierte Daten */}
+        {debugResult?.normalized_data && renderJsonSection('Normalisierte Daten', debugResult.normalized_data)}
+        
+        {/* Filterregeln (falls verfügbar) */}
+        {debugResult?.filter_results && renderJsonSection('Filter-Ergebnisse', debugResult.filter_results)}
+        
+        {/* Transformierte Nachricht */}
+        {(message.result?.transformed_message || debugResult?.transformed_message) && 
+          renderJsonSection('Transformierte Nachricht', message.result?.transformed_message || debugResult?.transformed_message)}
+        
+        {/* API-Request (falls verfügbar) */}
+        {(message.result?.api_request || debugResult?.api_request) && 
+          renderJsonSection('API Request', message.result?.api_request || debugResult?.api_request)}
+        
+        {/* API-Response */}
+        {(message.result?.api_response || debugResult?.api_response) && 
+          renderJsonSection('API Response', message.result?.api_response || debugResult?.api_response)}
+        
+        {/* Debug-Infos (falls verfügbar) */}
+        {debugResult?.debug_info && renderJsonSection('Debug-Informationen', debugResult.debug_info)}
+        
+        {/* Pipeline-Schritte (falls verfügbar) */}
+        {debugResult?.pipeline_steps && renderJsonSection('Pipeline-Schritte', debugResult.pipeline_steps)}
+        
+        {/* Alle weiteren Debug-Daten, die nicht explizit behandelt wurden */}
+        {debugResult && Object.entries(debugResult).map(([key, value]) => {
+          // Überspringe bereits angezeigte Schlüssel
+          if (['normalized_data', 'transformed_message', 'api_response', 'api_request', 
+               'filter_results', 'extracted_properties', 'debug_info', 'pipeline_steps', 
+               'result', 'error'].includes(key)) {
+            return null;
+          }
+          // Zeige alle anderen Daten an
+          return value ? renderJsonSection(`${key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}`, value) : null;
+        })}
         
         {debugLoading && (
-          <div className="text-center p-3">
+          <div className="text-center p-3 mb-3">
             <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
             Lade Debug-Informationen...
           </div>
         )}
         
-        <div className="mt-3">
+        <div className="mt-3 mb-4">
           <Button variant="outline-secondary" size="sm" onClick={() => navigate('/messages')}>
             <ArrowLeft size={16} className="me-1" />
             Zurück
           </Button>
         </div>
-      </>
+      </div>
     );
   };
 
