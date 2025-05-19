@@ -3,6 +3,7 @@ import { Nav, Offcanvas } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 import menu from './menu';
 import { useAuth } from '../context/AuthContext';
+import evalarmLogo from '../assets/evalarm-logo.png';
 
 const SideNav = ({ collapsed, onToggleCollapse }) => {
   const location = useLocation();
@@ -29,6 +30,7 @@ const SideNav = ({ collapsed, onToggleCollapse }) => {
         to={item.to} 
         key={item.to}
         className={`side-nav-item d-flex align-items-center py-2 ${isActive(item.to) ? 'active' : ''}`}
+        style={{ color: 'var(--evalarm-primary)' }}
       >
         {Icon && <Icon size={18} className="me-3" />}
         <span className={`${collapsed ? 'd-none' : ''}`}>{item.label}</span>
@@ -53,17 +55,19 @@ const SideNav = ({ collapsed, onToggleCollapse }) => {
   // Inhalt der Navigation
   const navContent = (
     <>
-      <div className="side-nav-header p-3 mb-4">
+      <div className="side-nav-header p-3 mb-4" style={{ borderBottom: '1px solid var(--evalarm-border)' }}>
         <div className="d-flex align-items-center">
           <div className="side-nav-logo me-2">
-            {/* Logo kann hier eingefügt werden */}
-            <div className="logo-placeholder bg-primary text-white rounded d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px' }}>
-              NG
-            </div>
+            {/* evAlarm Logo */}
+            <img 
+              src={evalarmLogo} 
+              alt="evAlarm Logo" 
+              style={{ height: '32px', width: 'auto' }} 
+            />
           </div>
           {!collapsed && (
-            <div className="side-nav-title fw-bold">
-              Notfall-IoT Gateway
+            <div className="side-nav-title fw-bold" style={{ color: 'var(--evalarm-primary)' }}>
+              evAlarm IoT Gateway
             </div>
           )}
         </div>
@@ -90,7 +94,8 @@ const SideNav = ({ collapsed, onToggleCollapse }) => {
 
   // Desktop-Variante (permanent)
   const desktopNav = (
-    <div className={`side-nav d-none d-lg-flex flex-column ${collapsed ? 'side-nav-collapsed' : ''}`}>
+    <div className={`side-nav d-none d-lg-flex flex-column ${collapsed ? 'side-nav-collapsed' : ''}`}
+         style={{ backgroundColor: 'var(--evalarm-light)', borderRight: '1px solid var(--evalarm-border)' }}>
       {navContent}
     </div>
   );
@@ -99,9 +104,15 @@ const SideNav = ({ collapsed, onToggleCollapse }) => {
   const mobileNav = (
     <>
       <button 
-        className="d-lg-none btn btn-dark position-fixed start-0 top-50 translate-middle-y mobile-nav-toggle"
+        className="d-lg-none btn position-fixed start-0 top-50 translate-middle-y mobile-nav-toggle"
         onClick={() => setShowMobileNav(true)}
-        style={{ zIndex: 1030, borderRadius: '0 4px 4px 0', padding: '10px 5px' }}
+        style={{ 
+          zIndex: 1030, 
+          borderRadius: '0 4px 4px 0', 
+          padding: '10px 5px',
+          backgroundColor: 'var(--evalarm-primary)',
+          color: 'white'
+        }}
       >
         <span className="navbar-toggler-icon"></span>
       </button>
@@ -113,7 +124,16 @@ const SideNav = ({ collapsed, onToggleCollapse }) => {
         className="side-nav-mobile"
       >
         <Offcanvas.Header closeButton>
-          <Offcanvas.Title>Menü</Offcanvas.Title>
+          <Offcanvas.Title>
+            <div className="d-flex align-items-center">
+              <img 
+                src={evalarmLogo} 
+                alt="evAlarm Logo" 
+                style={{ height: '28px', width: 'auto', marginRight: '10px' }} 
+              />
+              <span style={{ color: 'var(--evalarm-primary)' }}>evAlarm IoT Gateway</span>
+            </div>
+          </Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body className="d-flex flex-column p-0">
           {navContent}

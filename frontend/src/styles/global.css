@@ -1,4 +1,16 @@
 /* 
+ * evAlarm Farbpalette
+ */
+:root {
+  --evalarm-primary: #193461; /* Dunkelblau (EV LARM) */
+  --evalarm-secondary: #75AAEB; /* Hellblau (A im Logo) */
+  --evalarm-light: #f8f9fa;
+  --evalarm-dark: #212529;
+  --evalarm-gray: #6c757d;
+  --evalarm-border: #e7e7e7;
+}
+
+/* 
  * Grundlegende Anpassungen an Bootstrap
  * Keine Überschreibungen, sondern nur minimale Ergänzungen
  */

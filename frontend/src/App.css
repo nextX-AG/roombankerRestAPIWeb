@@ -11,4 +11,49 @@
 /* Icons mit Tooltips */
 .icon-with-tooltip {
   cursor: help;
+}
+
+/* evAlarm-spezifische Style-Anpassungen */
+
+/* Primäre Buttons in evAlarm-Blau */
+.btn-primary {
+  background-color: var(--evalarm-primary);
+  border-color: var(--evalarm-primary);
+}
+
+.btn-primary:hover, .btn-primary:focus, .btn-primary:active {
+  background-color: var(--evalarm-primary);
+  border-color: var(--evalarm-primary);
+  opacity: 0.9;
+}
+
+/* Outline Buttons mit evAlarm-Farben */
+.btn-outline-primary {
+  color: var(--evalarm-primary);
+  border-color: var(--evalarm-primary);
+}
+
+.btn-outline-primary:hover, .btn-outline-primary:focus, .btn-outline-primary:active {
+  background-color: var(--evalarm-primary);
+  border-color: var(--evalarm-primary);
+}
+
+/* Links in evAlarm-Blau */
+a {
+  color: var(--evalarm-primary);
+}
+
+a:hover {
+  color: var(--evalarm-secondary);
+}
+
+/* Aktive Elemente im Side-Nav */
+.side-nav-item.active {
+  background-color: rgba(25, 52, 97, 0.1); /* --evalarm-primary mit Transparenz */
+  color: var(--evalarm-primary) !important;
+  font-weight: 500;
+}
+
+.side-nav-item:hover {
+  background-color: rgba(25, 52, 97, 0.05); /* --evalarm-primary mit noch mehr Transparenz */
 } 

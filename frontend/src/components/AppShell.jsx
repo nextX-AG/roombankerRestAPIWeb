@@ -5,16 +5,18 @@ import { User } from 'lucide-react';
 import SideNav from './SideNav';
 import { useAuth } from '../context/AuthContext';
 import { useDrawer } from './Drawer';
+import evalarmLogo from '../assets/evalarm-logo.png';
 
 // Temporärer Platzhalter für die Command Palette
 const CommandPalette = () => (
   <button 
-    className="btn btn-dark border-0" 
+    className="btn border-0" 
     title="Befehlspalette (⌘ K)"
     onClick={() => alert('Command Palette wird in Sprint 4 implementiert')}
+    style={{ backgroundColor: 'var(--evalarm-primary)', color: 'white' }}
   >
-    <span className="text-muted me-1">⌘</span>
-    <span className="text-muted">K</span>
+    <span className="me-1">⌘</span>
+    <span>K</span>
   </button>
 );
 
@@ -105,16 +107,30 @@ const AppShell = () => {
   return (
     <div className="app-container d-flex flex-column min-vh-100">
       {/* Top Navbar */}
-      <Navbar bg="dark" variant="dark" expand="lg" className="top-navbar px-3" fixed="top">
+      <Navbar 
+        variant="dark" 
+        expand="lg" 
+        className="top-navbar px-3" 
+        fixed="top"
+        style={{ backgroundColor: 'var(--evalarm-primary)' }}
+      >
         <Container fluid className="px-0">
           <button 
-            className="btn btn-dark d-none d-lg-block border-0 me-2"
+            className="btn border-0 me-2 d-none d-lg-block"
             onClick={toggleSideNav}
+            style={{ backgroundColor: 'transparent', color: 'white' }}
           >
             <span className="navbar-toggler-icon"></span>
           </button>
           
-          <Navbar.Brand className="d-lg-none">Notfall-IoT Gateway</Navbar.Brand>
+          <Navbar.Brand className="d-lg-none d-flex align-items-center">
+            <img 
+              src={evalarmLogo} 
+              alt="evAlarm Logo" 
+              style={{ height: '28px', width: 'auto', marginRight: '10px' }} 
+            />
+            evAlarm IoT Gateway
+          </Navbar.Brand>
           
           <Nav className="d-flex flex-grow-1 justify-content-between align-items-center">
             <div className="d-none d-lg-flex">
@@ -157,7 +173,11 @@ const AppShell = () => {
                     className={`breadcrumb-item ${!crumb.path ? 'active' : ''}`}
                   >
                     {crumb.path ? (
-                      <a href="#" onClick={(e) => { e.preventDefault(); navigate(crumb.path); }}>
+                      <a 
+                        href="#" 
+                        onClick={(e) => { e.preventDefault(); navigate(crumb.path); }}
+                        style={{ color: 'var(--evalarm-primary)' }}
+                      >
                         {crumb.label}
                       </a>
                     ) : (
