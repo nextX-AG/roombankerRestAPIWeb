@@ -7,19 +7,6 @@ import { useAuth } from '../context/AuthContext';
 import { useDrawer } from './Drawer';
 import evalarmLogo from '../assets/evalarm-logo.png';
 
-// Temporärer Platzhalter für die Command Palette
-const CommandPalette = () => (
-  <button 
-    className="btn border-0" 
-    title="Befehlspalette (⌘ K)"
-    onClick={() => alert('Command Palette wird in Sprint 4 implementiert')}
-    style={{ backgroundColor: 'var(--evalarm-primary)', color: 'white' }}
-  >
-    <span className="me-1">⌘</span>
-    <span>K</span>
-  </button>
-);
-
 const AppShell = () => {
   const [sideNavCollapsed, setSideNavCollapsed] = useState(false);
   const { logout, user } = useAuth();
@@ -129,14 +116,15 @@ const AppShell = () => {
               alt="evAlarm Logo" 
               style={{ height: '28px', width: 'auto', marginRight: '10px' }} 
             />
-            evAlarm IoT Gateway
+            nextX IoT Gateway
           </Navbar.Brand>
           
-          <Nav className="d-flex flex-grow-1 justify-content-between align-items-center">
-            <div className="d-none d-lg-flex">
-              <CommandPalette />
-            </div>
-            
+          {/* Zentrierter Titel - nur auf Desktop sichtbar */}
+          <div className="position-absolute start-50 translate-middle-x d-none d-lg-block">
+            <h5 className="text-white mb-0">nextX IoT Gateway</h5>
+          </div>
+          
+          <Nav className="d-flex flex-grow-1 justify-content-end align-items-center">
             <div className="d-flex">
               <NavDropdown 
                 title={<User size={18} />} 

@@ -65,11 +65,6 @@ const SideNav = ({ collapsed, onToggleCollapse }) => {
               style={{ height: '32px', width: 'auto' }} 
             />
           </div>
-          {!collapsed && (
-            <div className="side-nav-title fw-bold" style={{ color: 'var(--evalarm-primary)' }}>
-              evAlarm IoT Gateway
-            </div>
-          )}
         </div>
       </div>
 
@@ -128,9 +123,8 @@ const SideNav = ({ collapsed, onToggleCollapse }) => {
               <img 
                 src={evalarmLogo} 
                 alt="evAlarm Logo" 
-                style={{ height: '28px', width: 'auto', marginRight: '10px' }} 
+                style={{ height: '28px', width: 'auto' }}
               />
-              <span style={{ color: 'var(--evalarm-primary)' }}>evAlarm IoT Gateway</span>
             </div>
           </Offcanvas.Title>
         </Offcanvas.Header>
