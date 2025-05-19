@@ -7,6 +7,7 @@ import 'react-json-view-lite/dist/index.css';
 import config, { API_VERSION } from '../config';
 import BasicTable from '../components/BasicTable';
 import { useNavigate, useParams, Outlet } from 'react-router-dom';
+import MessageStatusIcons from '../components/MessageStatusIcons';
 
 // Verwende die konfigurierte API-URL mit Version
 const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
@@ -313,18 +314,37 @@ const Messages = () => {
 
   // Status einer Nachricht formatieren
   const formatForwardingStatus = (status) => {
+    let badgeVariant;
+    
     switch(status) {
       case 'completed':
-        return <Badge bg="success">Erfolgreich</Badge>;
+        badgeVariant = "success";
+        break;
       case 'failed':
-        return <Badge bg="danger">Fehlgeschlagen</Badge>;
+        badgeVariant = "danger";
+        break;
       case 'processing':
-        return <Badge bg="warning">In Bearbeitung</Badge>;
+        badgeVariant = "warning";
+        break;
       case 'pending':
-        return <Badge bg="info">Ausstehend</Badge>;
+        badgeVariant = "info";
+        break;
       default:
-        return <Badge bg="secondary">Unbekannt</Badge>;
+        badgeVariant = "secondary";
     }
+    
+    // Kombiniere Icon und Badge
+    return (
+      <div className="d-flex align-items-center">
+        <MessageStatusIcons status={status} />
+        <Badge bg={badgeVariant}>
+          {status === 'completed' ? 'Erfolgreich' : 
+           status === 'failed' ? 'Fehlgeschlagen' :
+           status === 'processing' ? 'In Bearbeitung' :
+           status === 'pending' ? 'Ausstehend' : 'Unbekannt'}
+        </Badge>
+      </div>
+    );
   };
 
   // Ziel der Weiterleitung formatieren
@@ -407,6 +427,33 @@ const Messages = () => {
     setDebugResult(null);
   };
   
+  // Bestimme den Status einer Nachricht
+  const getMessageStatus = (message) => {
+    // Versuche, den Status aus dem Weiterleitungsstatus zu finden
+    const forwardingItem = forwardingStatus.find(
+      item => item.message_id === message.id || 
+              (item.message && item.message.id === message.id)
+    );
+    
+    if (forwardingItem) {
+      return forwardingItem.status;
+    }
+    
+    // Prüfe auf pending in der Queue
+    if (queueStatus && queueStatus.pending_messages) {
+      const isPending = queueStatus.pending_messages.some(
+        pendingMsg => pendingMsg.id === message.id
+      );
+      if (isPending) return 'pending';
+    }
+    
+    // Fallback: Wenn die Nachricht einen Status-Schlüssel hat
+    if (message.status) return message.status;
+    
+    // Default: Normalerweise würde man pending annehmen
+    return 'pending';
+  };
+
   // Spalten-Definition für die Nachrichten-Tabelle
   const messageColumns = useMemo(
     () => [
@@ -436,6 +483,12 @@ const Messages = () => {
           const type = getDeviceType(row.original);
           return <Badge bg={getTypeColor(type)}>{type}</Badge>;
         },
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        size: 130,
+        cell: ({ row }) => formatForwardingStatus(getMessageStatus(row.original)),
       },
       {
         id: 'actions',
@@ -483,7 +536,7 @@ const Messages = () => {
         accessorKey: 'status',
         header: 'Status',
         size: 130,
-        cell: ({ row }) => formatForwardingStatus(row.original.status),
+        cell: ({ row }) => formatForwardingStatus(getMessageStatus(row.original)),
       },
       {
         id: 'actions',
@@ -504,7 +557,7 @@ const Messages = () => {
             >
               Details
             </Button>
-            {row.original.status === 'failed' && (
+            {getMessageStatus(row.original) === 'failed' && (
               <Button 
                 size="sm" 
                 variant="outline-warning"

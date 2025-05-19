@@ -11,6 +11,8 @@
 /* Icons mit Tooltips */
 .icon-with-tooltip {
   cursor: help;
+  margin-right: 8px;
+  font-size: 1.1em;
 }
 
 /* evAlarm-spezifische Style-Anpassungen */
