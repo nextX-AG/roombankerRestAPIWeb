@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Row, Col, Card, Button, Form, Modal, Alert, Badge } from 'react-bootstrap';
-import { Building, Plus, Trash, RefreshCw } from 'lucide-react';
+import { Building, Plus, RefreshCw } from 'lucide-react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { customerApi, gatewayApi } from '../api';
 import BasicTable from '../components/BasicTable';
@@ -19,8 +19,6 @@ const Customers = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [currentCustomer, setCurrentCustomer] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     contact_person: '',
@@ -114,34 +112,9 @@ const Customers = () => {
     }
   };
 
-  // Kunde löschen
-  const handleDeleteCustomer = async () => {
-    if (!currentCustomer) return;
-    
-    try {
-      const response = await customerApi.delete(currentCustomer.id);
-      if (response.status === 'success') {
-        setShowDeleteConfirm(false);
-        fetchCustomers();
-      } else {
-        throw new Error(response.error?.message || 'Kunde konnte nicht gelöscht werden');
-      }
-    } catch (err) {
-      console.error('Fehler beim Löschen des Kunden:', err);
-      setError('Kunde konnte nicht gelöscht werden: ' + err.message);
-      setShowDeleteConfirm(false);
-    }
-  };
-
   // Öffne Kundendetails im Drawer statt im Modal
   const openCustomerDetail = (customer) => {
     navigate(`/customers/${customer.id}`);
-  };
-
-  // Löschbestätigung öffnen
-  const openDeleteConfirm = (customer) => {
-    setCurrentCustomer(customer);
-    setShowDeleteConfirm(true);
   };
 
   // Status-Badge
@@ -184,26 +157,7 @@ const Customers = () => {
         header: 'Weiterleitung',
         size: 120,
         cell: ({ row }) => row.original.immediate_forwarding !== false ? 'Sofort' : 'Intervall',
-      },
-      {
-        id: 'actions',
-        header: 'Aktionen',
-        size: 100,
-        cell: ({ row }) => (
-          <div onClick={(e) => e.stopPropagation()}>
-            <Button 
-              variant="outline-danger" 
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                openDeleteConfirm(row.original);
-              }}
-            >
-              <Trash size={16} />
-            </Button>
-          </div>
-        ),
-      },
+      }
     ],
     []
   );
@@ -402,26 +356,6 @@ const Customers = () => {
             </Button>
           </Modal.Footer>
         </Form>
-      </Modal>
-
-      {/* Modal: Kunde löschen */}
-      <Modal show={showDeleteConfirm} onHide={() => setShowDeleteConfirm(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Kunden löschen</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Sind Sie sicher, dass Sie den Kunden <strong>{currentCustomer?.name}</strong> löschen möchten?
-          <br />
-          <strong className="text-danger">Hinweis: Alle zugehörigen Gateways und Geräte werden ebenfalls gelöscht!</strong>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
-            Abbrechen
-          </Button>
-          <Button variant="danger" onClick={handleDeleteCustomer}>
-            Löschen
-          </Button>
-        </Modal.Footer>
       </Modal>
       
       {/* Outlet für verschachtelte Routen (CustomerDetailDrawer) */}
