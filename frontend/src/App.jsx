@@ -11,6 +11,7 @@ import CustomerDetailDrawer from './components/CustomerDetailDrawer';
 import DeviceDetailDrawer from './components/DeviceDetailDrawer';
 import MessageDetailDrawer from './components/MessageDetailDrawer';
 import TemplateDetailDrawer from './components/TemplateDetailDrawer';
+import { DrawerProvider } from './components/Drawer';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -97,9 +98,11 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
+      <DrawerProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </DrawerProvider>
     </AuthProvider>
   );
 }

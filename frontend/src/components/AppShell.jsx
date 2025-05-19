@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Navbar, Container, Nav, NavDropdown } from 'react-bootstrap';
 import { User } from 'lucide-react';
 import SideNav from './SideNav';
 import { useAuth } from '../context/AuthContext';
+import { useDrawer } from './Drawer';
 
 // Temporärer Platzhalter für die Command Palette
 const CommandPalette = () => (
@@ -20,8 +21,23 @@ const CommandPalette = () => (
 const AppShell = () => {
   const [sideNavCollapsed, setSideNavCollapsed] = useState(false);
   const { logout, user } = useAuth();
+  const { isOpen, width } = useDrawer();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Setze CSS-Variable für Drawer-Breite und Body-Klasse
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('drawer-open');
+      document.documentElement.style.setProperty('--drawer-width', `${width}px`);
+    } else {
+      document.body.classList.remove('drawer-open');
+    }
+    
+    return () => {
+      document.body.classList.remove('drawer-open');
+    };
+  }, [isOpen, width]);
   
   // Bestimmt den aktuellen Seitentitel aus dem Pfad
   const getPageTitle = () => {
@@ -127,7 +143,10 @@ const AppShell = () => {
         <SideNav collapsed={sideNavCollapsed} onToggleCollapse={toggleSideNav} />
         
         {/* Main Content */}
-        <main className={`flex-grow-1 main-content ${sideNavCollapsed ? 'main-content-expanded' : ''}`}>
+        <main 
+          className={`flex-grow-1 main-content ${sideNavCollapsed ? 'main-content-expanded' : ''}`}
+          style={isOpen ? { transition: 'margin-right 0.3s ease' } : {}}
+        >
           {/* Breadcrumbs */}
           <div className="breadcrumb-container px-4 py-2 border-bottom">
             <nav aria-label="breadcrumb">

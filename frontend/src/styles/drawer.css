@@ -1,0 +1,61 @@
+/**
+ * Styles für die Drawer-Komponente mit Resize-Funktionalität
+ */
+
+/* Basis-Darstellung des Drawers */
+.drawer {
+  width: 400px;
+  max-width: 100%;
+  transition: transform 0.3s ease;
+  border-left: 1px solid #dee2e6;
+  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Resize Handle am linken Rand des Drawers */
+.drawer-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  background-color: transparent;
+  transition: background-color 0.2s;
+  z-index: 1050;
+}
+
+.drawer-resize-handle:hover {
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+.drawer-resize-handle:active {
+  background-color: rgba(0, 123, 255, 0.2);
+}
+
+/* Inhalt des Drawers */
+.drawer-content {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Hauptinhalt-Anpassung wenn der Drawer geöffnet ist */
+body.drawer-open .main-content {
+  transition: margin-right 0.3s ease;
+}
+
+/* Responsive Anpassungen */
+@media (min-width: 768px) {
+  body.drawer-open .main-content {
+    margin-right: var(--drawer-width, 400px);
+  }
+}
+
+@media (max-width: 767px) {
+  .drawer {
+    width: 100% !important;
+  }
+  
+  .drawer-resize-handle {
+    display: none;
+  }
+} 
