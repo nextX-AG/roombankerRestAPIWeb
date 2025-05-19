@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Drawer from './Drawer';
-import { Table, Badge, Button, Alert, Form } from 'react-bootstrap';
+import { Table, Badge, Button, Alert, Form, Modal } from 'react-bootstrap';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { Copy, Edit, ArrowLeft, Check } from 'lucide-react';
+import { Copy, Edit, ArrowLeft, Check, Trash2 } from 'lucide-react';
 import { templateApi } from '../api';
 import CodeEditor from './CodeEditor';
 
 /**
  * TemplateDetailDrawer - Zeigt Details eines ausgewählten Templates in einem Drawer an
- * Diese Komponente wird durch die Route /templates/:id geladen
+ * Diese Komponente wird durch eine verschachtelte Route in der Templates.jsx aktiviert
  */
 const TemplateDetailDrawer = () => {
   const { id } = useParams();
@@ -18,262 +18,243 @@ const TemplateDetailDrawer = () => {
   const [template, setTemplate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [editMode, setEditMode] = useState(false);
-  const [editedTemplate, setEditedTemplate] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [templateCode, setTemplateCode] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // Lade Template-Daten
   useEffect(() => {
     const fetchTemplate = async () => {
-      if (!id) return;
-      
       setLoading(true);
       try {
-        // In einer echten Implementierung würden wir eine API-Methode zum Abrufen eines einzelnen Templates verwenden
-        // Da diese Methode möglicherweise noch nicht existiert, rufen wir alle Templates ab und filtern
-        const response = await templateApi.list();
-        if (response.status === 'success' && response.data) {
-          const templates = response.data || [];
-          // Wir suchen nach einem Template mit der entsprechenden ID oder Namen
-          const foundTemplate = templates.find(t => 
-            t.id === id || 
-            t.name === id ||
-            (typeof t === 'string' && t === id) // Für den Fall, dass wir nur Strings zurückbekommen
-          );
-          
-          if (foundTemplate) {
-            // Wenn ein Template gefunden wurde, aber nur ein String ist, erstellen wir ein Objekt daraus
-            if (typeof foundTemplate === 'string') {
-              const providerType = foundTemplate.includes('evalarm') ? 'evalarm' : 'generic';
-              setTemplate({
-                id: foundTemplate,
-                name: foundTemplate,
-                provider_type: providerType,
-                created_at: new Date().toISOString()
-              });
-              setEditedTemplate({
-                id: foundTemplate,
-                name: foundTemplate,
-                provider_type: providerType,
-                created_at: new Date().toISOString()
-              });
-            } else {
-              setTemplate(foundTemplate);
-              setEditedTemplate(JSON.parse(JSON.stringify(foundTemplate)));
-            }
-          } else {
-            setError('Template nicht gefunden');
-          }
+        const response = await templateApi.detail(id);
+        if (response.status === 'success') {
+          setTemplate(response.data);
+          setTemplateCode(response.data.template_code);
         } else {
-          throw new Error(response.error?.message || 'Fehler beim Laden des Templates');
+          setError(response.error?.message || 'Fehler beim Laden des Templates');
         }
-      } catch (error) {
-        console.error('Fehler beim Laden der Templatedetails:', error);
-        setError('Template konnte nicht geladen werden: ' + error.message);
+      } catch (err) {
+        setError('Fehler beim Laden des Templates: ' + err.message);
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchTemplate();
+
+    if (id) {
+      fetchTemplate();
+    }
   }, [id]);
 
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return 'Unbekannt';
-    
-    try {
-      // ISO-String oder andere Formate
-      const date = new Date(timestamp);
-      if (!isNaN(date.getTime())) {
-        return date.toLocaleString('de-DE');
-      }
-      
-      // Fallback
-      return String(timestamp);
-    } catch (e) {
-      return String(timestamp);
-    }
+  // Schließen des Drawers
+  const handleClose = () => {
+    navigate('/templates');
   };
-  
-  const copyToClipboard = (data) => {
-    try {
-      navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-      alert('JSON in Zwischenablage kopiert!');
-    } catch (error) {
-      console.error('Fehler beim Kopieren in die Zwischenablage:', error);
-      alert('Fehler beim Kopieren: ' + error.message);
-    }
+
+  // Bearbeiten aktivieren/deaktivieren
+  const toggleEdit = () => {
+    setIsEditing(!isEditing);
   };
-  
-  const handleEditToggle = () => {
-    if (editMode) {
-      // Bearbeitung beenden, Änderungen verwerfen
-      setEditedTemplate(JSON.parse(JSON.stringify(template)));
-    }
-    setEditMode(!editMode);
-  };
-  
+
+  // Template-Code speichern
   const handleSave = async () => {
+    // TODO: Implementierung der Speicherfunktion
+    setIsEditing(false);
+  };
+
+  // Template löschen nach Bestätigung
+  const handleDelete = async () => {
     try {
-      setSaving(true);
-      
-      // API-Aufruf zum Speichern des Templates
-      const response = await templateApi.update(editedTemplate);
-      
+      const response = await templateApi.delete(id);
       if (response.status === 'success') {
-        setTemplate(editedTemplate);
-        setEditMode(false);
-        alert('Template erfolgreich gespeichert!');
+        // Schließe Drawer und navigiere zurück
+        handleClose();
       } else {
-        throw new Error(response.error?.message || 'Fehler beim Speichern');
+        setError(response.error?.message || 'Fehler beim Löschen des Templates');
       }
-    } catch (error) {
-      console.error('Fehler beim Speichern des Templates:', error);
-      alert(`Fehler beim Speichern: ${error.message}`);
+    } catch (err) {
+      setError('Fehler beim Löschen des Templates: ' + err.message);
     } finally {
-      setSaving(false);
+      setShowDeleteModal(false);
     }
   };
-  
-  const handleTemplateChange = (newValue) => {
+
+  // Zeige Bestätigungsdialog für Löschung
+  const confirmDelete = () => {
+    setShowDeleteModal(true);
+  };
+
+  // JSON-Darstellung verbessern
+  const jsonViewOptions = {
+    style: {
+      container: {
+        backgroundColor: '#f8f9fa',
+        borderRadius: '4px',
+        padding: '10px'
+      }
+    },
+    shouldExpandNode: () => true, // Alle Ebenen standardmäßig aufklappen
+    displayDataTypes: false,
+    displayObjectSize: false,
+    rootName: 'template',
+    enableClipboard: true
+  };
+
+  // Konvertieren des Template-Codes von String nach JSON für den JsonView
+  const getTemplateJson = () => {
     try {
-      const parsed = JSON.parse(newValue);
-      setEditedTemplate(parsed);
-    } catch (error) {
-      console.error('Ungültiges JSON:', error);
-      // Wir zeigen keinen Fehler an, da der Benutzer möglicherweise noch beim Tippen ist
+      return JSON.parse(template.template_code);
+    } catch (e) {
+      return { error: "Ungültiges JSON-Format", raw: template.template_code };
     }
-  };
-
-  const drawerContent = () => {
-    if (loading) {
-      return <div className="text-center p-5">Lade Template-Daten...</div>;
-    }
-    
-    if (error) {
-      return (
-        <>
-          <Alert variant="danger" className="mb-4">{error}</Alert>
-          <Button variant="secondary" onClick={() => navigate('/templates')}>
-            <ArrowLeft size={16} className="me-2" />
-            Zurück zur Übersicht
-          </Button>
-        </>
-      );
-    }
-    
-    if (!template) {
-      return (
-        <>
-          <Alert variant="warning" className="mb-4">Template nicht gefunden</Alert>
-          <Button variant="secondary" onClick={() => navigate('/templates')}>
-            <ArrowLeft size={16} className="me-2" />
-            Zurück zur Übersicht
-          </Button>
-        </>
-      );
-    }
-    
-    return (
-      <>
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h5 className="mb-0">Template-Informationen</h5>
-          <div>
-            {editMode ? (
-              <>
-                <Button 
-                  variant="outline-secondary" 
-                  className="me-2"
-                  onClick={handleEditToggle}
-                  disabled={saving}
-                >
-                  Abbrechen
-                </Button>
-                <Button 
-                  variant="success" 
-                  onClick={handleSave}
-                  disabled={saving}
-                >
-                  <Check size={16} className="me-1" />
-                  {saving ? 'Wird gespeichert...' : 'Speichern'}
-                </Button>
-              </>
-            ) : (
-              <Button 
-                variant="outline-primary" 
-                onClick={handleEditToggle}
-              >
-                <Edit size={16} className="me-1" />
-                Bearbeiten
-              </Button>
-            )}
-          </div>
-        </div>
-        
-        <Table bordered size="sm" className="mb-3">
-          <tbody>
-            <tr>
-              <th>ID</th>
-              <td>{template.id}</td>
-            </tr>
-            <tr>
-              <th>Name</th>
-              <td>{template.name}</td>
-            </tr>
-            <tr>
-              <th>Version</th>
-              <td>{template.version || 'Nicht spezifiziert'}</td>
-            </tr>
-            <tr>
-              <th>Erstellt</th>
-              <td>{formatTimestamp(template.created_at || template.timestamp)}</td>
-            </tr>
-            <tr>
-              <th>Zuletzt aktualisiert</th>
-              <td>{formatTimestamp(template.updated_at || template.timestamp)}</td>
-            </tr>
-          </tbody>
-        </Table>
-
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h5 className="mb-0">Template-Definition</h5>
-          {!editMode && (
-            <Button 
-              size="sm" 
-              variant="outline-secondary"
-              onClick={() => copyToClipboard(template)}
-            >
-              <Copy size={16} className="me-1" />
-              Kopieren
-            </Button>
-          )}
-        </div>
-        
-        {editMode ? (
-          <div className="border rounded">
-            <CodeEditor
-              value={JSON.stringify(editedTemplate, null, 2)}
-              onChange={handleTemplateChange}
-              language="json"
-              height="400px"
-            />
-          </div>
-        ) : (
-          <div className="border p-3 rounded bg-light" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-            <JsonView data={template} />
-          </div>
-        )}
-      </>
-    );
   };
 
   return (
-    <Drawer
-      show={true}
-      onClose={() => navigate('/templates')}
-      title="Template-Details"
-    >
-      {drawerContent()}
-    </Drawer>
+    <>
+      <Drawer 
+        show={true} 
+        onClose={handleClose} 
+        title={
+          <div className="d-flex justify-content-between align-items-center w-100">
+            <div className="d-flex align-items-center">
+              <span>{template?.name || 'Template Details'}</span>
+              {template && <Badge bg="info" className="ms-2">{template.provider_type}</Badge>}
+            </div>
+            <div>
+              {!isEditing ? (
+                <>
+                  <Button 
+                    variant="outline-danger" 
+                    size="sm" 
+                    className="me-2"
+                    onClick={confirmDelete}
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                  <Button 
+                    variant="outline-primary" 
+                    size="sm" 
+                    onClick={toggleEdit}
+                  >
+                    <Edit size={16} />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    variant="outline-secondary" 
+                    size="sm" 
+                    className="me-2"
+                    onClick={toggleEdit}
+                  >
+                    <ArrowLeft size={16} />
+                  </Button>
+                  <Button 
+                    variant="outline-success" 
+                    size="sm" 
+                    onClick={handleSave}
+                  >
+                    <Check size={16} />
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        }
+      >
+        {loading ? (
+          <div className="text-center py-5">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Lade...</span>
+            </div>
+            <p className="mt-2">Template wird geladen...</p>
+          </div>
+        ) : error ? (
+          <Alert variant="danger">{error}</Alert>
+        ) : template ? (
+          <div className="template-detail p-3">
+            <div className="mb-4">
+              <h5>Template Informationen</h5>
+              <Table striped bordered hover size="sm">
+                <tbody>
+                  <tr>
+                    <td width="30%"><strong>ID</strong></td>
+                    <td>{template.id}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Name</strong></td>
+                    <td>{template.name}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Anbieter-Typ</strong></td>
+                    <td>{template.provider_type}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Erstellt am</strong></td>
+                    <td>{new Date(template.created_at).toLocaleString()}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Datei-Pfad</strong></td>
+                    <td>{template.path}</td>
+                  </tr>
+                </tbody>
+              </Table>
+            </div>
+
+            <div className="mb-4">
+              <h5>Template-Code</h5>
+              {isEditing ? (
+                <CodeEditor 
+                  value={templateCode} 
+                  onChange={setTemplateCode} 
+                  language="json" 
+                  height="400px"
+                />
+              ) : (
+                <div className="json-view-container border rounded p-3 bg-light">
+                  <JsonView data={getTemplateJson()} {...jsonViewOptions} />
+                </div>
+              )}
+            </div>
+
+            <div className="template-actions mt-4">
+              <h5>Template-Aktionen</h5>
+              <div className="d-flex gap-2">
+                <Button variant="outline-primary" size="sm">
+                  Template testen
+                </Button>
+                <Button variant="outline-primary" size="sm">
+                  <Copy size={16} className="me-1" /> Duplizieren
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <Alert variant="warning">Kein Template gefunden</Alert>
+        )}
+      </Drawer>
+
+      {/* Bestätigungsdialog für Löschung */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Template löschen</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Sind Sie sicher, dass Sie das Template <strong>{template?.name}</strong> löschen möchten?
+          <div className="alert alert-warning mt-3">
+            <strong>Achtung:</strong> Diese Aktion kann nicht rückgängig gemacht werden!
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Abbrechen
+          </Button>
+          <Button variant="danger" onClick={handleDelete}>
+            Löschen
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 };
 
