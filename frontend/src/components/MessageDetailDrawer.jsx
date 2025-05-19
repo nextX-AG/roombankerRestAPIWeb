@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Drawer from './Drawer';
-import { Table, Badge, Button, Alert } from 'react-bootstrap';
+import { Table, Badge, Button, Alert, Nav, Tab } from 'react-bootstrap';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { Copy, Bug, ArrowLeft } from 'lucide-react';
+import { Copy, ArrowLeft, Check, X } from 'lucide-react';
 import { messageApi } from '../api';
 import config from '../config';
 
@@ -18,6 +18,8 @@ const MessageDetailDrawer = () => {
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('raw');
+  const [debugResult, setDebugResult] = useState(null);
   const [debugLoading, setDebugLoading] = useState(false);
 
   useEffect(() => {
@@ -35,6 +37,9 @@ const MessageDetailDrawer = () => {
           
           if (foundMessage) {
             setMessage(foundMessage);
+            
+            // Automatisch Debug-Infos laden, wenn die Nachricht erfolgreich geladen wurde
+            loadDebugInfo(foundMessage);
           } else {
             setError('Nachricht nicht gefunden');
           }
@@ -51,6 +56,30 @@ const MessageDetailDrawer = () => {
     
     fetchMessage();
   }, [messageId]);
+
+  // Automatisch Debug-Informationen laden
+  const loadDebugInfo = async (msg) => {
+    try {
+      setDebugLoading(true);
+      
+      // Der Netzwerk-Call muss eine msg.gateway_id und eine msg.message haben
+      const debugPayload = {
+        gateway_id: getGatewayId(msg),
+        message: msg.content || msg
+      };
+      
+      // API-Aufruf zum Debugging der Nachricht
+      const response = await messageApi.debugMessage(debugPayload);
+      
+      if (response.status === 'success') {
+        setDebugResult(response.data);
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Debug-Informationen:', error);
+    } finally {
+      setDebugLoading(false);
+    }
+  };
 
   // Hilfsfunktionen
   const getGatewayId = (message) => {
@@ -126,41 +155,18 @@ const MessageDetailDrawer = () => {
       alert('Fehler beim Kopieren: ' + error.message);
     }
   };
-  
-  const handleDebugMessage = async () => {
-    try {
-      setDebugLoading(true);
-      
-      // Prüfe, ob eine gültige Nachricht ausgewählt ist
-      if (!message) {
-        throw new Error('Keine Nachricht ausgewählt');
-      }
-      
-      // Der Netzwerk-Call muss eine msg.gateway_id und eine msg.message haben
-      const debugPayload = {
-        gateway_id: getGatewayId(message),
-        message: message.content || message
-      };
-      
-      console.log('Debug-Anfrage-Payload:', debugPayload);
-      
-      // API-Aufruf zum Debugging der Nachricht
-      const response = await messageApi.debugMessage(debugPayload);
-      
-      console.log('Debug-Antwort:', response);
-      
-      if (response.status === 'success') {
-        // In einer produktiven Umgebung würden wir hier das Debug-Modal anzeigen
-        // Da wir den Drawer verwenden, zeigen wir stattdessen eine Warnung an
-        alert('Debug erfolgreich! In der vollständigen Implementierung würde hier das Debug-Modal angezeigt.');
-      } else {
-        throw new Error(response.error?.message || 'Ein Fehler ist aufgetreten');
-      }
-    } catch (error) {
-      console.error('Fehler beim Debugging der Nachricht:', error);
-      alert(`Fehler beim Debugging: ${error.message}`);
-    } finally {
-      setDebugLoading(false);
+
+  const renderApiResponseBadge = (statusCode) => {
+    if (!statusCode) return <Badge bg="secondary">Keine Daten</Badge>;
+    
+    if (statusCode >= 200 && statusCode < 300) {
+      return <Badge bg="success">Erfolgreich ({statusCode})</Badge>;
+    } else if (statusCode >= 400 && statusCode < 500) {
+      return <Badge bg="warning">Client-Fehler ({statusCode})</Badge>;
+    } else if (statusCode >= 500) {
+      return <Badge bg="danger">Server-Fehler ({statusCode})</Badge>;
+    } else {
+      return <Badge bg="secondary">{statusCode}</Badge>;
     }
   };
 
@@ -199,7 +205,7 @@ const MessageDetailDrawer = () => {
         <Table bordered size="sm" className="mb-3">
           <tbody>
             <tr>
-              <th>ID</th>
+              <th style={{ width: '150px' }}>ID</th>
               <td>{message.id}</td>
             </tr>
             <tr>
@@ -210,64 +216,127 @@ const MessageDetailDrawer = () => {
               <th>Gateway</th>
               <td>{getGatewayId(message)}</td>
             </tr>
-            {message.result && (
+            {(message.result || (debugResult && debugResult.result)) && (
               <tr>
                 <th>API-Antwort</th>
                 <td>
-                  {message.result.response_status === 200 ? (
-                    <Badge bg="success">Erfolgreich ({message.result.response_status})</Badge>
-                  ) : (
-                    <Badge bg="danger">Fehler ({message.result.response_status})</Badge>
-                  )}
+                  {renderApiResponseBadge(message.result?.response_status || debugResult?.result?.response_status)}
                 </td>
               </tr>
             )}
-            {message.error && (
+            {(message.error || (debugResult && debugResult.error)) && (
               <tr>
                 <th>Fehler</th>
-                <td><span className="text-danger">{message.error}</span></td>
+                <td>
+                  <span className="text-danger">
+                    {message.error || debugResult?.error || 'Unbekannter Fehler'}
+                  </span>
+                </td>
               </tr>
             )}
           </tbody>
         </Table>
 
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h5 className="mb-0">Nachrichteninhalt</h5>
-          <div>
+        <Tab.Container id="message-details-tabs" activeKey={activeTab} onSelect={setActiveTab}>
+          <Nav variant="tabs" className="mb-3">
+            <Nav.Item>
+              <Nav.Link eventKey="raw">Empfangene Nachricht</Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link eventKey="normalized" disabled={!debugResult?.normalized_data}>
+                Normalisierte Daten {debugLoading ? '(lädt...)' : ''}
+              </Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link eventKey="transformed" disabled={!message.result?.transformed_message && !debugResult?.transformed_message}>
+                Transformierte Nachricht {debugLoading ? '(lädt...)' : ''}
+              </Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link eventKey="response" disabled={!message.result?.api_response && !debugResult?.api_response}>
+                API Response {debugLoading ? '(lädt...)' : ''}
+              </Nav.Link>
+            </Nav.Item>
+          </Nav>
+          
+          <div className="mb-2 d-flex justify-content-end">
             <Button 
               size="sm" 
-              variant="outline-secondary" 
-              className="me-2"
-              onClick={() => copyToClipboard(message.content || message)}
+              variant="outline-secondary"
+              onClick={() => copyToClipboard(
+                activeTab === 'raw' ? (message.content || message) :
+                activeTab === 'normalized' ? debugResult?.normalized_data :
+                activeTab === 'transformed' ? (message.result?.transformed_message || debugResult?.transformed_message) :
+                activeTab === 'response' ? (message.result?.api_response || debugResult?.api_response) :
+                message
+              )}
             >
               <Copy size={16} className="me-1" />
               Kopieren
             </Button>
-            
-            <Button 
-              size="sm" 
-              variant="outline-primary"
-              onClick={handleDebugMessage}
-              disabled={debugLoading}
-            >
-              <Bug size={16} className="me-1" />
-              {debugLoading ? 'Wird analysiert...' : 'Debuggen'}
-            </Button>
           </div>
-        </div>
+          
+          <Tab.Content>
+            <Tab.Pane eventKey="raw">
+              <div className="border rounded bg-light" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                <JsonView data={message.content || message} />
+              </div>
+            </Tab.Pane>
+            
+            <Tab.Pane eventKey="normalized">
+              {debugResult?.normalized_data ? (
+                <div className="border rounded bg-light" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                  <JsonView data={debugResult.normalized_data} />
+                </div>
+              ) : (
+                <Alert variant="info">
+                  Keine normalisierten Daten verfügbar
+                  {debugLoading && ' (Lade Daten...)'}
+                </Alert>
+              )}
+            </Tab.Pane>
+            
+            <Tab.Pane eventKey="transformed">
+              {message.result?.transformed_message || debugResult?.transformed_message ? (
+                <div className="border rounded bg-light" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                  <JsonView data={message.result?.transformed_message || debugResult?.transformed_message} />
+                </div>
+              ) : (
+                <Alert variant="info">
+                  Keine transformierte Nachricht verfügbar
+                  {debugLoading && ' (Lade Daten...)'}
+                </Alert>
+              )}
+            </Tab.Pane>
+            
+            <Tab.Pane eventKey="response">
+              {message.result?.api_response || debugResult?.api_response ? (
+                <div className="border rounded bg-light" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                  <JsonView data={message.result?.api_response || debugResult?.api_response} />
+                </div>
+              ) : (
+                <Alert variant="info">
+                  Keine API-Antwort verfügbar
+                  {debugLoading && ' (Lade Daten...)'}
+                </Alert>
+              )}
+            </Tab.Pane>
+          </Tab.Content>
+        </Tab.Container>
         
-        <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-          <JsonView data={message.content || message} />
-        </div>
-
-        {message.result && message.result.transformed_message && (
-          <>
-            <h5 className="mt-3">Transformierte Nachricht</h5>
-            <div className="border p-3 rounded bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-              <JsonView data={message.result.transformed_message} />
-            </div>
-          </>
+        {debugLoading && (
+          <div className="text-center p-3">
+            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Lade Debug-Informationen...
+          </div>
         )}
+        
+        <div className="mt-3">
+          <Button variant="outline-secondary" size="sm" onClick={() => navigate('/messages')}>
+            <ArrowLeft size={16} className="me-1" />
+            Zurück
+          </Button>
+        </div>
       </>
     );
   };
