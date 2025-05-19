@@ -54,7 +54,7 @@ const SideNav = ({ collapsed, onToggleCollapse }) => {
 
   // Inhalt der Navigation
   const navContent = (
-    <>
+    <div className="d-flex flex-column h-100">
       <div className="side-nav-header p-3 mb-4" style={{ borderBottom: '1px solid var(--evalarm-border)' }}>
         <div className="d-flex align-items-center">
           <div className="side-nav-logo me-2">
@@ -73,7 +73,7 @@ const SideNav = ({ collapsed, onToggleCollapse }) => {
         </div>
       </div>
 
-      <Nav className="flex-column mb-auto">
+      <Nav className="flex-column flex-grow-1">
         {menu.map((item, index) => (
           item.items 
             ? renderMenuGroup(item, index) 
@@ -89,13 +89,12 @@ const SideNav = ({ collapsed, onToggleCollapse }) => {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 
   // Desktop-Variante (permanent)
   const desktopNav = (
-    <div className={`side-nav d-none d-lg-flex flex-column ${collapsed ? 'side-nav-collapsed' : ''}`}
-         style={{ backgroundColor: 'var(--evalarm-light)', borderRight: '1px solid var(--evalarm-border)' }}>
+    <div className={`side-nav d-none d-lg-flex flex-column ${collapsed ? 'side-nav-collapsed' : ''}`}>
       {navContent}
     </div>
   );
@@ -135,7 +134,7 @@ const SideNav = ({ collapsed, onToggleCollapse }) => {
             </div>
           </Offcanvas.Title>
         </Offcanvas.Header>
-        <Offcanvas.Body className="d-flex flex-column p-0">
+        <Offcanvas.Body className="p-0 h-100">
           {navContent}
         </Offcanvas.Body>
       </Offcanvas>

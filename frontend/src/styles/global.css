@@ -92,18 +92,23 @@ html, body {
 
 .app-content {
   padding-top: 56px; /* Höhe der Top-Navbar */
+  min-height: calc(100vh - 56px); /* Volle Höhe minus Navbar */
+  display: flex; /* Flexbox hinzufügen */
 }
 
 /* Side-Navigation */
 .side-nav {
   width: 240px;
   height: 100%;
-  background-color: #f8f9fa;
-  border-right: 1px solid #e7e7e7;
+  background-color: var(--evalarm-light);
+  border-right: 1px solid var(--evalarm-border);
   transition: all 0.3s ease;
   overflow-y: auto;
   z-index: 1020;
   flex-shrink: 0;
+  position: sticky; /* Sticky-Position */
+  top: 56px; /* Abstand zur Top-Navbar */
+  height: calc(100vh - 56px); /* Volle Höhe minus Navbar */
 }
 
 .side-nav-collapsed {
@@ -159,6 +164,7 @@ html, body {
 /* Mobile Side-Navigation */
 .side-nav-mobile {
   width: 280px;
+  height: 100%;
 }
 
 .mobile-nav-toggle {
