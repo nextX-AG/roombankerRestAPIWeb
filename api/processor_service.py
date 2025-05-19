@@ -633,14 +633,30 @@ def list_templates():
     """
     Listet alle verfügbaren Templates auf
     """
-    # In einer echten Implementierung würden Templates aus einer Datenbank oder dem Dateisystem geladen
-    # Für die Demonstrationszwecke liefern wir Beispiel-Templates
-    templates = [
-        "default_template",
-        "evalarm_template",
-        "room_sensor_template",
-        "panic_button_template"
-    ]
+    # Statt nur Beispiel-Template-Namen zurückgeben, echte Template-Objekte erstellen
+    templates = []
+    template_names = ["evalarm_payload", "evalarm_panic", "standard", "evalarm_panic_v2", "evalarm", "endpoints", "customer_config", "evalarm_alarm", "evalarm_raw"]
+    
+    # Aktuelle Zeit für created_at
+    import datetime
+    current_time = datetime.datetime.now().isoformat()
+    
+    for name in template_names:
+        # Provider-Typ bestimmen
+        provider_type = 'generic'
+        if 'evalarm' in name:
+            provider_type = 'evalarm'
+        elif 'roombanker' in name:
+            provider_type = 'roombanker'
+        
+        # Template-Objekt erstellen
+        template = {
+            'id': name,
+            'name': name,
+            'provider_type': provider_type,
+            'created_at': current_time
+        }
+        templates.append(template)
     
     return jsonify({
         'status': 'success',

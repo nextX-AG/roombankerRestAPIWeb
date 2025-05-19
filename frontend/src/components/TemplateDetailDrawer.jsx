@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Drawer from './Drawer';
-import { Form, Button, Alert, Tabs, Tab } from 'react-bootstrap';
+import { Table, Badge, Button, Alert, Form } from 'react-bootstrap';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { FileCode, Save, Copy, ArrowLeft, PlayCircle, Trash, Edit } from 'lucide-react';
-import SimpleCodeEditor from './CodeEditor';
+import { Copy, Edit, ArrowLeft, Check } from 'lucide-react';
 import { templateApi } from '../api';
-import config, { API_VERSION } from '../config';
-
-// API-URL-Konfiguration
-const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
+import CodeEditor from './CodeEditor';
 
 /**
  * TemplateDetailDrawer - Zeigt Details eines ausgewählten Templates in einem Drawer an
@@ -19,160 +15,60 @@ const API_URL = `${config.apiBaseUrl}/${API_VERSION}`;
 const TemplateDetailDrawer = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
-  // Zustandsvariablen
   const [template, setTemplate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [templateName, setTemplateName] = useState('');
-  const [templateCode, setTemplateCode] = useState('');
-  const [providerType, setProviderType] = useState('generic');
-  const [testMessage, setTestMessage] = useState({
-    gateway_id: "gw-123456789",
-    subdevicelist: [
-      {
-        id: "65553114291823",
-        values: {
-          alarmstatus: "alarm",
-          alarmtype: "panic"
-        },
-        ts: 1744737709
-      }
-    ]
-  });
-  const [transformedMessage, setTransformedMessage] = useState(null);
-  const [testLoading, setTestLoading] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editedTemplate, setEditedTemplate] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  // Hersteller-Typen für Template-Regeln
-  const providers = [
-    { id: 'generic', name: 'Generisch - Standard' },
-    { id: 'evalarm', name: 'evAlarm - Notfallalarmierung' },
-    { id: 'roombanker', name: 'Roombanker - Smart Home' },
-    { id: 'becker-antriebe', name: 'Becker-Antriebe - Gebäudeautomation' }
-  ];
-
-  // Template-Beispiele/Hilfen für verschiedene Provider
-  const templateHelpers = {
-    generic: {
-      template: `{
-  "message": "{{gateway_id}} hat eine Nachricht gesendet",
-  "timestamp": "{{timestamp}}",
-  "content": {{_full_message_}}
-}`,
-      description: 'Generisches Template mit minimaler Transformation'
-    },
-    evalarm: {
-      template: `{
-  "provider": "evalarm",
-  "event_type": "{{subdevicelist[0].values.alarmtype}}",
-  "status": "{{subdevicelist[0].values.alarmstatus}}",
-  "device_id": "{{subdevicelist[0].id}}",
-  "gateway_id": "{{gateway_id}}",
-  "timestamp": "{{subdevicelist[0].ts}}",
-  "priority": "high"
-}`,
-      description: 'Template für evAlarm-Notfallsysteme mit Standardfeldern für die Alarmierung'
-    },
-    'roombanker': {
-      template: `{
-  "provider": "roombanker",
-  "device_type": "{{#subdevicelist[0].values.alarmtype == 'panic' ? 'panic_button' : 'sensor'}}",
-  "sensor_id": "{{subdevicelist[0].id}}",
-  "gateway": "{{gateway_id}}",
-  "status": "{{subdevicelist[0].values.alarmstatus}}",
-  "timestamp": "{{subdevicelist[0].ts}}",
-  "raw_data": {{_full_message_}}
-}`,
-      description: 'Template für Roombanker Smart Home Geräte mit Gerätetyperkennung'
-    },
-    'becker-antriebe': {
-      template: `{
-  "provider": "becker",
-  "controller_id": "{{gateway_id}}",
-  "device_data": {
-    "id": "{{subdevicelist[0].id}}",
-    "status": "{{subdevicelist[0].values.status}}",
-    "position": {{subdevicelist[0].values.position || 0}},
-    "signal": {{subdevicelist[0].values.signal || 0}}
-  },
-  "timestamp": "{{subdevicelist[0].ts}}"
-}`,
-      description: 'Template für Becker-Antriebe Steuerungen mit Positionsangaben'
-    }
-  };
-
-  // Lade das Template beim ersten Rendern
   useEffect(() => {
     const fetchTemplate = async () => {
-      if (!id) {
-        console.log("Keine Template-ID vorhanden, überspringe Abruf");
-        return;
-      }
-      
-      // Wenn die ID "new" ist, handelt es sich um ein neues Template
-      if (id === 'new') {
-        setTemplate(null);
-        setTemplateName('');
-        setTemplateCode(templateHelpers.generic.template);
-        setProviderType('generic');
-        setIsEditing(true);
-        setLoading(false);
-        return;
-      }
-      
-      // Prüfe auf ungültige ID-Werte
-      if (id === 'undefined' || id === 'null') {
-        console.error(`Ungültige Template-ID: ${id}`);
-        setError(`Ungültige Template-ID: ${id}`);
-        setLoading(false);
-        return;
-      }
+      if (!id) return;
       
       setLoading(true);
-      console.log(`Lade Template-Details für ID: ${id}`);
       try {
-        // Hole zunächst die komplette Template-Liste
-        const templatesResponse = await templateApi.list();
-        console.log("Template-Liste erhalten:", templatesResponse);
-        
-        if (templatesResponse.status === 'success' && Array.isArray(templatesResponse.data)) {
-          // Finde das Template mit der passenden ID oder dem passenden Namen
-          const foundTemplate = templatesResponse.data.find(template => 
-            template.id === id || template.name === id
+        // In einer echten Implementierung würden wir eine API-Methode zum Abrufen eines einzelnen Templates verwenden
+        // Da diese Methode möglicherweise noch nicht existiert, rufen wir alle Templates ab und filtern
+        const response = await templateApi.list();
+        if (response.status === 'success' && response.data) {
+          const templates = response.data || [];
+          // Wir suchen nach einem Template mit der entsprechenden ID oder Namen
+          const foundTemplate = templates.find(t => 
+            t.id === id || 
+            t.name === id ||
+            (typeof t === 'string' && t === id) // Für den Fall, dass wir nur Strings zurückbekommen
           );
           
           if (foundTemplate) {
-            console.log("Template gefunden:", foundTemplate);
-            setTemplate(foundTemplate);
-            setTemplateName(foundTemplate.name || id);
-            setTemplateCode(foundTemplate.template_code || '{}');
-            setProviderType(foundTemplate.provider_type || 'generic');
-            setLoading(false);
-            return;
+            // Wenn ein Template gefunden wurde, aber nur ein String ist, erstellen wir ein Objekt daraus
+            if (typeof foundTemplate === 'string') {
+              const providerType = foundTemplate.includes('evalarm') ? 'evalarm' : 'generic';
+              setTemplate({
+                id: foundTemplate,
+                name: foundTemplate,
+                provider_type: providerType,
+                created_at: new Date().toISOString()
+              });
+              setEditedTemplate({
+                id: foundTemplate,
+                name: foundTemplate,
+                provider_type: providerType,
+                created_at: new Date().toISOString()
+              });
+            } else {
+              setTemplate(foundTemplate);
+              setEditedTemplate(JSON.parse(JSON.stringify(foundTemplate)));
+            }
+          } else {
+            setError('Template nicht gefunden');
           }
-        }
-        
-        // Wenn über die Liste kein Template gefunden wurde, versuche direkten API-Aufruf
-        const response = await templateApi.detail(id);
-        console.log("Template-Detail-Antwort:", response);
-        
-        if (response.status === 'success' && response.data) {
-          const templateData = response.data;
-          console.log("Template-Daten erhalten:", templateData);
-          setTemplate(templateData);
-          setTemplateName(templateData.name || id);
-          setTemplateCode(templateData.template_code || '{}');
-          setProviderType(templateData.provider_type || 'generic');
         } else {
-          console.error("Fehlerhafte API-Antwort:", response);
           throw new Error(response.error?.message || 'Fehler beim Laden des Templates');
         }
       } catch (error) {
-        console.error('Fehler beim Laden des Template-Details:', error);
-        setError('Template konnte nicht geladen werden: ' + (error.message || 'Unbekannter Fehler'));
-        setTemplate(null);
+        console.error('Fehler beim Laden der Templatedetails:', error);
+        setError('Template konnte nicht geladen werden: ' + error.message);
       } finally {
         setLoading(false);
       }
@@ -181,155 +77,23 @@ const TemplateDetailDrawer = () => {
     fetchTemplate();
   }, [id]);
 
-  // Bearbeitungsmodus aktivieren
-  const handleEditClick = () => {
-    setIsEditing(true);
-    setError(null);
-    setSuccess(null);
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'Unbekannt';
+    
+    try {
+      // ISO-String oder andere Formate
+      const date = new Date(timestamp);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleString('de-DE');
+      }
+      
+      // Fallback
+      return String(timestamp);
+    } catch (e) {
+      return String(timestamp);
+    }
   };
   
-  // Bearbeitungsmodus abbrechen
-  const handleCancel = () => {
-    // Wenn es ein neues Template ist, zurück zur Übersicht
-    if (id === 'new') {
-      navigate('/templates');
-      return;
-    }
-    
-    setTemplateName(template.name);
-    setTemplateCode(template.template_code);
-    setProviderType(template.provider_type || 'generic');
-    setIsEditing(false);
-    setError(null);
-    setSuccess(null);
-  };
-  
-  // Template speichern
-  const handleSaveTemplate = async () => {
-    try {
-      if (!templateName.trim()) {
-        setError('Template-Name darf nicht leer sein');
-        return;
-      }
-
-      const templateData = {
-        name: templateName,
-        template_code: templateCode,
-        provider_type: providerType
-      };
-
-      let response;
-      
-      // Wenn die ID "new" ist, erstellen wir ein neues Template
-      if (id === 'new') {
-        response = await templateApi.create(templateData);
-        
-        if (response.status === 'success') {
-          const newTemplateData = response.data;
-          setSuccess('Template erfolgreich erstellt');
-          // Navigiere zum neuen Template mit der korrekten ID
-          navigate(`/templates/${newTemplateData.id}`, { replace: true });
-        } else {
-          throw new Error(response.error?.message || 'Template konnte nicht erstellt werden');
-        }
-      } else {
-        // Bestehendes Template aktualisieren
-        response = await templateApi.update(id, templateData);
-        
-        if (response.status === 'success') {
-          const updatedTemplateData = response.data;
-          setTemplate(updatedTemplateData);
-          setTemplateName(updatedTemplateData.name);
-          setTemplateCode(updatedTemplateData.template_code);
-          setProviderType(updatedTemplateData.provider_type || 'generic');
-          setSuccess('Template erfolgreich aktualisiert');
-          setIsEditing(false);
-        } else {
-          throw new Error(response.error?.message || 'Template konnte nicht aktualisiert werden');
-        }
-      }
-    } catch (error) {
-      console.error('Fehler beim Speichern des Templates:', error);
-      setError('Fehler beim Speichern: ' + (error.message || 'Unbekannter Fehler'));
-    }
-  };
-
-  // Template löschen
-  const handleDeleteTemplate = async () => {
-    if (window.confirm('Möchten Sie dieses Template wirklich löschen?')) {
-      try {
-        const response = await templateApi.delete(id);
-        
-        if (response.status === 'success') {
-          navigate('/templates');
-        } else {
-          throw new Error(response.error?.message || 'Template konnte nicht gelöscht werden');
-        }
-      } catch (error) {
-        console.error('Fehler beim Löschen des Templates:', error);
-        setError('Fehler beim Löschen: ' + (error.message || 'Unbekannter Fehler'));
-      }
-    }
-  };
-
-  // Provider-Typ ändern
-  const handleProviderChange = (e) => {
-    const newProvider = e.target.value;
-    setProviderType(newProvider);
-    
-    // Wenn im Bearbeitungsmodus und der Nutzer bestätigt, Template-Code aktualisieren
-    if (isEditing && templateHelpers[newProvider]) {
-      if (window.confirm('Möchten Sie das Template mit dem Beispiel für diesen Anbieter ersetzen?')) {
-        setTemplateCode(templateHelpers[newProvider].template);
-      }
-    }
-  };
-
-  // Testnachricht ändern
-  const handleTestMessageChange = (value) => {
-    try {
-      if (typeof value === 'string') {
-        setTestMessage(JSON.parse(value));
-      } else {
-        setTestMessage(value);
-      }
-      setError(null);
-    } catch (err) {
-      setError('Ungültiges JSON in der Testnachricht');
-    }
-  };
-
-  // Template testen
-  const handleTestTransform = async () => {
-    setTestLoading(true);
-    try {
-      // Bei einem neuen Template können wir nicht testen
-      if (id === 'new') {
-        setError('Bitte speichern Sie das Template zuerst, bevor Sie es testen.');
-        setTestLoading(false);
-        return;
-      }
-      
-      const response = await templateApi.test(id, {
-        message: testMessage
-      });
-      
-      if (response.status === 'success') {
-        setTransformedMessage(response.data);
-        setError(null);
-      } else {
-        throw new Error(response.error?.message || 'Transformation fehlgeschlagen');
-      }
-    } catch (error) {
-      console.error('Fehler bei der Transformation:', error);
-      setError('Fehler bei der Transformation: ' + (error.message || 'Unbekannter Fehler'));
-      setTransformedMessage(null);
-    } finally {
-      setTestLoading(false);
-    }
-  };
-
-  // Funktion zum Kopieren von JSON in die Zwischenablage
   const copyToClipboard = (data) => {
     try {
       navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -339,21 +103,53 @@ const TemplateDetailDrawer = () => {
       alert('Fehler beim Kopieren: ' + error.message);
     }
   };
-
-  // Beispiel-Template verwenden
-  const useTemplateHelper = (providerId) => {
-    if (templateHelpers[providerId] && window.confirm(`Möchten Sie das Beispiel-Template für ${providerId} verwenden?`)) {
-      setTemplateCode(templateHelpers[providerId].template);
+  
+  const handleEditToggle = () => {
+    if (editMode) {
+      // Bearbeitung beenden, Änderungen verwerfen
+      setEditedTemplate(JSON.parse(JSON.stringify(template)));
+    }
+    setEditMode(!editMode);
+  };
+  
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      
+      // API-Aufruf zum Speichern des Templates
+      const response = await templateApi.update(editedTemplate);
+      
+      if (response.status === 'success') {
+        setTemplate(editedTemplate);
+        setEditMode(false);
+        alert('Template erfolgreich gespeichert!');
+      } else {
+        throw new Error(response.error?.message || 'Fehler beim Speichern');
+      }
+    } catch (error) {
+      console.error('Fehler beim Speichern des Templates:', error);
+      alert(`Fehler beim Speichern: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+  
+  const handleTemplateChange = (newValue) => {
+    try {
+      const parsed = JSON.parse(newValue);
+      setEditedTemplate(parsed);
+    } catch (error) {
+      console.error('Ungültiges JSON:', error);
+      // Wir zeigen keinen Fehler an, da der Benutzer möglicherweise noch beim Tippen ist
     }
   };
 
-  // Drawer-Inhalt
   const drawerContent = () => {
     if (loading) {
       return <div className="text-center p-5">Lade Template-Daten...</div>;
     }
     
-    if (error && !template && id !== 'new') {
+    if (error) {
       return (
         <>
           <Alert variant="danger" className="mb-4">{error}</Alert>
@@ -365,7 +161,7 @@ const TemplateDetailDrawer = () => {
       );
     }
     
-    if (!template && id !== 'new') {
+    if (!template) {
       return (
         <>
           <Alert variant="warning" className="mb-4">Template nicht gefunden</Alert>
@@ -379,139 +175,93 @@ const TemplateDetailDrawer = () => {
     
     return (
       <>
-        {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
-        {success && <Alert variant="success" className="mb-3">{success}</Alert>}
-        
-        <Form>
-          <Form.Group className="mb-3">
-            <Form.Label>Template-Name</Form.Label>
-            <Form.Control
-              type="text"
-              value={templateName}
-              onChange={(e) => setTemplateName(e.target.value)}
-              disabled={!isEditing}
-            />
-          </Form.Group>
-          
-          <Form.Group className="mb-3">
-            <Form.Label>Anbieter-Typ</Form.Label>
-            <Form.Select
-              value={providerType}
-              onChange={handleProviderChange}
-              disabled={!isEditing}
-            >
-              {providers.map(provider => (
-                <option key={provider.id} value={provider.id}>
-                  {provider.name}
-                </option>
-              ))}
-            </Form.Select>
-            {isEditing && templateHelpers[providerType] && (
-              <Alert variant="info" className="mt-2">
-                <div className="mb-2">{templateHelpers[providerType].description}</div>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h5 className="mb-0">Template-Informationen</h5>
+          <div>
+            {editMode ? (
+              <>
                 <Button 
-                  size="sm" 
-                  variant="outline-primary" 
-                  onClick={() => useTemplateHelper(providerType)}
+                  variant="outline-secondary" 
+                  className="me-2"
+                  onClick={handleEditToggle}
+                  disabled={saving}
                 >
-                  Beispiel-Template verwenden
+                  Abbrechen
                 </Button>
-              </Alert>
-            )}
-          </Form.Group>
-        </Form>
-        
-        <Tabs defaultActiveKey="editor" className="mb-3">
-          <Tab eventKey="editor" title="Template-Code">
-            <Form.Group className="mb-3">
-              <SimpleCodeEditor
-                value={templateCode}
-                onChange={setTemplateCode}
-                readOnly={!isEditing}
-                language="json"
-                height="300px"
-              />
-              <Form.Text className="text-muted">
-                Dieses Template wird verwendet, um Nachrichten zu transformieren.
-                Platzhalter wie {'{{'} variable {'}}'}  werden durch Werte aus der Nachricht ersetzt.
-              </Form.Text>
-            </Form.Group>
-            
-            <div className="d-flex justify-content-between mt-3">
-              {isEditing ? (
-                <>
-                  <Button variant="secondary" onClick={handleCancel}>
-                    Abbrechen
-                  </Button>
-                  <Button variant="primary" onClick={handleSaveTemplate}>
-                    <Save size={16} className="me-1" />
-                    Speichern
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="danger" onClick={handleDeleteTemplate}>
-                    <Trash size={16} className="me-1" />
-                    Löschen
-                  </Button>
-                  <Button variant="primary" onClick={handleEditClick}>
-                    <Edit size={16} className="me-1" />
-                    Bearbeiten
-                  </Button>
-                </>
-              )}
-            </div>
-          </Tab>
-          
-          <Tab eventKey="test" title="Test-Transformation" disabled={id === 'new'}>
-            <Alert variant="info" className="mb-3">
-              Hier können Sie testen, wie eine Nachricht mit diesem Template transformiert wird.
-              Die Gateway-ID, Geräte-IDs und Nachrichteninhalte können angepasst werden, 
-              aber die Grundstruktur sollte dem Anbieterformat entsprechen.
-            </Alert>
-            
-            <div className="mb-3">
-              <h6>Testnachricht</h6>
-              <SimpleCodeEditor
-                value={JSON.stringify(testMessage, null, 2)}
-                onChange={(value) => handleTestMessageChange(value)}
-                language="json"
-                height="200px"
-              />
-            </div>
-            
-            <div className="mb-3">
+                <Button 
+                  variant="success" 
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  <Check size={16} className="me-1" />
+                  {saving ? 'Wird gespeichert...' : 'Speichern'}
+                </Button>
+              </>
+            ) : (
               <Button 
-                variant="primary"
-                onClick={handleTestTransform}
-                disabled={testLoading || id === 'new'}
+                variant="outline-primary" 
+                onClick={handleEditToggle}
               >
-                <PlayCircle size={16} className="me-1" />
-                {testLoading ? 'Wird transformiert...' : 'Transformation testen'}
+                <Edit size={16} className="me-1" />
+                Bearbeiten
               </Button>
-            </div>
-            
-            {transformedMessage && (
-              <div className="mt-4">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <h6 className="mb-0">Transformierte Nachricht</h6>
-                  <Button 
-                    size="sm" 
-                    variant="outline-secondary"
-                    onClick={() => copyToClipboard(transformedMessage)}
-                  >
-                    <Copy size={16} className="me-1" />
-                    Kopieren
-                  </Button>
-                </div>
-                
-                <div className="border p-3 rounded bg-light" style={{ maxHeight: '250px', overflowY: 'auto' }}>
-                  <JsonView data={transformedMessage} />
-                </div>
-              </div>
             )}
-          </Tab>
-        </Tabs>
+          </div>
+        </div>
+        
+        <Table bordered size="sm" className="mb-3">
+          <tbody>
+            <tr>
+              <th>ID</th>
+              <td>{template.id}</td>
+            </tr>
+            <tr>
+              <th>Name</th>
+              <td>{template.name}</td>
+            </tr>
+            <tr>
+              <th>Version</th>
+              <td>{template.version || 'Nicht spezifiziert'}</td>
+            </tr>
+            <tr>
+              <th>Erstellt</th>
+              <td>{formatTimestamp(template.created_at || template.timestamp)}</td>
+            </tr>
+            <tr>
+              <th>Zuletzt aktualisiert</th>
+              <td>{formatTimestamp(template.updated_at || template.timestamp)}</td>
+            </tr>
+          </tbody>
+        </Table>
+
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h5 className="mb-0">Template-Definition</h5>
+          {!editMode && (
+            <Button 
+              size="sm" 
+              variant="outline-secondary"
+              onClick={() => copyToClipboard(template)}
+            >
+              <Copy size={16} className="me-1" />
+              Kopieren
+            </Button>
+          )}
+        </div>
+        
+        {editMode ? (
+          <div className="border rounded">
+            <CodeEditor
+              value={JSON.stringify(editedTemplate, null, 2)}
+              onChange={handleTemplateChange}
+              language="json"
+              height="400px"
+            />
+          </div>
+        ) : (
+          <div className="border p-3 rounded bg-light" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+            <JsonView data={template} />
+          </div>
+        )}
       </>
     );
   };
@@ -520,12 +270,7 @@ const TemplateDetailDrawer = () => {
     <Drawer
       show={true}
       onClose={() => navigate('/templates')}
-      title={
-        <>
-          <FileCode size={18} className="me-2" />
-          {id === 'new' ? 'Neues Template' : 'Template-Details'}
-        </>
-      }
+      title="Template-Details"
     >
       {drawerContent()}
     </Drawer>

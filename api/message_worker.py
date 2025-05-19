@@ -506,7 +506,15 @@ def get_templates():
     # Versuche, die Templates neu zu laden (für den Fall, dass sich etwas geändert hat)
     worker_instance.template_engine.reload_templates()
     
-    templates = worker_instance.template_engine.get_template_names()
+    # Anstatt nur die Namen zurückzugeben, geben wir komplette Template-Objekte zurück
+    template_names = worker_instance.template_engine.get_template_names()
+    templates = []
+    
+    for name in template_names:
+        template = worker_instance.template_engine.get_template(name)
+        if template:
+            templates.append(template)
+    
     logger.info(f"{len(templates)} Templates gefunden")
     return success_response(templates)
 

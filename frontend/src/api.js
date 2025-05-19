@@ -277,180 +277,25 @@ export const customerApi = {
 // Templates-API-Endpunkte
 export const templateApi = {
   list: async () => {
-    try {
-      console.log('Template-Liste wird abgerufen');
-      const response = await fetchApi(getApiUrl('templates', ''));
-      // Prüfe, ob die Daten ein Array sind und formatiere sie ggf.
-      if (response.status === 'success' && Array.isArray(response.data)) {
-        // Stelle sicher, dass jedes Template eine ID hat
-        response.data = response.data.map(template => {
-          if (!template.id && template.name) {
-            template.id = template.name;
-          }
-          return template;
-        });
-      }
-      console.log('Template-Liste erfolgreich abgerufen:', response);
-      return response;
-    } catch (error) {
-      console.error('Fehler beim Abrufen der Template-Liste:', error);
-      return {
-        status: 'error',
-        data: [],
-        error: {
-          message: error.message || 'Fehler beim Abrufen der Templates'
-        }
-      };
-    }
+    return fetchApi(getApiUrl('templates', ''));
   },
   
   detail: async (id) => {
-    try {
-      // Prüfe auf ungültige IDs
-      if (!id || id === 'undefined' || id === 'null') {
-        console.error(`Ungültige Template-ID: ${id}`);
-        return {
-          status: 'error',
-          data: null,
-          error: {
-            message: `Ungültige Template-ID: ${id}`
-          }
-        };
-      }
-      
-      console.log(`Template-Details für ID ${id} werden abgerufen`);
-      const response = await fetchApi(getApiUrl('templates', id));
-      console.log(`Template-Details für ID ${id} erfolgreich abgerufen:`, response);
-      return response;
-    } catch (error) {
-      console.error(`Fehler beim Abrufen des Templates mit ID ${id}:`, error);
-      return {
-        status: 'error',
-        data: null,
-        error: {
-          message: error.message || `Fehler beim Abrufen des Templates mit ID ${id}`
-        }
-      };
-    }
+    return fetchApi(getApiUrl('templates', id));
   },
   
   test: async (templateId, message) => {
-    try {
-      // Prüfe auf ungültige Template-IDs
-      if (!templateId || templateId === 'undefined' || templateId === 'null') {
-        console.error(`Ungültige Template-ID für Test: ${templateId}`);
-        return {
-          status: 'error',
-          data: null,
-          error: {
-            message: `Ungültige Template-ID für Test: ${templateId}`
-          }
-        };
-      }
-      
-      console.log(`Template-Test für ID ${templateId} wird durchgeführt`);
-      const response = await fetchApi(getApiUrl('templates', 'test-transform'), {
-        method: 'POST',
-        body: JSON.stringify({ template_id: templateId, message })
-      });
-      console.log(`Template-Test für ID ${templateId} erfolgreich durchgeführt:`, response);
-      return response;
-    } catch (error) {
-      console.error(`Fehler beim Testen des Templates mit ID ${templateId}:`, error);
-      return {
-        status: 'error',
-        data: null,
-        error: {
-          message: error.message || `Fehler beim Testen des Templates mit ID ${templateId}`
-        }
-      };
-    }
+    return fetchApi(getApiUrl('templates', 'test-transform'), {
+      method: 'POST',
+      body: JSON.stringify({ template_id: templateId, message })
+    });
   },
   
-  // Neue Methode zum Erstellen eines Templates
-  create: async (templateData) => {
-    try {
-      console.log('Neues Template wird erstellt:', templateData);
-      const response = await fetchApi(getApiUrl('templates', ''), {
-        method: 'POST',
-        body: JSON.stringify(templateData)
-      });
-      console.log('Template erfolgreich erstellt:', response);
-      return response;
-    } catch (error) {
-      console.error('Fehler beim Erstellen des Templates:', error);
-      return {
-        status: 'error',
-        data: null,
-        error: {
-          message: error.message || 'Fehler beim Erstellen des Templates'
-        }
-      };
-    }
-  },
-  
-  // Neue Methode zum Aktualisieren eines Templates
-  update: async (id, templateData) => {
-    try {
-      console.log(`Template ${id} wird aktualisiert:`, templateData);
-      const response = await fetchApi(getApiUrl('templates', id), {
-        method: 'PUT',
-        body: JSON.stringify(templateData)
-      });
-      console.log(`Template ${id} erfolgreich aktualisiert:`, response);
-      return response;
-    } catch (error) {
-      console.error(`Fehler beim Aktualisieren des Templates ${id}:`, error);
-      return {
-        status: 'error',
-        data: null,
-        error: {
-          message: error.message || `Fehler beim Aktualisieren des Templates ${id}`
-        }
-      };
-    }
-  },
-  
-  // Neue Methode zum Löschen eines Templates
-  delete: async (id) => {
-    try {
-      console.log(`Template ${id} wird gelöscht`);
-      const response = await fetchApi(getApiUrl('templates', id), {
-        method: 'DELETE'
-      });
-      console.log(`Template ${id} erfolgreich gelöscht:`, response);
-      return response;
-    } catch (error) {
-      console.error(`Fehler beim Löschen des Templates ${id}:`, error);
-      return {
-        status: 'error',
-        data: null,
-        error: {
-          message: error.message || `Fehler beim Löschen des Templates ${id}`
-        }
-      };
-    }
-  },
-  
-  // Methode zum Neuladen aller Templates
-  reload: async () => {
-    try {
-      console.log('Templates werden neu geladen');
-      const response = await fetchApi(getApiUrl('templates', 'reload'), {
-        method: 'POST'
-      });
-      console.log('Templates erfolgreich neu geladen:', response);
-      return response;
-    } catch (error) {
-      console.error('Fehler beim Neuladen der Templates:', error);
-      return {
-        status: 'error',
-        data: null,
-        error: {
-          message: error.message || 'Fehler beim Neuladen der Templates'
-        }
-      };
-    }
+  update: async (template) => {
+    return fetchApi(getApiUrl('templates', template.id), {
+      method: 'PUT',
+      body: JSON.stringify(template)
+    });
   }
 };
 

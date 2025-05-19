@@ -338,7 +338,7 @@ const Dashboard = () => {
                 <ul className="list-group">
                   {templates.map((template, index) => (
                     <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
-                      {template}
+                      {typeof template === 'object' ? template.name : template}
                       <Badge bg="info">Template</Badge>
                     </li>
                   ))}
@@ -362,7 +362,7 @@ const Dashboard = () => {
                 <ul className="list-group">
                   {endpoints.map((endpoint, index) => (
                     <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
-                      {endpoint}
+                      {typeof endpoint === 'object' ? (endpoint.path || endpoint.description || 'Unbekannter Endpunkt') : endpoint}
                       <Badge bg="info">API Endpunkt</Badge>
                     </li>
                   ))}
