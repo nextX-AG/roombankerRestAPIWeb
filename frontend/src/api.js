@@ -506,11 +506,47 @@ export const logsApi = {
   },
 };
 
+// Device-API-Endpunkte
+export const deviceApi = {
+  list: async () => {
+    return fetchApi(getApiUrl('devices', 'list'));
+  },
+  
+  detail: async (gatewayUuid, deviceId) => {
+    return fetchApi(getApiUrl('devices', `${gatewayUuid}/${deviceId}`));
+  },
+  
+  listByGateway: async (gatewayUuid) => {
+    return fetchApi(getApiUrl('devices', '') + `?gateway_uuid=${gatewayUuid}`);
+  },
+  
+  create: async (device) => {
+    return fetchApi(getApiUrl('devices', ''), {
+      method: 'POST',
+      body: JSON.stringify(device)
+    });
+  },
+  
+  update: async (gatewayUuid, deviceId, device) => {
+    return fetchApi(getApiUrl('devices', `${gatewayUuid}/${deviceId}`), {
+      method: 'PUT',
+      body: JSON.stringify(device)
+    });
+  },
+  
+  delete: async (gatewayUuid, deviceId) => {
+    return fetchApi(getApiUrl('devices', `${gatewayUuid}/${deviceId}`), {
+      method: 'DELETE'
+    });
+  }
+};
+
 // Exportiere alle APIs
 export const api = {
   auth: authApi,
   customers: customerApi,
   gateways: gatewayApi,
+  devices: deviceApi,
   system: systemApi,
   message: messageApi,
   template: templateApi,

@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Table, Button, Badge, Alert, Tabs, Tab, Row, Col } from 'react-bootstrap';
+import { Card, Table, Button, Badge, Alert, Tabs, Tab, Row, Col, Form } from 'react-bootstrap';
 import Drawer from './Drawer';
-import axios from 'axios';
 import { formatDateTime } from '../utils/formatters';
 import GatewayStatusIcons from './GatewayStatusIcons';
-import { ArrowLeft, Settings, Server, History, BarChart } from 'lucide-react';
-
-// Konfiguration für API-Aufrufe
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+import { ArrowLeft, Settings, Server, History, BarChart, Save, X } from 'lucide-react';
+import { gatewayApi, customerApi, templateApi, deviceApi } from '../api';
 
 const GatewayDetailDrawer = () => {
   const { uuid } = useParams();
@@ -19,46 +16,169 @@ const GatewayDetailDrawer = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [customer, setCustomer] = useState(null);
+  const [customers, setCustomers] = useState([]);
+  const [templates, setTemplates] = useState([]);
   
+  // Bearbeitungszustand
+  const [editMode, setEditMode] = useState(false);
+  const [formData, setFormData] = useState({
+    uuid: '',
+    customer_id: '',
+    name: '',
+    description: '',
+    template_id: '',
+    status: 'online'
+  });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Daten laden
   useEffect(() => {
-    const fetchGatewayData = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        // Gateway-Daten laden
-        const gatewayResponse = await axios.get(`${API_URL}/gateways/${uuid}`);
-        setGateway(gatewayResponse.data);
-        
-        // Zugehörige Geräte laden
-        const devicesResponse = await axios.get(`${API_URL}/devices?gateway_uuid=${uuid}`);
-        setDevices(devicesResponse.data);
-        
-        // Neueste Telemetriedaten laden
-        try {
-          const telemetryResponse = await axios.get(`${API_URL}/gateways/${uuid}/latest`);
-          setLatestData(telemetryResponse.data);
-        } catch (err) {
-          console.warn('Keine aktuellen Telemetriedaten gefunden:', err);
-        }
-        
-        // Wenn Gateway einen Kunden hat, lade Kundendaten
-        if (gatewayResponse.data.customer_id) {
-          try {
-            const customerResponse = await axios.get(`${API_URL}/customers/${gatewayResponse.data.customer_id}`);
-            setCustomer(customerResponse.data);
-          } catch (err) {
-            console.error('Fehler beim Laden der Kundendaten:', err);
-          }
-        }
+        await Promise.all([
+          fetchGatewayData(),
+          fetchCustomers(),
+          fetchTemplates()
+        ]);
       } catch (err) {
-        console.error('Fehler beim Laden der Gateway-Daten:', err);
-        setError('Gateway-Daten konnten nicht geladen werden.');
+        console.error('Fehler beim Laden der Daten:', err);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchGatewayData();
+    fetchData();
   }, [uuid]);
+
+  // Gateway-Daten laden
+  const fetchGatewayData = async () => {
+    try {
+      console.log('Lade Gateway-Details für UUID:', uuid);
+      
+      // Gateway-Daten laden über die zentrale API
+      const gatewayResponse = await gatewayApi.detail(uuid);
+      console.log('Gateway-Detail-Antwort:', gatewayResponse);
+      
+      if (gatewayResponse.status === 'success' && gatewayResponse.data) {
+        const gatewayData = gatewayResponse.data;
+        setGateway(gatewayData);
+        
+        // Initialisiere Formulardaten
+        setFormData({
+          uuid: gatewayData.uuid || '',
+          customer_id: gatewayData.customer_id || '',
+          name: gatewayData.name || '',
+          description: gatewayData.description || '',
+          template_id: gatewayData.template_id || '',
+          status: gatewayData.status || 'online'
+        });
+        
+        // Wenn Gateway einen Kunden hat, lade Kundendaten
+        if (gatewayData.customer_id) {
+          try {
+            const customerResponse = await customerApi.detail(gatewayData.customer_id);
+            if (customerResponse.status === 'success' && customerResponse.data) {
+              setCustomer(customerResponse.data);
+            }
+          } catch (err) {
+            console.error('Fehler beim Laden der Kundendaten:', err);
+          }
+        }
+        
+        // Neueste Telemetriedaten laden
+        try {
+          const telemetryResponse = await gatewayApi.latest(uuid);
+          if (telemetryResponse.status === 'success') {
+            setLatestData(telemetryResponse.data);
+          }
+        } catch (err) {
+          console.warn('Keine aktuellen Telemetriedaten gefunden:', err);
+        }
+        
+        // Geräte laden
+        try {
+          const devicesResponse = await deviceApi.listByGateway(uuid);
+          if (devicesResponse.status === 'success') {
+            setDevices(devicesResponse.data || []);
+          }
+        } catch (err) {
+          console.warn('Keine Geräte gefunden:', err);
+          setDevices([]);
+        }
+      } else {
+        throw new Error(gatewayResponse.error?.message || 'Gateway-Daten konnten nicht geladen werden');
+      }
+    } catch (err) {
+      console.error('Fehler beim Laden der Gateway-Daten:', err);
+      setError('Gateway-Daten konnten nicht geladen werden.');
+    }
+  };
+
+  // Kunden laden
+  const fetchCustomers = async () => {
+    try {
+      const response = await customerApi.list();
+      if (response.status === 'success') {
+        setCustomers(response.data || []);
+      }
+    } catch (err) {
+      console.error('Fehler beim Laden der Kunden:', err);
+    }
+  };
+
+  // Templates laden
+  const fetchTemplates = async () => {
+    try {
+      const response = await templateApi.list();
+      if (response.status === 'success') {
+        setTemplates(response.data || []);
+      }
+    } catch (err) {
+      console.error('Fehler beim Laden der Templates:', err);
+    }
+  };
+
+  // Formularänderungen verarbeiten
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+  };
+
+  // Gateway aktualisieren
+  const handleUpdateGateway = async () => {
+    setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+    
+    try {
+      const response = await gatewayApi.update(uuid, formData);
+      
+      if (response.status === 'success') {
+        setSaveSuccess(true);
+        setEditMode(false);
+        
+        // Daten neu laden
+        await fetchGatewayData();
+        
+        setTimeout(() => {
+          setSaveSuccess(false);
+        }, 3000);
+      } else {
+        throw new Error(response.error?.message || 'Fehler beim Aktualisieren des Gateways');
+      }
+    } catch (err) {
+      console.error('Fehler beim Aktualisieren des Gateways:', err);
+      setSaveError('Gateway konnte nicht aktualisiert werden: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
   
   // Status-Badge basierend auf Gateway-Status
   const renderStatusBadge = (status) => {
@@ -162,6 +282,110 @@ const GatewayDetailDrawer = () => {
       </Table>
     );
   };
+
+  // Render Bearbeitungsformular
+  const renderEditForm = () => {
+    return (
+      <Form>
+        <Form.Group className="mb-3">
+          <Form.Label>UUID</Form.Label>
+          <Form.Control 
+            type="text" 
+            name="uuid"
+            value={formData.uuid} 
+            disabled
+          />
+        </Form.Group>
+        
+        <Form.Group className="mb-3">
+          <Form.Label>Kunde <span className="text-danger">*</span></Form.Label>
+          <Form.Select 
+            name="customer_id" 
+            value={formData.customer_id || ''} 
+            onChange={handleChange}
+          >
+            <option value="">Bitte auswählen</option>
+            {customers.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </Form.Select>
+        </Form.Group>
+        
+        <Form.Group className="mb-3">
+          <Form.Label>Name</Form.Label>
+          <Form.Control 
+            type="text" 
+            name="name"
+            value={formData.name} 
+            onChange={handleChange}
+          />
+        </Form.Group>
+        
+        <Form.Group className="mb-3">
+          <Form.Label>Status</Form.Label>
+          <Form.Select 
+            name="status" 
+            value={formData.status} 
+            onChange={handleChange}
+          >
+            <option value="online">Online</option>
+            <option value="offline">Offline</option>
+            <option value="maintenance">Wartung</option>
+          </Form.Select>
+        </Form.Group>
+        
+        <Form.Group className="mb-3">
+          <Form.Label>Template zur Transformation</Form.Label>
+          <Form.Select 
+            name="template_id" 
+            value={formData.template_id || ''} 
+            onChange={handleChange}
+          >
+            <option value="">Bitte auswählen</option>
+            {templates.map(t => (
+              <option key={typeof t === 'object' ? t.id : t} value={typeof t === 'object' ? t.id : t}>
+                {typeof t === 'object' ? t.name : t}
+              </option>
+            ))}
+          </Form.Select>
+          <Form.Text className="text-muted">
+            Wählen Sie ein Template für die Nachrichten-Transformation. Dies ist notwendig für die Weiterleitung an evAlarm.
+          </Form.Text>
+        </Form.Group>
+        
+        <Form.Group className="mb-3">
+          <Form.Label>Beschreibung</Form.Label>
+          <Form.Control 
+            as="textarea" 
+            name="description"
+            value={formData.description || ''} 
+            onChange={handleChange}
+            rows={3}
+          />
+        </Form.Group>
+        
+        <div className="d-flex justify-content-end mt-4">
+          <Button 
+            variant="outline-secondary" 
+            className="me-2" 
+            onClick={() => setEditMode(false)}
+            disabled={saving}
+          >
+            <X size={16} className="me-1" />
+            Abbrechen
+          </Button>
+          <Button 
+            variant="success" 
+            onClick={handleUpdateGateway}
+            disabled={saving}
+          >
+            <Save size={16} className="me-1" />
+            {saving ? 'Speichern...' : 'Speichern'}
+          </Button>
+        </div>
+      </Form>
+    );
+  };
   
   const drawerContent = () => {
     if (loading) {
@@ -190,6 +414,34 @@ const GatewayDetailDrawer = () => {
           </Button>
         </>
       );
+    }
+
+    // Erfolgsmeldung anzeigen
+    if (saveSuccess) {
+      return (
+        <>
+          <Alert variant="success" className="mb-4">
+            Gateway wurde erfolgreich aktualisiert.
+          </Alert>
+          {drawerContent()}
+        </>
+      );
+    }
+
+    // Fehlermeldung anzeigen
+    if (saveError) {
+      return (
+        <>
+          <Alert variant="danger" className="mb-4" dismissible onClose={() => setSaveError(null)}>
+            {saveError}
+          </Alert>
+          {editMode ? renderEditForm() : drawerContent()}
+        </>
+      );
+    }
+    
+    if (editMode) {
+      return renderEditForm();
     }
     
     return (
@@ -297,7 +549,7 @@ const GatewayDetailDrawer = () => {
             Zurück
           </Button>
           
-          <Button variant="primary" size="sm" onClick={() => navigate(`/gateways/${uuid}/edit`)}>
+          <Button variant="primary" size="sm" onClick={() => setEditMode(true)}>
             <Settings size={16} className="me-1" />
             Bearbeiten
           </Button>
@@ -309,7 +561,8 @@ const GatewayDetailDrawer = () => {
   return (
     <Drawer 
       show={true} 
-      title={gateway ? (gateway.name || 'Gateway Details') : 'Gateway Details'}
+      onClose={() => navigate('/gateways')}
+      title={editMode ? "Gateway bearbeiten" : (gateway ? (gateway.name || 'Gateway Details') : 'Gateway Details')}
     >
       {drawerContent()}
     </Drawer>

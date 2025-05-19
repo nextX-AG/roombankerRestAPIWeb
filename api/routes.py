@@ -415,9 +415,18 @@ def get_devices():
 @api_error_handler
 def get_device(id):
     """Gibt ein Gerät anhand seiner ID zurück"""
-    device = Device.find_by_id(id)
+    # Da Geräte über gateway_uuid und device_id identifiziert werden,
+    # müssen wir beide Parameter haben
+    gateway_uuid = request.args.get('gateway_uuid')
+    device_id = id
+    
+    if not gateway_uuid:
+        return validation_error_response({"gateway_uuid": "Gateway-UUID ist erforderlich"})
+    
+    device = Device.find_by_gateway_and_id(gateway_uuid, device_id)
     if not device:
-        return not_found_response("device", id)
+        return not_found_response("device", device_id)
+    
     return success_response(device.to_dict())
 
 @api_bp.route(get_route('devices', 'by_gateway'), methods=['GET'])
