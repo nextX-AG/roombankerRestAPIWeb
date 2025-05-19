@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Form, Button, Badge, Alert, Tabs, Tab, Row, Col } from 'react-bootstrap';
+import { Card, Form, Button, Badge, Alert, Tabs, Tab, Row, Col, Modal } from 'react-bootstrap';
 import Drawer from './Drawer';
 import { formatDateTime } from '../utils/formatters';
-import { ArrowLeft, Cpu, Edit, Save } from 'lucide-react';
+import { ArrowLeft, Cpu, Edit, Save, X, Trash } from 'lucide-react';
 import axios from 'axios';
 import JSONPretty from 'react-json-pretty';
 import 'react-json-pretty/themes/monikai.css';
@@ -29,6 +29,11 @@ const DeviceDetailDrawer = () => {
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  
+  // Löschen-Zustand
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
   
   // Gerätedaten laden
   useEffect(() => {
@@ -106,7 +111,30 @@ const DeviceDetailDrawer = () => {
     }
   };
   
-  // Gerätetyp formatieren
+  // Gerät löschen
+  const handleDeleteDevice = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    
+    try {
+      const response = await axios.delete(`${API_URL}/devices/${gatewayUuid}/${deviceId}`);
+      
+      if (response.data?.status === 'success') {
+        // Zurück zur Geräte-Übersicht navigieren
+        navigate('/devices');
+      } else {
+        throw new Error(response.data?.error?.message || 'Fehler beim Löschen des Geräts');
+      }
+    } catch (err) {
+      console.error('Fehler beim Löschen des Geräts:', err);
+      setDeleteError('Gerät konnte nicht gelöscht werden: ' + err.message);
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+  
+  // Gerätedaten formatieren
   const formatDeviceType = (type) => {
     switch (type) {
       case 'temperature_sensor': return 'Temperatursensor';
@@ -189,10 +217,17 @@ const DeviceDetailDrawer = () => {
             Zurück
           </Button>
           
-          <Button variant="primary" size="sm" onClick={() => setEditMode(true)}>
-            <Edit size={16} className="me-1" />
-            Bearbeiten
-          </Button>
+          <div>
+            <Button variant="outline-danger" size="sm" className="me-2" onClick={() => setShowDeleteConfirm(true)}>
+              <Trash size={16} className="me-1" />
+              Löschen
+            </Button>
+            
+            <Button variant="primary" size="sm" onClick={() => setEditMode(true)}>
+              <Edit size={16} className="me-1" />
+              Bearbeiten
+            </Button>
+          </div>
         </div>
       </>
     );
@@ -336,17 +371,50 @@ const DeviceDetailDrawer = () => {
   };
   
   return (
-    <Drawer 
-      show={true} 
-      title={
-        <div className="d-flex align-items-center">
-          <Cpu size={18} className="me-2" />
-          {device ? (device.name || `Gerät: ${device.device_id}`) : 'Gerätedetails'}
-        </div>
-      }
-    >
-      {drawerContent()}
-    </Drawer>
+    <>
+      <Drawer 
+        show={true} 
+        title={
+          <div className="d-flex align-items-center">
+            <Cpu size={18} className="me-2" />
+            {device ? (device.name || `Gerät: ${device.device_id}`) : 'Gerätedetails'}
+          </div>
+        }
+      >
+        {drawerContent()}
+      </Drawer>
+      
+      {/* Lösch-Bestätigungsmodal */}
+      <Modal show={showDeleteConfirm} onHide={() => setShowDeleteConfirm(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Gerät löschen</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {deleteError ? (
+            <Alert variant="danger">{deleteError}</Alert>
+          ) : (
+            <>
+              <p>Sind Sie sicher, dass Sie das Gerät <strong>{device?.name || device?.device_id}</strong> löschen möchten?</p>
+              <Alert variant="warning">
+                <strong>Achtung:</strong> Diese Aktion kann nicht rückgängig gemacht werden!
+              </Alert>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>
+            Abbrechen
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleDeleteDevice}
+            disabled={deleting}
+          >
+            {deleting ? 'Wird gelöscht...' : 'Gerät löschen'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 };
 

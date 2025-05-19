@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Form, Button, Badge, Alert, Tabs, Tab, Row, Col } from 'react-bootstrap';
+import { Card, Form, Button, Badge, Alert, Tabs, Tab, Row, Col, Modal } from 'react-bootstrap';
 import Drawer from './Drawer';
 import { formatDateTime } from '../utils/formatters';
-import { ArrowLeft, Building, Settings, Router, Save } from 'lucide-react';
+import { ArrowLeft, Building, Settings, Router, Save, X, Trash } from 'lucide-react';
 import { customerApi, gatewayApi } from '../api';
 
 const CustomerDetailDrawer = () => {
@@ -19,6 +19,11 @@ const CustomerDetailDrawer = () => {
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  
+  // Löschen-Zustand
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
   
   // Kundendaten laden
   useEffect(() => {
@@ -91,6 +96,29 @@ const CustomerDetailDrawer = () => {
       setSaveError(err.message || 'Kundendaten konnten nicht gespeichert werden.');
     } finally {
       setSaving(false);
+    }
+  };
+  
+  // Kunde löschen
+  const handleDeleteCustomer = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    
+    try {
+      const response = await customerApi.delete(id);
+      
+      if (response.status === 'success') {
+        // Zurück zur Kunden-Übersicht navigieren
+        navigate('/customers');
+      } else {
+        throw new Error(response.error?.message || 'Fehler beim Löschen des Kunden');
+      }
+    } catch (err) {
+      console.error('Fehler beim Löschen des Kunden:', err);
+      setDeleteError('Kunde konnte nicht gelöscht werden: ' + err.message);
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
     }
   };
   
@@ -225,10 +253,17 @@ const CustomerDetailDrawer = () => {
             Zurück
           </Button>
           
-          <Button variant="primary" size="sm" onClick={() => setEditMode(true)}>
-            <Settings size={16} className="me-1" />
-            Bearbeiten
-          </Button>
+          <div>
+            <Button variant="outline-danger" size="sm" className="me-2" onClick={() => setShowDeleteConfirm(true)}>
+              <Trash size={16} className="me-1" />
+              Löschen
+            </Button>
+            
+            <Button variant="primary" size="sm" onClick={() => setEditMode(true)}>
+              <Settings size={16} className="me-1" />
+              Bearbeiten
+            </Button>
+          </div>
         </div>
       </>
     );
@@ -426,17 +461,50 @@ const CustomerDetailDrawer = () => {
   };
   
   return (
-    <Drawer 
-      show={true} 
-      title={
-        <div className="d-flex align-items-center">
-          <Building size={18} className="me-2" />
-          {customer ? (customer.name || 'Kundendetails') : 'Kundendetails'}
-        </div>
-      }
-    >
-      {drawerContent()}
-    </Drawer>
+    <>
+      <Drawer 
+        show={true} 
+        title={
+          <div className="d-flex align-items-center">
+            <Building size={18} className="me-2" />
+            {customer ? (customer.name || 'Kundendetails') : 'Kundendetails'}
+          </div>
+        }
+      >
+        {drawerContent()}
+      </Drawer>
+      
+      {/* Lösch-Bestätigungsmodal */}
+      <Modal show={showDeleteConfirm} onHide={() => setShowDeleteConfirm(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Kunde löschen</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {deleteError ? (
+            <Alert variant="danger">{deleteError}</Alert>
+          ) : (
+            <>
+              <p>Sind Sie sicher, dass Sie den Kunden <strong>{customer?.name}</strong> löschen möchten?</p>
+              <Alert variant="warning">
+                <strong>Achtung:</strong> Alle zugehörigen Gateways und Geräte werden möglicherweise ebenfalls gelöscht und diese Aktion kann nicht rückgängig gemacht werden!
+              </Alert>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>
+            Abbrechen
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleDeleteCustomer}
+            disabled={deleting}
+          >
+            {deleting ? 'Wird gelöscht...' : 'Kunde löschen'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 };
 

@@ -369,7 +369,7 @@ const Gateways = () => {
       {
         id: 'actions',
         header: 'Aktionen',
-        size: 140,
+        size: 60, // Reduzierte Größe, da nur ein Button
         cell: ({ row }) => {
           const gateway = row.original;
           return (
@@ -377,7 +377,6 @@ const Gateways = () => {
               <Button 
                 variant="outline-secondary" 
                 size="sm" 
-                className="me-1"
                 onClick={(e) => {
                   e.stopPropagation();
                   fetchDevices(gateway);
@@ -385,29 +384,6 @@ const Gateways = () => {
                 title="Geräte anzeigen"
               >
                 <Eye size={16} />
-              </Button>
-              <Button 
-                variant="outline-primary" 
-                size="sm" 
-                className="me-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openEditModal(gateway);
-                }}
-                title="Bearbeiten"
-              >
-                <Edit size={16} />
-              </Button>
-              <Button 
-                variant="outline-danger" 
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openDeleteConfirm(gateway);
-                }}
-                title="Löschen"
-              >
-                <Trash size={16} />
               </Button>
             </div>
           );
