@@ -296,6 +296,12 @@ export const templateApi = {
       method: 'PUT',
       body: JSON.stringify(template)
     });
+  },
+  
+  delete: async (id) => {
+    return fetchApi(getApiUrl('templates', id), {
+      method: 'DELETE'
+    });
   }
 };
 

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Table, Button, Badge, Alert, Tabs, Tab, Row, Col, Form } from 'react-bootstrap';
+import { Card, Table, Button, Badge, Alert, Tabs, Tab, Row, Col, Form, Modal } from 'react-bootstrap';
 import Drawer from './Drawer';
 import { formatDateTime } from '../utils/formatters';
 import GatewayStatusIcons from './GatewayStatusIcons';
-import { ArrowLeft, Settings, Server, History, BarChart, Save, X } from 'lucide-react';
+import { ArrowLeft, Settings, Server, History, BarChart, Save, X, Trash } from 'lucide-react';
 import { gatewayApi, customerApi, templateApi, deviceApi } from '../api';
 
 const GatewayDetailDrawer = () => {
@@ -32,6 +32,11 @@ const GatewayDetailDrawer = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  
+  // Löschen-Zustand
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   // Daten laden
   useEffect(() => {
@@ -177,6 +182,29 @@ const GatewayDetailDrawer = () => {
       setSaveError('Gateway konnte nicht aktualisiert werden: ' + err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Gateway löschen
+  const handleDeleteGateway = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    
+    try {
+      const response = await gatewayApi.delete(uuid);
+      
+      if (response.status === 'success') {
+        // Zurück zur Gateway-Übersicht navigieren
+        navigate('/gateways');
+      } else {
+        throw new Error(response.error?.message || 'Fehler beim Löschen des Gateways');
+      }
+    } catch (err) {
+      console.error('Fehler beim Löschen des Gateways:', err);
+      setDeleteError('Gateway konnte nicht gelöscht werden: ' + err.message);
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
     }
   };
   
@@ -549,23 +577,63 @@ const GatewayDetailDrawer = () => {
             Zurück
           </Button>
           
-          <Button variant="primary" size="sm" onClick={() => setEditMode(true)}>
-            <Settings size={16} className="me-1" />
-            Bearbeiten
-          </Button>
+          <div>
+            <Button variant="outline-danger" size="sm" className="me-2" onClick={() => setShowDeleteConfirm(true)}>
+              <Trash size={16} className="me-1" />
+              Löschen
+            </Button>
+            
+            <Button variant="primary" size="sm" onClick={() => setEditMode(true)}>
+              <Settings size={16} className="me-1" />
+              Bearbeiten
+            </Button>
+          </div>
         </div>
       </>
     );
   };
   
   return (
-    <Drawer 
-      show={true} 
-      onClose={() => navigate('/gateways')}
-      title={editMode ? "Gateway bearbeiten" : (gateway ? (gateway.name || 'Gateway Details') : 'Gateway Details')}
-    >
-      {drawerContent()}
-    </Drawer>
+    <>
+      <Drawer 
+        show={true} 
+        onClose={() => navigate('/gateways')}
+        title={editMode ? "Gateway bearbeiten" : (gateway ? (gateway.name || 'Gateway Details') : 'Gateway Details')}
+      >
+        {drawerContent()}
+      </Drawer>
+      
+      {/* Lösch-Bestätigungsmodal */}
+      <Modal show={showDeleteConfirm} onHide={() => setShowDeleteConfirm(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Gateway löschen</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {deleteError ? (
+            <Alert variant="danger">{deleteError}</Alert>
+          ) : (
+            <>
+              <p>Sind Sie sicher, dass Sie das Gateway <strong>{gateway?.name || gateway?.uuid}</strong> löschen möchten?</p>
+              <Alert variant="warning">
+                <strong>Achtung:</strong> Alle zugehörigen Geräte werden ebenfalls gelöscht und diese Aktion kann nicht rückgängig gemacht werden!
+              </Alert>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>
+            Abbrechen
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleDeleteGateway}
+            disabled={deleting}
+          >
+            {deleting ? 'Wird gelöscht...' : 'Gateway löschen'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 };
 

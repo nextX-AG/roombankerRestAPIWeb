@@ -532,7 +532,23 @@ def get_template(template_id):
         return success_response(template)
     else:
         logger.warning(f"Template {template_id} nicht gefunden")
-        return not_found_response("template", template_id)
+        return error_response(f"Template {template_id} nicht gefunden", status_code=404)
+
+@app.route(get_route('templates', 'delete'), methods=['DELETE'])
+@api_error_handler
+def delete_template(template_id):
+    """Löscht ein spezifisches Template"""
+    error = check_worker_initialized()
+    if error:
+        return error
+    
+    result = worker_instance.template_engine.delete_template(template_id)
+    if result:
+        logger.info(f"Template {template_id} gelöscht")
+        return success_response({"message": f"Template {template_id} erfolgreich gelöscht"})
+    else:
+        logger.warning(f"Template {template_id} konnte nicht gelöscht werden")
+        return error_response(f"Template {template_id} konnte nicht gelöscht werden", status_code=404)
 
 @app.route(get_route('templates', 'test'), methods=['POST'])
 @api_error_handler

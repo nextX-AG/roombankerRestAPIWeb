@@ -98,6 +98,7 @@ ENDPOINTS = {
         'base': f'{API_BASE}/templates',
         'list': '',
         'detail': '/<template_id>',
+        'delete': '/<template_id>',
         'test': '/test-transform',
         'reload': '/reload'
     },

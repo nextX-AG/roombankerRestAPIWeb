@@ -971,6 +971,14 @@ Die UI soll modernisiert werden, orientiert an modernen Server-Management-Konsol
   - [x] Klickbare Tabellenzeilen für einfachere Navigation zu Detail-Drawern
   - [x] Gateway-Bearbeitungsfunktion direkt im Drawer implementieren
   - [x] Geräteanzeige im Gateway-Detail korrekt implementieren
+  - [x] Verbesserte Drawer-Funktionalität (resizable)
+    - [x] Implementierung der Größenanpassung durch Ziehen an der linken Kante
+    - [x] Anpassung des Hauptinhalts an die Drawer-Größe
+    - [x] Implementierung des DrawerContext für globale Zustandsverwaltung
+  - [x] Konsistente Löschfunktionalität
+    - [x] Entfernung redundanter Löschbuttons aus Hauptansichten
+    - [x] Konsolidierung der Löschfunktion im Detail-Drawer für alle Entitäten
+    - [x] Bestätigungsdialoge für wichtige Löschoperationen
   - [ ] Restliche Modals schrittweise migrieren
 
 ### Phase 2: Erweiterte Komponenten (Sprint 3-4)

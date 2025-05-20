@@ -37,66 +37,55 @@ const Templates = () => {
     { id: 'becker-antriebe', name: 'Becker-Antriebe - Gebäudeautomation' }
   ];
 
-  // Templates laden
-  useEffect(() => {
-    const fetchTemplates = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        console.log("Rufe Templates-Liste ab...");
-        const response = await templateApi.list();
-        console.log("Templates-Antwort erhalten:", response);
+  // Funktion zum Laden der Templates
+  const fetchTemplates = async (showSuccessMessage = false) => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log("Rufe Templates-Liste ab...");
+      const response = await templateApi.list();
+      console.log("Templates-Antwort erhalten:", response);
+      
+      if (response.status === 'success') {
+        // Templates aus der Antwort extrahieren
+        const templatesList = response.data || [];
+        console.log("Template-Daten:", templatesList);
+        setTemplates(templatesList);
+        console.log("Templates gesetzt:", templatesList.length);
         
-        if (response.status === 'success') {
-          // Templates aus der Antwort extrahieren
-          const templatesList = response.data || [];
-          console.log("Template-Daten:", templatesList);
-          setTemplates(templatesList);
-          console.log("Templates gesetzt:", templatesList.length);
-        } else {
-          console.error("Fehlerhafte API-Antwort:", response);
-          throw new Error(response.error?.message || 'Fehler beim Laden der Templates');
+        if (showSuccessMessage) {
+          setSuccess('Templates erfolgreich aktualisiert');
+          setTimeout(() => setSuccess(null), 3000);
         }
-      } catch (error) {
-        console.error('Fehler beim Abrufen der Templates:', error);
-        setError('Fehler beim Laden der Templates: ' + (error.message || 'Unbekannter Fehler'));
-        setTemplates([]);
-      } finally {
-        setLoading(false);
+      } else {
+        console.error("Fehlerhafte API-Antwort:", response);
+        throw new Error(response.error?.message || 'Fehler beim Laden der Templates');
       }
-    };
+    } catch (error) {
+      console.error('Fehler beim Abrufen der Templates:', error);
+      setError('Fehler beim Laden der Templates: ' + (error.message || 'Unbekannter Fehler'));
+      setTemplates([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Initial Templates laden
+  useEffect(() => {
     fetchTemplates();
   }, []);
+  
+  // Templates neu laden, wenn sich die ID-Parameter ändern (z.B. nach dem Löschen)
+  useEffect(() => {
+    if (!id) {
+      // Wenn id nicht existiert, könnte ein Template gelöscht worden sein
+      // oder der Benutzer hat die Detail-Ansicht verlassen
+      fetchTemplates();
+    }
+  }, [id]);
 
   const handleRefresh = () => {
-    setTemplates([]);
-    setLoading(true);
-    const fetchTemplates = async () => {
-      try {
-        setError(null);
-        const response = await templateApi.list();
-        
-        if (response.status === 'success') {
-          const templatesList = response.data || [];
-          setTemplates(templatesList);
-          setSuccess('Templates erfolgreich aktualisiert');
-          
-          // Erfolgsbenachrichtigung nach 3 Sekunden ausblenden
-          setTimeout(() => setSuccess(null), 3000);
-        } else {
-          throw new Error(response.error?.message || 'Fehler beim Laden der Templates');
-        }
-      } catch (error) {
-        console.error('Fehler beim Abrufen der Templates:', error);
-        setError('Fehler beim Laden der Templates: ' + (error.message || 'Unbekannter Fehler'));
-        setTemplates([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTemplates();
+    fetchTemplates(true);
   };
 
   const handleCreateTemplate = () => {

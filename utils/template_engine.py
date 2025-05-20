@@ -130,6 +130,44 @@ class TemplateEngine:
             'path': template_data['path']
         }
     
+    def delete_template(self, template_name):
+        """
+        Löscht ein Template aus dem System
+        
+        Args:
+            template_name: Name des zu löschenden Templates
+            
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        if template_name not in self.templates:
+            logger.warning(f"Template '{template_name}' zum Löschen nicht gefunden")
+            return False
+            
+        try:
+            # Pfad zur Template-Datei
+            template_path = self.templates[template_name]['path']
+            
+            # Datei löschen, wenn sie existiert
+            if os.path.exists(template_path):
+                os.remove(template_path)
+                logger.info(f"Template-Datei {template_path} gelöscht")
+            
+            # Template aus dem templates-Dictionary entfernen
+            del self.templates[template_name]
+            
+            # Templates neu laden
+            self.reload_templates()
+            
+            logger.info(f"Template '{template_name}' erfolgreich gelöscht")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Löschen des Templates '{template_name}': {str(e)}")
+            import traceback
+            logger.error(f"Stacktrace: {traceback.format_exc()}")
+            return False
+    
     def transform_message(self, message, template_name, customer_config=None, gateway_id=None):
         """
         Transformiert eine Nachricht basierend auf einem Template

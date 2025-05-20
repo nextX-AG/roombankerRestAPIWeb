@@ -915,6 +915,69 @@ Vorteile des Drawer-Patterns:
 - Verbesserte Navigation durch Beibehaltung des Kontexts
 - Konsistentes UX-Pattern in der gesamten Anwendung
 
+#### Erweiterte Drawer-Funktionalität
+
+Die Drawer-Komponente wurde mit einer flexiblen Größenanpassungsfunktion ausgestattet:
+
+- **Größenanpassung durch Ziehen**: Benutzer können die Breite des Drawers durch Ziehen an der linken Kante anpassen
+- **Dynamische CSS-Variablen**: Die aktuelle Drawer-Breite wird als CSS-Variable (`--drawer-width`) gespeichert
+- **Responsives Verhalten**: Der Hauptinhalt passt sich automatisch an die Drawer-Breite an
+- **Kontextbasierte Verwaltung**: Ein zentraler DrawerContext verwaltet den Drawer-Zustand global
+
+```javascript
+// DrawerContext.jsx
+export const DrawerProvider = ({ children }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [width, setWidth] = useState(480); // Standardbreite
+  
+  const value = {
+    isOpen,
+    setIsOpen,
+    width,
+    setWidth,
+  };
+  
+  return (
+    <DrawerContext.Provider value={value}>
+      {children}
+    </DrawerContext.Provider>
+  );
+};
+```
+
+Die Drawer-Komponente verwendet diesen Kontext für eine konsistente Verwaltung des Zustands:
+
+```javascript
+// Resize-Funktionalität in der Drawer-Komponente
+const ResizableDrawer = () => {
+  const { isOpen, setWidth, width } = useContext(DrawerContext);
+  const startResizing = useCallback(/* Implementierung der Resize-Logik */);
+  
+  return (
+    <div 
+      className={`drawer ${isOpen ? 'open' : ''}`} 
+      style={{ width: `${width}px` }}
+    >
+      <div 
+        className="drawer-resize-handle"
+        onMouseDown={startResizing}
+      />
+      {/* Drawer-Inhalt */}
+    </div>
+  );
+};
+```
+
+#### Konsistente Lösch-Funktionalität
+
+Für eine verbesserte Benutzerführung wurde die Löschfunktionalität vereinheitlicht:
+
+- **Entfernung redundanter Löschbuttons**: Löschbuttons wurden aus Hauptübersichtstabellen entfernt
+- **Konsolidierung im Detail-Drawer**: Alle Entitäten (Kunden, Gateways, Geräte) nutzen nun konsistent den Löschbutton im Detail-Drawer
+- **Bestätigungsdialoge**: Zweistufiger Bestätigungsprozess für das Löschen wichtiger Entitäten
+
+Diese Vereinheitlichung verbessert die Benutzererfahrung durch konsistente Interaktionsmuster und reduziert die Gefahr versehentlicher Löschungen.
+
 #### Implementierte Drawer-Komponenten:
 - `GatewayDetailDrawer` für Gateway-Details
 - `CustomerDetailDrawer` für Kundendetails
