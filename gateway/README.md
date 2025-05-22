@@ -122,7 +122,7 @@ Jedes Gateway generiert beim ersten Start eine eindeutige ID, die in `/etc/gatew
 
 Die URL des Backend-Servers ist im Skript konfiguriert:
 ```
-SERVER_URL="http://157.180.37.234/api/test"
+SERVER_URL="http://http://167.235.56.144//api/test"
 ```
 
 Bei Änderungen am Backend (z.B. Domain-Änderung) muss diese URL aktualisiert werden.

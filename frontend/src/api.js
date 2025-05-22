@@ -302,6 +302,30 @@ export const templateApi = {
     return fetchApi(getApiUrl('templates', id), {
       method: 'DELETE'
     });
+  },
+  
+  // Neue Methode zum automatischen Generieren eines Templates aus normalisierter Nachricht
+  generate: async (normalizedMessage) => {
+    return fetchApi(getApiUrl('templates', 'generate'), {
+      method: 'POST',
+      body: JSON.stringify({ message: normalizedMessage })
+    });
+  },
+  
+  // Neue Methode zum Testen eines Template-Codes (nicht gespeichert)
+  testCode: async (templateCode, normalizedMessage) => {
+    return fetchApi(getApiUrl('templates', 'test-code'), {
+      method: 'POST',
+      body: JSON.stringify({ template_code: templateCode, message: normalizedMessage })
+    });
+  },
+  
+  // Neue Methode zum Erstellen eines neuen Templates
+  create: async (template) => {
+    return fetchApi(getApiUrl('templates', ''), {
+      method: 'POST',
+      body: JSON.stringify(template)
+    });
   }
 };
 
