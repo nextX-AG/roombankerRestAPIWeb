@@ -1141,22 +1141,22 @@ Das aktuelle Template-System ist für technisch weniger versierte Benutzer zu ko
 
 ### Phase 1: Grundlegende Funktionalität (Sprint 1-2)
 
-- [ ] **Live-Datenvisualisierung**
-  - [ ] Integration des `MessageNormalizer` in die Frontend-Komponente
-  - [ ] Anzeige der normalisierten Gerätedaten in übersichtlicher Baumstruktur
-  - [ ] Automatische Erkennung aller verfügbaren Datenfelder aus eingehenden Nachrichten
-  - [ ] Farbliche Hervorhebung von Gateway- und Gerätedaten
+- [x] **Live-Datenvisualisierung**
+  - [x] Integration des `MessageNormalizer` in die Frontend-Komponente
+  - [x] Anzeige der normalisierten Gerätedaten in übersichtlicher Baumstruktur
+  - [x] Automatische Erkennung aller verfügbaren Datenfelder aus eingehenden Nachrichten
+  - [x] Farbliche Hervorhebung von Gateway- und Gerätedaten
 
-- [ ] **Auto-Template-Generierung**
-  - [ ] Implementierung der bestehenden `generate_template`-Funktion im Frontend
-  - [ ] One-Click-Template-Erstellung basierend auf erkannten Daten
-  - [ ] Automatisches Erkennen des Gerätetyps und Vorschlagen geeigneter Transformationen
-  - [ ] Intelligente Extraktion relevanter Datenfelder basierend auf häufigen Anwendungsfällen
+- [x] **Auto-Template-Generierung**
+  - [x] Implementierung der bestehenden `generate_template`-Funktion im Frontend
+  - [x] One-Click-Template-Erstellung basierend auf erkannten Daten
+  - [x] Automatisches Erkennen des Gerätetyps und Vorschlagen geeigneter Transformationen
+  - [x] Intelligente Extraktion relevanter Datenfelder basierend auf häufigen Anwendungsfällen
 
-- [ ] **Template-Vorschau in Echtzeit**
-  - [ ] Live-Vorschau der transformierten Nachricht neben dem Original
-  - [ ] Side-by-Side-Vergleich von Rohdaten, normalisierten Daten und Transformation
-  - [ ] Sofortige Visualisierung der Auswirkungen von Template-Änderungen
+- [x] **Template-Vorschau in Echtzeit**
+  - [x] Live-Vorschau der transformierten Nachricht neben dem Original
+  - [x] Side-by-Side-Vergleich von Rohdaten, normalisierten Daten und Transformation
+  - [x] Sofortige Visualisierung der Auswirkungen von Template-Änderungen
 
 ### Phase 2: Drag-and-Drop Template-Editor (Sprint 3-4)
 
