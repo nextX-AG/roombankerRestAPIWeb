@@ -163,6 +163,7 @@ const GatewayDetailDrawer = () => {
     
     try {
       const response = await gatewayApi.update(uuid, formData);
+      console.log("Gateway update response:", response);
       
       if (response.status === 'success') {
         setSaveSuccess(true);
@@ -415,7 +416,7 @@ const GatewayDetailDrawer = () => {
     );
   };
   
-  const drawerContent = () => {
+  const renderMainContent = () => {
     if (loading) {
       return <div className="text-center p-5">Lade Gateway-Daten...</div>;
     }
@@ -444,30 +445,6 @@ const GatewayDetailDrawer = () => {
       );
     }
 
-    // Erfolgsmeldung anzeigen
-    if (saveSuccess) {
-      return (
-        <>
-          <Alert variant="success" className="mb-4">
-            Gateway wurde erfolgreich aktualisiert.
-          </Alert>
-          {drawerContent()}
-        </>
-      );
-    }
-
-    // Fehlermeldung anzeigen
-    if (saveError) {
-      return (
-        <>
-          <Alert variant="danger" className="mb-4" dismissible onClose={() => setSaveError(null)}>
-            {saveError}
-          </Alert>
-          {editMode ? renderEditForm() : drawerContent()}
-        </>
-      );
-    }
-    
     if (editMode) {
       return renderEditForm();
     }
@@ -591,6 +568,32 @@ const GatewayDetailDrawer = () => {
         </div>
       </>
     );
+  };
+  
+  const drawerContent = () => {
+    if (saveSuccess) {
+      return (
+        <>
+          <Alert variant="success" className="mb-4">
+            Gateway wurde erfolgreich aktualisiert.
+          </Alert>
+          {renderMainContent()}
+        </>
+      );
+    }
+
+    if (saveError) {
+      return (
+        <>
+          <Alert variant="danger" className="mb-4" dismissible onClose={() => setSaveError(null)}>
+            {saveError}
+          </Alert>
+          {renderMainContent()}
+        </>
+      );
+    }
+    
+    return renderMainContent();
   };
   
   return (
