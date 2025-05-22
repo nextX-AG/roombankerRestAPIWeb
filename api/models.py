@@ -184,10 +184,23 @@ class Gateway:
     def update(self, **kwargs):
         """Aktualisiert die Gateway-Informationen"""
         kwargs['updated_at'] = datetime.datetime.now()
-        db[self.collection].update_one(
+        
+        # Debugging-Log hinzufügen
+        logger.info(f"Aktualisiere Gateway {self.uuid} mit Daten: {kwargs}")
+        
+        # Wenn customer_id ein String ist, in ObjectId umwandeln
+        if 'customer_id' in kwargs and isinstance(kwargs['customer_id'], str) and kwargs['customer_id']:
+            kwargs['customer_id'] = ObjectId(kwargs['customer_id'])
+        
+        # Update in der Datenbank durchführen
+        update_result = db[self.collection].update_one(
             {"_id": self._id},
             {"$set": kwargs}
         )
+        
+        logger.info(f"Datenbank-Update für Gateway {self.uuid}: {update_result.modified_count} Dokumente geändert")
+        
+        # Attribute in der Instanz aktualisieren
         for key, value in kwargs.items():
             setattr(self, key, value)
     
