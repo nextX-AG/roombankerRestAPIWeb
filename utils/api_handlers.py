@@ -9,22 +9,34 @@ import logging
 # Logger konfigurieren
 logger = logging.getLogger('api-handlers')
 
-def success_response(data, status_code=200):
+def success_response(data, message=None, status_code=200):
     """
     Standardisierte Erfolgsantwort
     
     Args:
         data: Die Daten, die zurückgegeben werden sollen
+        message: Optionale Nachricht (wird nicht als Status verwendet)
         status_code: HTTP-Statuscode (default: 200)
     
     Returns:
         Flask-Response mit einheitlichem Format
     """
-    return jsonify({
+    response = {
         'status': 'success',
         'data': data,
         'error': None
-    }), status_code
+    }
+    
+    # Falls eine Nachricht vorhanden ist, diese in die Antwort einfügen
+    if message:
+        response['message'] = message
+    
+    # Stelle sicher, dass status_code immer ein gültiger HTTP-Statuscode ist
+    if isinstance(status_code, str) or status_code < 100 or status_code > 599:
+        logger.warning(f"Ungültiger HTTP-Statuscode: {status_code}, verwende 200 stattdessen")
+        status_code = 200
+    
+    return jsonify(response), status_code
 
 def error_response(message, status_code=400, error_code=None, details=None):
     """

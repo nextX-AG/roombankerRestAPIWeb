@@ -161,7 +161,7 @@ def create_customer():
     
     customer = Customer.create(**data)
     logger.info(f"Neuer Kunde erstellt: {data.get('name')}")
-    return success_response(customer.to_dict(), 201)
+    return success_response(customer.to_dict(), status_code=201)
 
 @api_bp.route(get_route('customers', 'update'), methods=['PUT'])
 @api_error_handler
@@ -175,7 +175,7 @@ def update_customer(id):
     
     customer.update(**data)
     logger.info(f"Kunde aktualisiert: ID {id}, Name {customer.name}")
-    return success_response(customer.to_dict(), "Kunde erfolgreich aktualisiert")
+    return success_response(customer.to_dict(), message="Kunde erfolgreich aktualisiert")
 
 @api_bp.route(get_route('customers', 'delete'), methods=['DELETE'])
 @api_error_handler
@@ -250,7 +250,7 @@ def create_gateway():
     
     gateway = Gateway.create(**data)
     logger.info(f"Neues Gateway erstellt: UUID {data.get('uuid')}, Kunde {customer.name}")
-    return success_response(gateway.to_dict(), "Gateway erfolgreich erstellt", 201)
+    return success_response(gateway.to_dict(), message="Gateway erfolgreich erstellt", status_code=201)
 
 @api_bp.route(get_route('gateways', 'update'), methods=['PUT'])
 @api_error_handler
@@ -270,7 +270,7 @@ def update_gateway(uuid):
     
     gateway.update(**data)
     logger.info(f"Gateway aktualisiert: UUID {uuid}")
-    return success_response(gateway.to_dict(), "Gateway erfolgreich aktualisiert")
+    return success_response(gateway.to_dict(), message="Gateway erfolgreich aktualisiert")
 
 @api_bp.route(get_route('gateways', 'delete'), methods=['DELETE'])
 @api_error_handler
@@ -311,7 +311,7 @@ def update_gateway_status(uuid):
     status = data.get('status', 'online')
     gateway.update_status(status)
     logger.info(f"Gateway-Status aktualisiert: UUID {uuid}, Status {status}")
-    return success_response(gateway.to_dict(), f"Gateway-Status auf '{status}' aktualisiert")
+    return success_response(gateway.to_dict(), message=f"Gateway-Status auf '{status}' aktualisiert")
 
 @api_bp.route('/api/v1/gateways/<uuid>/latest', methods=['GET'])
 @api_error_handler
@@ -394,7 +394,7 @@ def get_gateway_history(uuid):
         
         history.append(entry)
     
-    return success_response(history, f"{len(history)} Ereignisse gefunden")
+    return success_response(history, message=f"{len(history)} Ereignisse gefunden")
 
 # ----- Geräte-Endpunkte -----
 
@@ -472,7 +472,7 @@ def create_device():
     
     device = Device.create(**data)
     logger.info(f"Neues Gerät erstellt: ID {data.get('device_id')} für Gateway {data.get('gateway_uuid')}")
-    return success_response(device.to_dict(), "Gerät erfolgreich erstellt", 201)
+    return success_response(device.to_dict(), message="Gerät erfolgreich erstellt", status_code=201)
 
 @api_bp.route('/api/v1/devices/<gateway_uuid>/<device_id>', methods=['PUT'])
 @api_error_handler
@@ -486,7 +486,7 @@ def update_device(gateway_uuid, device_id):
     
     device.update(**data)
     logger.info(f"Gerät aktualisiert: ID {device_id} für Gateway {gateway_uuid}")
-    return success_response(device.to_dict(), "Gerät erfolgreich aktualisiert")
+    return success_response(device.to_dict(), message="Gerät erfolgreich aktualisiert")
 
 @api_bp.route('/api/v1/devices/<gateway_uuid>/<device_id>/status', methods=['PUT'])
 @api_error_handler
@@ -501,7 +501,7 @@ def update_device_status(gateway_uuid, device_id):
     status_data = data.get('status', {})
     device.update_status(status_data)
     logger.info(f"Gerätestatus aktualisiert: ID {device_id} für Gateway {gateway_uuid}")
-    return success_response(device.to_dict(), "Gerätestatus erfolgreich aktualisiert")
+    return success_response(device.to_dict(), message="Gerätestatus erfolgreich aktualisiert")
 
 @api_bp.route('/api/v1/devices/<gateway_uuid>/<device_id>', methods=['DELETE'])
 @api_error_handler
@@ -584,7 +584,7 @@ def process_message():
     return success_response({
         "gateway_id": gateway_uuid,
         "devices": registered_devices
-    }, f"{len(registered_devices)} Geräte registriert/aktualisiert")
+    }, message=f"{len(registered_devices)} Geräte registriert/aktualisiert")
 
 # ----- Nachrichten-Endpunkte -----
 
