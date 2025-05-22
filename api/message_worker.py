@@ -550,6 +550,124 @@ def delete_template(template_id):
         logger.warning(f"Template {template_id} konnte nicht gelöscht werden")
         return error_response(f"Template {template_id} konnte nicht gelöscht werden", status_code=404)
 
+@app.route(get_route('templates', 'generate'), methods=['POST'])
+@api_error_handler
+def generate_template():
+    """Generiert ein Template aus einer normalisierten Nachricht"""
+    error = check_worker_initialized()
+    if error:
+        return error
+    
+    data = request.json
+    
+    # Validierung
+    validation_errors = {}
+    if not data or not isinstance(data, dict):
+        return validation_error_response({"request": "Ungültiges JSON-Format"})
+    
+    if 'message' not in data:
+        validation_errors['message'] = "Normalisierte Nachricht ist erforderlich"
+    
+    if validation_errors:
+        return validation_error_response(validation_errors)
+    
+    message = data.get('message')
+    template_name = data.get('name', f"auto_template_{int(time.time())}")
+    description = data.get('description', f"Automatisch generiertes Template vom {datetime.now().strftime('%d.%m.%Y %H:%M')}")
+    
+    # Template generieren
+    try:
+        template = worker_instance.template_engine.generate_template(message, template_name, description)
+        
+        # Template-Code extrahieren
+        template_code = json.dumps(template, indent=2)
+        
+        logger.info(f"Template {template_name} erfolgreich generiert")
+        return success_response({
+            'template': template,
+            'template_code': template_code,
+            'name': template_name
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Generieren des Templates: {str(e)}")
+        return error_response(f"Fehler beim Generieren des Templates: {str(e)}", 500)
+
+@app.route(get_route('templates', 'test-code'), methods=['POST'])
+@api_error_handler
+def test_template_code():
+    """Testet einen Template-Code mit einer Nachricht, ohne das Template zu speichern"""
+    error = check_worker_initialized()
+    if error:
+        return error
+    
+    data = request.json
+    
+    # Validierung
+    validation_errors = {}
+    if not data or not isinstance(data, dict):
+        return validation_error_response({"request": "Ungültiges JSON-Format"})
+    
+    if 'template_code' not in data:
+        validation_errors['template_code'] = "Template-Code ist erforderlich"
+    
+    if 'message' not in data:
+        validation_errors['message'] = "Nachricht ist erforderlich"
+    
+    if validation_errors:
+        return validation_error_response(validation_errors)
+    
+    template_code = data.get('template_code')
+    message = data.get('message')
+    
+    # Temporären Dateinamen generieren
+    temp_template_name = f"temp_template_{uuid.uuid4()}"
+    temp_template_path = os.path.join(worker_instance.template_engine.templates_dir, f"{temp_template_name}.json")
+    
+    try:
+        # Template-Code parsen
+        template_data = None
+        try:
+            template_data = json.loads(template_code)
+        except json.JSONDecodeError as e:
+            return error_response(f"Ungültiges JSON-Format im Template-Code: {str(e)}", 400)
+        
+        # Temporäre Template-Datei erstellen
+        with open(temp_template_path, 'w') as f:
+            json.dump(template_data, f)
+        
+        # Template-Engine aktualisieren
+        worker_instance.template_engine.reload_templates()
+        
+        # Transformation durchführen
+        transformed = worker_instance.template_engine.transform_message(message, temp_template_name)
+        
+        # Temporäre Datei löschen
+        try:
+            os.remove(temp_template_path)
+        except Exception as e:
+            logger.warning(f"Konnte temporäre Template-Datei nicht löschen: {str(e)}")
+        
+        if transformed:
+            logger.info(f"Test-Transformation mit temporärem Template erfolgreich")
+            return success_response({
+                'original_message': message,
+                'transformed_message': transformed,
+                'template_code': template_code
+            })
+        else:
+            logger.warning(f"Test-Transformation mit temporärem Template fehlgeschlagen")
+            return error_response("Transformation fehlgeschlagen", 400)
+    except Exception as e:
+        # Aufräumen im Fehlerfall
+        try:
+            if os.path.exists(temp_template_path):
+                os.remove(temp_template_path)
+        except:
+            pass
+        
+        logger.error(f"Fehler beim Testen des Template-Codes: {str(e)}")
+        return error_response(f"Fehler beim Testen des Template-Codes: {str(e)}", 500)
+
 @app.route(get_route('templates', 'test'), methods=['POST'])
 @api_error_handler
 def test_transform():
@@ -606,7 +724,10 @@ def list_worker_endpoints():
         {'path': get_route('system', 'endpoints'), 'method': 'GET', 'description': 'Verfügbare Endpunkte auflisten'},
         {'path': get_route('templates', 'list'), 'method': 'GET', 'description': 'Templates auflisten'},
         {'path': get_route('templates', 'detail'), 'method': 'GET', 'description': 'Template-Details abrufen'},
+        {'path': get_route('templates', 'delete'), 'method': 'DELETE', 'description': 'Template löschen'},
         {'path': get_route('templates', 'test'), 'method': 'POST', 'description': 'Template-Transformation testen'},
+        {'path': get_route('templates', 'generate'), 'method': 'POST', 'description': 'Template aus Nachricht generieren'},
+        {'path': get_route('templates', 'test-code'), 'method': 'POST', 'description': 'Template-Code ohne Speichern testen'},
         {'path': '/api/endpoints', 'method': 'GET', 'description': 'API-Endpunkte auflisten'}
     ]
     

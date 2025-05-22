@@ -1,58 +1,63 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Form } from 'react-bootstrap';
 import PropTypes from 'prop-types';
 
 /**
- * Eine vereinfachte Version des CodeEditors ohne externe Abhängigkeiten
- * Diese Komponente verwendet ein einfaches Textarea mit einigen Styling-Anpassungen
+ * Einfacher Code-Editor für JSON und andere Formate
+ * In Zukunft kann dieser durch eine fortschrittlichere Editor-Komponente wie Monaco ersetzt werden
  */
-const SimpleCodeEditor = ({ value, onChange, readOnly, height }) => {
+const CodeEditor = ({ value, onChange, language = 'json', height = '300px' }) => {
+  const [internalValue, setInternalValue] = useState(value || '');
+  
+  // Aktualisiere den internen Wert, wenn sich der externe ändert
+  useEffect(() => {
+    if (value !== internalValue) {
+      setInternalValue(value || '');
+    }
+  }, [value]);
+  
+  // Handler für Änderungen im Textarea
+  const handleChange = (e) => {
+    const newValue = e.target.value;
+    setInternalValue(newValue);
+    if (onChange) {
+      onChange(newValue);
+    }
+  };
+  
   return (
-    <div className="simple-code-editor" style={{ height: height || '300px' }}>
-      <textarea
-        value={value}
-        onChange={(e) => onChange && onChange(e.target.value)}
-        readOnly={readOnly}
-        className="code-textarea"
-        style={{
-          width: '100%',
-          height: '100%',
-          padding: '10px',
-          fontFamily: "'Fira Code', 'Courier New', monospace",
-          fontSize: '14px',
-          backgroundColor: readOnly ? '#f5f5f5' : '#fff',
-          border: '1px solid #ced4da',
-          borderRadius: '0.25rem',
-          resize: 'none',
-          tabSize: '2',
-          overflowY: 'auto'
-        }}
-      />
-      <style jsx="true">{`
-        .simple-code-editor {
-          position: relative;
-          width: 100%;
-        }
-        .code-textarea:focus {
-          outline: none;
-          border-color: #80bdff;
-          box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-        }
-      `}</style>
-    </div>
+    <Form.Control
+      as="textarea"
+      value={internalValue}
+      onChange={handleChange}
+      style={{ 
+        fontFamily: 'monospace', 
+        height, 
+        resize: 'vertical',
+        backgroundColor: '#f8f9fa',
+        color: '#212529',
+        border: '1px solid #ced4da',
+        borderRadius: '0.25rem',
+        padding: '10px',
+        fontSize: '14px',
+        lineHeight: 1.5,
+        whiteSpace: 'pre'
+      }}
+    />
   );
 };
 
-SimpleCodeEditor.propTypes = {
+CodeEditor.propTypes = {
   value: PropTypes.string,
   onChange: PropTypes.func,
-  readOnly: PropTypes.bool,
+  language: PropTypes.string,
   height: PropTypes.string
 };
 
-SimpleCodeEditor.defaultProps = {
+CodeEditor.defaultProps = {
   value: '',
-  readOnly: false,
+  language: 'json',
   height: '300px'
 };
 
-export default SimpleCodeEditor; 
+export default CodeEditor; 

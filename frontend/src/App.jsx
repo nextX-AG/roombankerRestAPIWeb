@@ -23,6 +23,7 @@ import Customers from './pages/Customers';
 import Gateways from './pages/Gateways';
 import Devices from './pages/Devices';
 import Debugger from './pages/Debugger';
+import VisualTemplateGenerator from './pages/VisualTemplateGenerator';
 
 // Auth Context
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -89,6 +90,7 @@ function AppContent() {
           <Route path="/settings" element={<Settings />} />
           {/* Neue Betrieb-Routen */}
           <Route path="/status" element={<div>Live-Status (Implementierung folgt)</div>} />
+          <Route path="/visual-template-generator" element={<VisualTemplateGenerator />} />
         </Route>
       </Routes>
     </div>

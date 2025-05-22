@@ -8,7 +8,8 @@ import {
   Router,
   Cpu,
   Inbox,
-  FileCode
+  FileCode,
+  Zap
 } from 'lucide-react';
 
 export const menu = [
@@ -29,7 +30,14 @@ export const menu = [
     ]
   },
   { label: 'Nachrichten', icon: Inbox, to: '/messages' },
-  { label: 'Templates', icon: FileCode, to: '/templates' }
+  { 
+    label: 'Templates', 
+    icon: FileCode, 
+    items: [
+      { label: 'Template-Liste', icon: FileCode, to: '/templates' },
+      { label: 'Visueller Generator', icon: Zap, to: '/visual-template-generator' }
+    ]
+  }
 ];
 
 export default menu; 
