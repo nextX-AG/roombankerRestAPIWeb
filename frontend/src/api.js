@@ -285,7 +285,7 @@ export const templateApi = {
   },
   
   test: async (templateId, message) => {
-    return fetchApi(getApiUrl('templates', 'test-transform'), {
+    return fetchApi(getApiUrl('templates', 'test'), {
       method: 'POST',
       body: JSON.stringify({ template_id: templateId, message })
     });
@@ -304,19 +304,23 @@ export const templateApi = {
     });
   },
   
-  // Neue Methode zum automatischen Generieren eines Templates aus normalisierter Nachricht
+  // Neue Methode zum automatischen Generieren eines Templates aus normalisierten Daten
   generate: async (normalizedMessage) => {
     return fetchApi(getApiUrl('templates', 'generate'), {
       method: 'POST',
-      body: JSON.stringify({ message: normalizedMessage })
+      body: JSON.stringify({ 
+        message: normalizedMessage,
+        name: `auto_template_${new Date().getTime()}`,
+        description: `Automatisch generiertes Template vom ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`
+      })
     });
   },
   
-  // Neue Methode zum Testen eines Template-Codes (nicht gespeichert)
-  testCode: async (templateCode, normalizedMessage) => {
+  // Methode zum Testen eines Template-Codes (ohne Speichern)
+  testCode: async (templateCode, message) => {
     return fetchApi(getApiUrl('templates', 'test-code'), {
       method: 'POST',
-      body: JSON.stringify({ template_code: templateCode, message: normalizedMessage })
+      body: JSON.stringify({ template_code: templateCode, message })
     });
   },
   

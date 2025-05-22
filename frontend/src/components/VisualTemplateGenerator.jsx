@@ -4,6 +4,7 @@ import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { Zap, Wrench, Save, Play, RefreshCw, Info, EyeOff, Eye } from 'lucide-react';
 import CodeEditor from './CodeEditor';
+import TemplateBuilder from './TemplateBuilder';
 import { templateApi, messageApi } from '../api';
 
 /**
@@ -165,10 +166,26 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
     try {
       setLoading(true);
       
-      // Create a new template from the current code
-      // TODO: Implement template saving via API
-      setSuccess('Template erfolgreich gespeichert');
+      // Parsen des Template-Codes zu einem Objekt
+      const templateObj = JSON.parse(templateCode);
       
+      // Erstellung eines neuen Templates
+      const response = await templateApi.create({
+        name: templateObj.name || 'Neues Template',
+        description: templateObj.description || 'Erstelltes Template',
+        template_code: templateCode
+      });
+      
+      if (response.status === 'success') {
+        setSuccess('Template erfolgreich gespeichert');
+        // Templates neu laden und das neue Template auswählen
+        await fetchTemplates();
+        if (response.data && response.data.id) {
+          setSelectedTemplate(response.data.id);
+        }
+      } else {
+        setError(`Fehler beim Speichern: ${response.error?.message}`);
+      }
     } catch (error) {
       setError(`Fehler beim Speichern: ${error.message}`);
     } finally {
@@ -186,10 +203,15 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
     try {
       setLoading(true);
       
-      // Hier müssten wir eigentlich das Template temporär speichern und dann testen
-      // TODO: Implement this when the API is ready
+      // Teste den aktuellen Template-Code
+      const response = await templateApi.testCode(templateCode, normalizedMessage);
       
-      setSuccess('Transformation aktualisiert');
+      if (response.status === 'success') {
+        setTransformedMessage(response.data.transformed_message || {});
+        setSuccess('Transformation aktualisiert');
+      } else {
+        setError(`Fehler bei der Transformation: ${response.error?.message}`);
+      }
     } catch (error) {
       setError(`Fehler: ${error.message}`);
     } finally {
@@ -214,6 +236,11 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
     } catch (e) {
       // Ignoriere Parsing-Fehler während der Bearbeitung
     }
+  };
+
+  // Handle Änderung im Template-Code (vom Builder oder Editor)
+  const handleTemplateCodeChange = (code) => {
+    setTemplateCode(code);
   };
   
   // JSON-View-Optionen
@@ -351,17 +378,16 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
                   {showAdvanced ? (
                     <CodeEditor
                       value={templateCode}
-                      onChange={setTemplateCode}
+                      onChange={handleTemplateCodeChange}
                       language="json"
                       height="400px"
                     />
                   ) : (
-                    <div className="template-builder">
-                      <Alert variant="info">
-                        <p>Einfacher Template-Builder wird in Kürze verfügbar sein! 🚧</p>
-                        <p>Verwenden Sie den erweiterten Modus, um den JSON-Code direkt zu bearbeiten.</p>
-                      </Alert>
-                    </div>
+                    <TemplateBuilder 
+                      normalizedMessage={normalizedMessage}
+                      templateCode={templateCode}
+                      onChange={handleTemplateCodeChange}
+                    />
                   )}
                 </Card.Body>
               </Card>

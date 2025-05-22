@@ -1,0 +1,108 @@
+/* Template Builder Styles */
+.template-builder {
+  margin-bottom: 2rem;
+}
+
+.template-builder .card {
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+.template-builder .card-header {
+  background-color: #f8f9fa;
+  font-weight: 500;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.draggable-field {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background-color: #f8f9fa;
+  cursor: grab;
+  user-select: none;
+  transition: all 0.2s;
+}
+
+.draggable-field:hover {
+  border-color: #bbdefb;
+  background-color: #f5f9ff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.draggable-field.is-dragging {
+  opacity: 0.5;
+  border: 1px dashed #2196f3;
+}
+
+.draggable-field .badge {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.4rem;
+}
+
+.draggable-field .text-muted {
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.events-container {
+  min-height: 200px;
+}
+
+.drop-zone {
+  border: 2px dashed #ced4da;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8f9fa;
+  transition: all 0.2s;
+}
+
+.drop-zone.active {
+  border-color: #007bff;
+  background-color: #e8f4ff;
+}
+
+.field-list-container {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.template-preview {
+  padding: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin-top: 1rem;
+  background-color: white;
+}
+
+.helper-text {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.available-fields {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Animation für Drag-and-Drop */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.4); }
+  70% { box-shadow: 0 0 0 4px rgba(33, 150, 243, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(33, 150, 243, 0); }
+}
+
+.card.pulse {
+  animation: pulse 1.5s infinite;
+} 
