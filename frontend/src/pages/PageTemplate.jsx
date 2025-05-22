@@ -8,54 +8,46 @@ import { faFile } from '@fortawesome/free-solid-svg-icons';
  * 
  * Struktur:
  * 1. Seiten-Titel mit Icon (h1.page-title)
- * 2. Fehler/Erfolgs-Anzeigen (Alert)
- * 3. Inhalt in Karten mit konsistenten Headers (Card, Card.Header, Card.Body)
+ * 2. Beschreibung oder Fehler/Erfolgs-Anzeigen (Alert)
+ * 3. Inhalt (children)
+ * 
+ * @param {Object} props Component props
+ * @param {React.ReactNode} props.children - Der Inhalt der Seite
+ * @param {string} props.title - Der Titel der Seite
+ * @param {React.ReactNode} props.icon - Das Icon für die Seite (FontAwesomeIcon oder anderes React-Element)
+ * @param {string} [props.description] - Optional: Eine Beschreibung der Seite
  */
-const PageTemplate = () => {
+const PageTemplate = ({ children, title, icon, description }) => {
   return (
     <>
       {/* 1. Seiten-Titel */}
       <h1 className="page-title mb-4">
-        <FontAwesomeIcon icon={faFile} className="icon" />
-        Seitenvorlage
+        {icon || <FontAwesomeIcon icon={faFile} className="icon" />}
+        {title || 'Seitenvorlage'}
       </h1>
       
-      {/* 2. Fehler/Erfolgs-Anzeigen (bei Bedarf) */}
-      <Alert variant="info" className="mb-4">
-        Diese Seite dient als Vorlage für das einheitliche Layout aller Seiten.
-      </Alert>
+      {/* 2. Beschreibung (bei Bedarf) */}
+      {description && (
+        <Alert variant="info" className="mb-4">
+          {description}
+        </Alert>
+      )}
       
-      {/* 3. Inhalt in Karten */}
-      <Row className="mb-4">
-        <Col md={6}>
-          <Card className="h-100">
-            <Card.Header>
-              Kartenüberschrift
-            </Card.Header>
-            <Card.Body>
-              <p>Karteninhalt mit einheitlichem Abstand.</p>
-              <p>Verwende Bootstrap-Klassen für Layout und Formatierung.</p>
-            </Card.Body>
-          </Card>
-        </Col>
-        
-        <Col md={6}>
-          <Card className="h-100">
-            <Card.Header>
-              Weitere Informationen
-            </Card.Header>
-            <Card.Body>
-              <p>Alle Seiten sollten diesem Grundlayout folgen:</p>
-              <ul>
-                <li>Seiten-Titel mit Icon</li>
-                <li>Alerts für Feedback</li>
-                <li>Karten für Inhalte</li>
-                <li>Konsistente Abstände (mb-4, etc.)</li>
-              </ul>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+      {/* 3. Inhalt */}
+      {children || (
+        <Row className="mb-4">
+          <Col md={12}>
+            <Card className="h-100">
+              <Card.Header>
+                Beispielinhalt
+              </Card.Header>
+              <Card.Body>
+                <p>Diese Seite verwendet das PageTemplate, aber es wurden keine Inhalte übergeben.</p>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      )}
     </>
   );
 };
