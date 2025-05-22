@@ -273,7 +273,7 @@ const TemplateBuilder = ({
               placeholder="Ziehen Sie ein Feld hierher oder geben Sie eine Nachricht ein"
             />
             <Form.Text className="text-muted">
-              Verwenden Sie {{ gateway.id }} Syntax, um auf Felder zuzugreifen
+              Verwenden Sie {'{{ gateway.id }}'} Syntax, um auf Felder zuzugreifen
             </Form.Text>
           </Form.Group>
           
