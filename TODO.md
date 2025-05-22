@@ -1043,14 +1043,14 @@ Die UI soll modernisiert werden, orientiert an modernen Server-Management-Konsol
 
 ### Implementierungsplan 
 
-| Sprint | Deliverable                        | Owner   |
-| ------ | ---------------------------------- | ------- |
-|  1     | Side-Nav + Top-Bar Refactor        | FE Team |
-|  2     | Drawer-Pattern für *Gateways*      | FE Team |
-|  3     | TanStack Table in allen Listen     | FE Team |
-|  4     | Command Palette + Toasts           | FE Team |
-|  5     | Nachrichten-Refactor (Tabs, Retry) | FE + BE |
-|  6     | Dark-Mode, QA, Docs                | QA      |
+| Sprint | Deliverable                          | Owner   |
+|--------|--------------------------------------|---------|
+| 1      | Side-Nav + Top-Bar Refactor        | FE Team |
+| 2      | Drawer-Pattern für *Gateways*      | FE Team |
+| 3      | TanStack Table in allen Listen     | FE Team |
+| 4      | Command Palette + Toasts           | FE Team |
+| 5      | Nachrichten-Refactor (Tabs, Retry) | FE + BE |
+| 6      | Dark-Mode, QA, Docs                | QA      |
 
 Das Feature-Flag-System sollte für jede Komponente implementiert werden, um rollbacks zu erleichtern (z.B. `
 
@@ -1134,3 +1134,109 @@ Das System verfügt bereits über eine grundlegende Authentifizierungsstruktur u
 - **Skalierbarkeit**: System kann sicher für mehrere Kunden gleichzeitig betrieben werden
 - **Compliance**: Einhaltung von Datenschutzbestimmungen durch Datentrennung
 - **Servicefähigkeit**: Verbesserte Support-Möglichkeiten durch Admin-Funktionen
+
+## 19. Visueller Template-Generator (HOHE PRIORITÄT)
+
+Das aktuelle Template-System ist für technisch weniger versierte Benutzer zu komplex. Die Template-Erstellung erfordert tiefes Verständnis der JSON-Struktur und der verfügbaren Datenfelder in den Gerätenachrichten. Es wird ein visueller Template-Generator benötigt, der diesen Prozess vereinfacht und den Benutzern eine intuitive Oberfläche zur Verfügung stellt.
+
+### Phase 1: Grundlegende Funktionalität (Sprint 1-2)
+
+- [ ] **Live-Datenvisualisierung**
+  - [ ] Integration des `MessageNormalizer` in die Frontend-Komponente
+  - [ ] Anzeige der normalisierten Gerätedaten in übersichtlicher Baumstruktur
+  - [ ] Automatische Erkennung aller verfügbaren Datenfelder aus eingehenden Nachrichten
+  - [ ] Farbliche Hervorhebung von Gateway- und Gerätedaten
+
+- [ ] **Auto-Template-Generierung**
+  - [ ] Implementierung der bestehenden `generate_template`-Funktion im Frontend
+  - [ ] One-Click-Template-Erstellung basierend auf erkannten Daten
+  - [ ] Automatisches Erkennen des Gerätetyps und Vorschlagen geeigneter Transformationen
+  - [ ] Intelligente Extraktion relevanter Datenfelder basierend auf häufigen Anwendungsfällen
+
+- [ ] **Template-Vorschau in Echtzeit**
+  - [ ] Live-Vorschau der transformierten Nachricht neben dem Original
+  - [ ] Side-by-Side-Vergleich von Rohdaten, normalisierten Daten und Transformation
+  - [ ] Sofortige Visualisierung der Auswirkungen von Template-Änderungen
+
+### Phase 2: Drag-and-Drop Template-Editor (Sprint 3-4)
+
+- [ ] **Visueller Template-Builder**
+  - [ ] Drag-and-Drop-Interface zum Erstellen der JSON-Struktur 
+  - [ ] Einfaches Hinzufügen von Variablen aus den verfügbaren Datenfeldern
+  - [ ] Kontextmenü mit Vorschlägen für häufig verwendete Transformationen
+  - [ ] Grafischer Editor für Filterregeln (Bedingungen, Wertebereich, Muster)
+
+- [ ] **Template-Komponenten-Bibliothek**
+  - [ ] Vordefinierte Bausteine für häufige Transformationen
+  - [ ] Drag-and-Drop für komplexe Strukturen (z.B. "events"-Array für evAlarm)
+  - [ ] Vorlagen für Standardfälle (Alarme, Statusmeldungen, etc.)
+  - [ ] Anpassbare Vorlagen-Bibliothek mit eigenen Bausteinen
+
+- [ ] **Kontextspezifische Hilfe**
+  - [ ] Kontext-Tooltips mit Erklärungen zu jedem Feld
+  - [ ] Beispiele für typische Transformationen
+  - [ ] Warnungen bei ungültigen oder ineffizienten Transformationen
+  - [ ] Datentyp-Validierung und Vorschläge zur Korrektur
+
+### Phase 3: Erweiterte Funktionalität (Sprint 5-6)
+
+- [ ] **Test-Framework für Validierung**
+  - [ ] Automatisches Testen von Templates mit echten Gerätedaten
+  - [ ] Simulation verschiedener Nachrichtentypen
+  - [ ] Validierung gegen Zielschema (z.B. evAlarm-API)
+  - [ ] Automatische Erkennung von Fehlern und Verbesserungsvorschläge
+
+- [ ] **Version-Management und Verlauf**
+  - [ ] Versionierte Templates mit Änderungsverlauf
+  - [ ] A/B-Tests für verschiedene Template-Versionen
+  - [ ] Einfache Rollback-Funktion zu früheren Versionen
+  - [ ] Diff-Ansicht zum Vergleich von Template-Versionen
+
+- [ ] **Gateway-spezifische Templates**
+  - [ ] Erstellung von Templates basierend auf bestimmten Gateway-Typen
+  - [ ] Automatisches Zuweisen passender Templates zu neuen Geräten
+  - [ ] Intelligente Vorschläge basierend auf Gateway-Modell und Gerätetyp
+
+### Phase 4: Integration und Optimierung (Sprint 7-8)
+
+- [ ] **Integration mit Debug-Dashboard**
+  - [ ] Direkte Verbindung zum Message-Debugger für Fehleranalyse
+  - [ ] One-Click-Template-Generierung aus Debug-Ansicht
+  - [ ] Historie der getesteten Nachrichten für Templates
+  - [ ] Performance-Messung der Transformationen
+
+- [ ] **Benutzerfreundlichkeit und UI/UX-Optimierung**
+  - [ ] Vereinfachte Benutzeroberfläche für Nicht-Techniker
+  - [ ] Schrittweise Anleitungen und geführte Touren
+  - [ ] Tastaturkürzel für Power-User
+  - [ ] Mobile-freundliche Ansicht für Tablet-Nutzung
+
+- [ ] **Dokumentation und Lerninhalte**
+  - [ ] Integrierte Dokumentation mit Beispielen
+  - [ ] Video-Tutorials für häufige Anwendungsfälle
+  - [ ] Interaktive Lernübungen für neue Benutzer
+  - [ ] KI-gestützte Vorschläge für Template-Optimierung
+
+### Implementierungsplan
+
+| Sprint | Deliverable                          | Owner   |
+|--------|--------------------------------------|---------|
+| 1      | Live-Datenvisualisierung             | FE+BE   |
+| 2      | Auto-Template-Generierung            | FE+BE   |
+| 3-4    | Drag-and-Drop Template-Editor        | FE      |
+| 5      | Test-Framework und Validierung       | FE+BE   |
+| 6      | Versions-Management                  | FE+BE   |
+| 7      | Debug-Dashboard-Integration          | FE+BE   |
+| 8      | UI/UX-Optimierung und Dokumentation  | FE+UX   |
+
+### Technische Voraussetzungen
+
+Der visuelle Template-Generator baut auf den bereits vorhandenen Komponenten auf:
+
+1. **Normalisierte Template-Engine**: Die bestehende `NormalizedTemplateEngine`-Klasse bietet bereits leistungsstarke Funktionen zur Template-Verarbeitung und Transformation.
+
+2. **Message Normalizer**: Die `MessageNormalizer`-Klasse konvertiert Rohdaten in das standardisierte Format, das als Grundlage für die Templates dient.
+
+3. **Filter Rules System**: Das vorhandene Filterregelsystem kann in den visuellen Editor integriert werden, um die Regeldefinition zu vereinfachen.
+
+Die Integration dieser Komponenten in eine benutzerfreundliche Oberfläche wird die Template-Erstellung erheblich vereinfachen und auch für technisch weniger versierte Benutzer zugänglich machen.
