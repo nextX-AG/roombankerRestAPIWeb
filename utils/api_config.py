@@ -100,7 +100,9 @@ ENDPOINTS = {
         'detail': '/<template_id>',
         'delete': '/<template_id>',
         'test': '/test-transform',
-        'reload': '/reload'
+        'reload': '/reload',
+        'generate': '/generate',
+        'test-code': '/test-code'
     },
     
     'system': {
