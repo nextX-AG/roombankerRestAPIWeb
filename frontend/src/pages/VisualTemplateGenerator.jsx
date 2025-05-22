@@ -1,5 +1,5 @@
 import React from 'react';
-import PageTemplate from '../components/PageTemplate';
+import PageTemplate from './PageTemplate';
 import VisualTemplateGeneratorComponent from '../components/VisualTemplateGenerator';
 import { Zap } from 'lucide-react';
 
