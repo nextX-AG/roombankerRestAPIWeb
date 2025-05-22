@@ -1053,3 +1053,84 @@ Die UI soll modernisiert werden, orientiert an modernen Server-Management-Konsol
 |  6     | Dark-Mode, QA, Docs                | QA      |
 
 Das Feature-Flag-System sollte für jede Komponente implementiert werden, um rollbacks zu erleichtern (z.B. `
+
+## 18. Multiuser-Fähigkeit und Kundentrennung (HOHE PRIORITÄT)
+
+Das System verfügt bereits über eine grundlegende Authentifizierungsstruktur und ein Datenmodell mit klarer Hierarchie (Kunden -> Gateways -> Geräte), ist aber aktuell nicht vollständig multiuser-fähig. Jeder authentifizierte Benutzer kann derzeit auf alle Daten zugreifen, unabhängig vom Kunden.
+
+### Phase 1: Verknüpfung von Benutzern und Kunden (Sprint 1)
+
+- [ ] **Erweiterung des Datenmodells**
+  - [ ] Benutzer-Modell mit Kundenzuordnung (`user.customer_id` oder Zuordnungstabelle)
+  - [ ] Feinere Rollendefinition (System-Admin, Kunden-Admin, Benutzer)
+  - [ ] Schema-Migration und Datenbankanpassungen
+  - [ ] Schnittstelle zur Verwaltung von Benutzer-Kunden-Zuordnungen
+
+- [ ] **Frontend-Anpassungen für Benutzerverwaltung**
+  - [ ] Benutzerverwaltungsseite mit Kundenzuordnung
+  - [ ] Rollen- und Berechtigungsanzeige
+  - [ ] Kundenspezifische Einschränkungen in der Benutzeroberfläche
+
+### Phase 2: API-Zugriffsbeschränkungen (Sprint 2)
+
+- [ ] **Schutz aller API-Endpunkte**
+  - [ ] Alle API-Routen mit `@require_auth` schützen
+  - [ ] Implementierung von Middleware für kundenbezogene Zugriffsbeschränkungen
+  - [ ] Endpoint für `/api/v1/gateways` filtern nach Kunde des angemeldeten Benutzers
+  - [ ] Endpoint für `/api/v1/devices` filtern nach Kunde des angemeldeten Benutzers
+  - [ ] Neue Helper-Funktion `get_customer_id_from_token()` implementieren
+  - [ ] API-Response-Filterung basierend auf Benutzerberechtigungen
+
+- [ ] **Erweiterung der Auth-Middleware**
+  - [ ] Erweiterter Token-Payload mit Kundeninformationen und Berechtigungen
+  - [ ] Validierungsfunktionen für Ressourcenzugriff (`check_resource_permission()`)
+  - [ ] Abfangen unberechtigter Zugriffe mit spezifischen Fehlermeldungen
+  - [ ] Logging aller Zugriffsversuche für Audit-Zwecke
+
+### Phase 3: Frontend-Anpassungen (Sprint 3)
+
+- [ ] **Benutzerspezifische UI-Anpassungen**
+  - [ ] Dashboard nach Kundenberechtigungen filtern
+  - [ ] Gateways-Liste für den Kunden des Benutzers einschränken
+  - [ ] Geräteliste für den Kunden des Benutzers einschränken
+  - [ ] Kunde in Navigation anzeigen, wenn Benutzer einem Kunden zugeordnet ist
+  - [ ] Admin-Ansicht mit allen Kunden für System-Administratoren
+
+- [ ] **Verbesserte Benutzerführung**
+  - [ ] Klare Anzeige der aktuellen Berechtigungen
+  - [ ] Hilfetext bei Zugriffsversuchen auf nicht erlaubte Ressourcen
+  - [ ] Kontextabhängige Navigation basierend auf Benutzerrolle
+
+### Phase 4: System-Admin-Funktionen (Sprint 4)
+
+- [ ] **Erweiterte Admin-Funktionen**
+  - [ ] Kundenübergreifende Datenansicht für Administratoren
+  - [ ] Möglichkeit zum Wechseln zwischen Kunden für Support-Zwecke
+  - [ ] Audit-Logs für alle kundenübergreifenden Aktionen
+  - [ ] Administratives Dashboard mit System-Übersicht
+
+- [ ] **Berechtigungsmanagement**
+  - [ ] Detaillierte Berechtigungsmatrix (Lesen/Schreiben/Löschen pro Ressource)
+  - [ ] Dynamische Rollenzuweisung
+  - [ ] Temporäre Zugriffsberechtigungen für Support-Zwecke
+  - [ ] Audit-Trail für Berechtigungsänderungen
+
+### Implementierungsplan
+
+| Sprint | Deliverable                        | Owner   |
+| ------ | ---------------------------------- | ------- |
+|  1     | Datenmodell-Erweiterung            | BE Team |
+|  1     | Benutzerverwaltung im Frontend     | FE Team |
+|  2     | API-Zugriffsbeschränkungen         | BE Team |
+|  2     | Auth-Middleware-Erweiterung        | BE Team |
+|  3     | Frontend-Filterung                 | FE Team |
+|  3     | Kontextabhängige UI-Elemente       | FE Team |
+|  4     | Admin-Funktionen                   | BE+FE   |
+|  4     | Berechtigungsmatrix                | BE+FE   |
+
+### Vorteile der Implementierung
+
+- **Sicherheit**: Klare Trennung der Kundendaten verhindert unberechtigten Zugriff
+- **Skalierbarkeit**: System kann sicher für mehrere Kunden gleichzeitig betrieben werden
+- **Compliance**: Einhaltung von Datenschutzbestimmungen durch Datentrennung
+- **Servicefähigkeit**: Verbesserte Support-Möglichkeiten durch Admin-Funktionen
