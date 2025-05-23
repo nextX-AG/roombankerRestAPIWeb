@@ -410,6 +410,51 @@ git remote add production ssh://root@deine-server-ip/var/git/iot-gateway.git
 git push production main
 ```
 
+#### Methode 3: Docker-Compose als Systemd-Service
+
+Wenn du Docker-Compose für dein Deployment verwendest, kannst du es als Systemd-Service einrichten, der automatisch beim Systemstart läuft:
+
+```bash
+# Erstelle einen Systemd-Service für Docker Compose
+sudo nano /etc/systemd/system/evalarm-gateway.service
+```
+
+Füge folgenden Inhalt in die Service-Datei ein:
+
+```
+[Unit]
+Description=evAlarm Gateway Docker Compose Application
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/evalarm-gateway
+ExecStart=/usr/bin/docker-compose up -d
+ExecStop=/usr/bin/docker-compose down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Aktiviere und starte den Service:
+
+```bash
+sudo systemctl enable evalarm-gateway.service
+sudo systemctl start evalarm-gateway.service
+```
+
+Diese Konfiguration bietet folgende Vorteile:
+- Automatischer Start aller Container beim Systemstart
+- Sauberes Herunterfahren beim Systemstopp
+- Integrierte Abhängigkeit vom Docker-Dienst
+- Einfache Verwaltung über Systemd-Befehle:
+  - `systemctl status evalarm-gateway`
+  - `systemctl restart evalarm-gateway`
+  - `systemctl stop evalarm-gateway`
+
 ### Nginx-Konfiguration
 
 Für beide Methoden benötigst du eine Nginx-Konfiguration:
