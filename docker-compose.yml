@@ -13,7 +13,7 @@ services:
       - GATEWAY_PORT=8000
       - REDIS_HOST=redis
       - MONGODB_URI=mongodb://mongo:27017/
-      - ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173,http://127.0.0.1,http://127.0.0.1:80,http://127.0.0.1:5173
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173,http://127.0.0.1,http://127.0.0.1:80,http://127.0.0.1:5173,http://evalarm.nextxiot.com
     depends_on:
       mongo:
         condition: service_healthy
@@ -49,7 +49,7 @@ services:
       - API_PORT=8080
       - REDIS_HOST=redis
       - MONGODB_URI=mongodb://mongo:27017/
-      - ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173,http://127.0.0.1,http://127.0.0.1:80,http://127.0.0.1:5173
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173,http://127.0.0.1,http://127.0.0.1:80,http://127.0.0.1:5173,http://evalarm.nextxiot.com
     depends_on:
       mongo:
         condition: service_healthy
@@ -79,7 +79,7 @@ services:
       - AUTH_PORT=8081
       - REDIS_HOST=redis
       - MONGODB_URI=mongodb://mongo:27017/
-      - ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173,http://127.0.0.1,http://127.0.0.1:80,http://127.0.0.1:5173
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173,http://127.0.0.1,http://127.0.0.1:80,http://127.0.0.1:5173,http://evalarm.nextxiot.com
     depends_on:
       mongo:
         condition: service_healthy
@@ -109,7 +109,7 @@ services:
       - PROCESSOR_PORT=8082
       - REDIS_HOST=redis
       - MONGODB_URI=mongodb://mongo:27017/
-      - ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173,http://127.0.0.1,http://127.0.0.1:80,http://127.0.0.1:5173
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173,http://127.0.0.1,http://127.0.0.1:80,http://127.0.0.1:5173,http://evalarm.nextxiot.com
     depends_on:
       mongo:
         condition: service_healthy
@@ -138,6 +138,7 @@ services:
       - "80:5173"
     environment:
       - VITE_DOCKER=true
+      - VITE_ALLOWED_HOSTS=localhost,127.0.0.1,evalarm.nextxiot.com
     command: sh -c "npm install --legacy-peer-deps && npm run dev -- --host 0.0.0.0"
     depends_on:
       gateway:
