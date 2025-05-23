@@ -15,7 +15,7 @@ export const API_VERSION = 'v1';
 // Gateway-URL - basierend auf der Umgebung
 export const GATEWAY_URL = 
   isProduction ? '/api' :
-  isDocker ? '/api' : // Verwende relative URL für Docker, da der Browser im Container läuft
+  isDocker ? '/api' : // In Docker und Produktion nutzen wir relative URLs (Nginx leitet weiter)
   // Der Browser läuft außerhalb von Docker und kann nicht direkt auf Container-Namen zugreifen
   'http://localhost:8000/api';
 

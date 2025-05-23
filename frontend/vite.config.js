@@ -9,6 +9,13 @@ export default defineConfig({
       'localhost',
       '127.0.0.1',
       'evalarm.nextxiot.com'
-    ]
+    ],
+    proxy: {
+      '/api': {
+        target: 'http://gateway:8000',
+        changeOrigin: true,
+        secure: false
+      }
+    }
   }
 })
