@@ -5,10 +5,13 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 80;
 
-// API Proxy zum Gateway
+// API Proxy zum Gateway - mit expliziter pathRewrite Option
 app.use('/api', createProxyMiddleware({
   target: 'http://gateway:8000',
   changeOrigin: true,
+  pathRewrite: {
+    '^/api': '/api'  // Explizite Path-Rewrite-Regel
+  },
   onError: (err, req, res) => {
     console.error('Proxy error:', err);
     res.status(502).json({ error: 'Bad Gateway' });
