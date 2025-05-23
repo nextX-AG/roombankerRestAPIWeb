@@ -102,7 +102,8 @@ ENDPOINTS = {
         'test': '/test-transform',
         'reload': '/reload',
         'generate': '/generate',
-        'test-code': '/test-code'
+        'test-code': '/test-code',
+        'filter-rules': '/filter-rules'
     },
     
     'system': {

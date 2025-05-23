@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "lucide-react": "^0.511.0",
+    "react-bootstrap-range-slider": "^3.0.8",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-json-view-lite": "^2.4.1"

@@ -960,6 +960,10 @@ Die UI soll modernisiert werden, orientiert an modernen Server-Management-Konsol
   - [x] Neue Menüstruktur nach menu.ts-Vorlage implementieren
   - [x] Top-Bar auf Logo + User-Menu + Command Palette reduzieren
   - [x] Breadcrumbs integrieren
+  - [x] **Menü-Überlappungsproblem behoben**
+    - [x] Korrektes margin-left für die main-content Klasse implementiert
+    - [x] Korrekte Positionierung und Höhenberechnung der Side-Navigation
+    - [x] CSS-Transitions für flüssigere Animation beim Ein-/Ausklappen
 
 - [x] **Drawer statt Modals**
   - [x] `<Offcanvas placement="end">` als Basis-Komponente
@@ -1160,25 +1164,47 @@ Das aktuelle Template-System ist für technisch weniger versierte Benutzer zu ko
 
 ### Phase 2: Drag-and-Drop Template-Editor (Sprint 3-4)
 
-- [ ] **Visueller Template-Builder**
-  - [ ] Drag-and-Drop-Interface zum Erstellen der JSON-Struktur 
-  - [ ] Einfaches Hinzufügen von Variablen aus den verfügbaren Datenfeldern
-  - [ ] Kontextmenü mit Vorschlägen für häufig verwendete Transformationen
-  - [ ] Grafischer Editor für Filterregeln (Bedingungen, Wertebereich, Muster)
+- [x] **Visueller Template-Builder**
+  - [x] Drag-and-Drop-Interface zum Erstellen der JSON-Struktur 
+  - [x] Einfaches Hinzufügen von Variablen aus den verfügbaren Datenfeldern
+  - [x] Kontextmenü mit Vorschlägen für häufig verwendete Transformationen
+  - [x] **Filter-Regeln-Integration**
+    - [x] Auswahl vordefinierter Filterregeln aus Dropdown-Liste
+    - [x] Anzeige angewendeter Filterregeln im Template
+    - [x] Einfaches Hinzufügen/Entfernen von Filterregeln
+    - [x] API-Integrationen für das Laden und Testen von Filterregeln
 
-- [ ] **Template-Komponenten-Bibliothek**
-  - [ ] Vordefinierte Bausteine für häufige Transformationen
-  - [ ] Drag-and-Drop für komplexe Strukturen (z.B. "events"-Array für evAlarm)
-  - [ ] Vorlagen für Standardfälle (Alarme, Statusmeldungen, etc.)
-  - [ ] Anpassbare Vorlagen-Bibliothek mit eigenen Bausteinen
+### Phase 3: UI-Verbesserungen (NEUE HOHE PRIORITÄT)
 
-- [ ] **Kontextspezifische Hilfe**
-  - [ ] Kontext-Tooltips mit Erklärungen zu jedem Feld
-  - [ ] Beispiele für typische Transformationen
-  - [ ] Warnungen bei ungültigen oder ineffizienten Transformationen
-  - [ ] Datentyp-Validierung und Vorschläge zur Korrektur
+- [x] **Drawer-Pattern für Transformationsergebnisse**
+  - [x] Umstellung der aktuellen Split-View auf Drawer-Pattern
+  - [x] Mehr Platz für den Template-Editor durch auslagern des Ergebnisses
+  - [x] Konsistente Anwendung des Drawer-Musters wie in anderen Anwendungsteilen
+  - [x] Möglichkeit, das Ergebnis bei Bedarf ein- und auszublenden
 
-### Phase 3: Erweiterte Funktionalität (Sprint 5-6)
+- [x] **Erweiterte Filterregeln-UI**
+  - [x] Detailansicht für jede Filterregel mit Eingabefeldern für Parameter
+  - [x] Min/Max-Wert Eingabefelder mit Slider für RangeRule
+  - [x] Dropdown mit möglichen Werten aus normalisierten Daten für ValueComparisonRule
+  - [x] Typen-Badges für bessere Visualisierung der Regeltypen
+  - [x] Bearbeitungsmöglichkeit für bestehende Regeln
+  - [x] Möglichkeit, eigene Filterregeln zu erstellen und zu speichern
+
+- [x] **Integration mit der Nachrichtenseite**
+  - [x] Button "Template aus dieser Nachricht erstellen" im Nachrichten-Drawer
+  - [x] Direkte Übergabe der ausgewählten Nachricht an den Template-Generator
+  - [x] Automatische Übernahme der Nachricht in den Template-Generator
+  - [x] Mehrere Möglichkeiten zum Erstellen eines Templates (aus Rohdaten oder normalisierter Nachricht)
+  - [x] Verbesserter Workflow von der Nachrichtenansicht zum Template-Generator
+
+### Phase 4: Erweiterte Funktionalität (zukünftige Erweiterung)
+
+- [ ] **Flow-basierter visueller Editor (ZUKÜNFTIGE ERWEITERUNG)**
+  - [ ] Integration von React-Flow für node-basierte visuelle Programmierung
+  - [ ] Verschiedene Knotentypen (Eingabe, Filter, Transformation, Ausgabe)
+  - [ ] Visuelles Gestalten des Datenflusses durch Drag-and-Drop
+  - [ ] Echtzeit-Vorschau während der Flow-Bearbeitung
+  - [ ] Speichern und Laden komplexer Transformationsflüsse
 
 - [ ] **Test-Framework für Validierung**
   - [ ] Automatisches Testen von Templates mit echten Gerätedaten
@@ -1192,51 +1218,11 @@ Das aktuelle Template-System ist für technisch weniger versierte Benutzer zu ko
   - [ ] Einfache Rollback-Funktion zu früheren Versionen
   - [ ] Diff-Ansicht zum Vergleich von Template-Versionen
 
-- [ ] **Gateway-spezifische Templates**
-  - [ ] Erstellung von Templates basierend auf bestimmten Gateway-Typen
-  - [ ] Automatisches Zuweisen passender Templates zu neuen Geräten
-  - [ ] Intelligente Vorschläge basierend auf Gateway-Modell und Gerätetyp
+### Implementierungsplan für Phase 3 (UI-Verbesserungen)
 
-### Phase 4: Integration und Optimierung (Sprint 7-8)
-
-- [ ] **Integration mit Debug-Dashboard**
-  - [ ] Direkte Verbindung zum Message-Debugger für Fehleranalyse
-  - [ ] One-Click-Template-Generierung aus Debug-Ansicht
-  - [ ] Historie der getesteten Nachrichten für Templates
-  - [ ] Performance-Messung der Transformationen
-
-- [ ] **Benutzerfreundlichkeit und UI/UX-Optimierung**
-  - [ ] Vereinfachte Benutzeroberfläche für Nicht-Techniker
-  - [ ] Schrittweise Anleitungen und geführte Touren
-  - [ ] Tastaturkürzel für Power-User
-  - [ ] Mobile-freundliche Ansicht für Tablet-Nutzung
-
-- [ ] **Dokumentation und Lerninhalte**
-  - [ ] Integrierte Dokumentation mit Beispielen
-  - [ ] Video-Tutorials für häufige Anwendungsfälle
-  - [ ] Interaktive Lernübungen für neue Benutzer
-  - [ ] KI-gestützte Vorschläge für Template-Optimierung
-
-### Implementierungsplan
-
-| Sprint | Deliverable                          | Owner   |
-|--------|--------------------------------------|---------|
-| 1      | Live-Datenvisualisierung             | FE+BE   |
-| 2      | Auto-Template-Generierung            | FE+BE   |
-| 3-4    | Drag-and-Drop Template-Editor        | FE      |
-| 5      | Test-Framework und Validierung       | FE+BE   |
-| 6      | Versions-Management                  | FE+BE   |
-| 7      | Debug-Dashboard-Integration          | FE+BE   |
-| 8      | UI/UX-Optimierung und Dokumentation  | FE+UX   |
-
-### Technische Voraussetzungen
-
-Der visuelle Template-Generator baut auf den bereits vorhandenen Komponenten auf:
-
-1. **Normalisierte Template-Engine**: Die bestehende `NormalizedTemplateEngine`-Klasse bietet bereits leistungsstarke Funktionen zur Template-Verarbeitung und Transformation.
-
-2. **Message Normalizer**: Die `MessageNormalizer`-Klasse konvertiert Rohdaten in das standardisierte Format, das als Grundlage für die Templates dient.
-
-3. **Filter Rules System**: Das vorhandene Filterregelsystem kann in den visuellen Editor integriert werden, um die Regeldefinition zu vereinfachen.
-
-Die Integration dieser Komponenten in eine benutzerfreundliche Oberfläche wird die Template-Erstellung erheblich vereinfachen und auch für technisch weniger versierte Benutzer zugänglich machen.
+| Sprint | Deliverable                          | Owner   | Priorität  |
+|--------|--------------------------------------|---------|------------|
+| 1      | Drawer für Transformationsergebnisse | FE Team | Hoch       |
+| 2      | Erweiterte Filterregeln-UI           | FE Team | Hoch       |
+| 3      | Integration mit Nachrichtenseite     | FE+BE   | Hoch       |
+| 4      | Flow-basierter Editor (Konzept)      | UX+FE   | Niedrig    |

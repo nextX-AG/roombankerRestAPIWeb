@@ -330,6 +330,19 @@ export const templateApi = {
       method: 'POST',
       body: JSON.stringify(template)
     });
+  },
+  
+  // Methode zum Abrufen aller verfügbaren Filterregeln
+  getFilterRules: async () => {
+    return fetchApi(getApiUrl('templates', 'filter-rules'));
+  },
+  
+  // Methode zum Testen einer Filterregel gegen eine Nachricht
+  testFilterRule: async (ruleId, message) => {
+    return fetchApi(getApiUrl('templates', 'test-filter-rule'), {
+      method: 'POST',
+      body: JSON.stringify({ rule_id: ruleId, message })
+    });
   }
 };
 

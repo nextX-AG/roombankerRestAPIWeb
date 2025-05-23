@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Button, Form, ListGroup, Badge, Tooltip, OverlayTrigger } from 'react-bootstrap';
+import { Card, Row, Col, Button, Form, ListGroup, Badge, Tooltip, OverlayTrigger, Modal } from 'react-bootstrap';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { 
   Plus, Trash2, ArrowRight, ChevronDown, ChevronUp, Copy, 
-  Check, X, Info, AlertTriangle, Settings, Zap
+  Check, X, Info, AlertTriangle, Settings, Zap, Filter, Edit
 } from 'lucide-react';
 import '../styles/template-builder.css';
+import FilterRuleDetailForm from './FilterRuleDetailForm';
+import 'react-bootstrap-range-slider/dist/react-bootstrap-range-slider.css';
 
 // Konstanten für Drag-and-Drop-Typen
 const ItemTypes = {
@@ -15,13 +17,29 @@ const ItemTypes = {
   STRUCTURE: 'structure'
 };
 
+// Vordefinierte Filterregeln, die zur Auswahl stehen
+const DEFAULT_FILTER_RULES = [
+  { id: 'panic_alarm', name: 'Panic Alarm', description: 'Filtert Panic-Button-Alarme', type: 'ValueComparisonRule', field_path: 'devices[0].values.alarmtype', expected_value: 'panic' },
+  { id: 'battery_ok', name: 'Batterie OK', description: 'Prüft, ob der Batteriestatus "connected" ist', type: 'ValueComparisonRule', field_path: 'devices[0].values.batterystatus', expected_value: 'connected' },
+  { id: 'any_alarm', name: 'Beliebiger Alarm', description: 'Filtert alle Alarme, unabhängig vom Typ', type: 'ValueComparisonRule', field_path: 'devices[0].values.alarmstatus', expected_value: 'alarm' },
+  { id: 'online_only', name: 'Nur Online', description: 'Filtert nur Online-Geräte', type: 'ValueComparisonRule', field_path: 'devices[0].values.onlinestatus', expected_value: 'online' },
+  { id: 'temperature_range', name: 'Temperaturbereich', description: 'Prüft, ob die Temperatur im Bereich liegt', type: 'RangeRule', field_path: 'devices[0].values.temperature', min_value: 18, max_value: 30, inclusive: true },
+  { id: 'humidity_range', name: 'Luftfeuchtigkeitsbereich', description: 'Prüft, ob die Luftfeuchtigkeit im Bereich liegt', type: 'RangeRule', field_path: 'devices[0].values.humidity', min_value: 30, max_value: 70, inclusive: true },
+  { id: 'contains_smoke', name: 'Enthält Rauch', description: 'Filtert Nachrichten mit Rauchmelder-Warnungen', type: 'ValueComparisonRule', field_path: 'devices[0].values.smoke', expected_value: true },
+  { id: 'alarm_and_online', name: 'Alarm UND Online', description: 'Kombinierte Bedingung (Alarm UND Online)', type: 'AndRule', rules: [
+    { name: 'is_alarm', type: 'ValueComparisonRule', field_path: 'devices[0].values.alarmstatus', expected_value: 'alarm' },
+    { name: 'is_online', type: 'ValueComparisonRule', field_path: 'devices[0].values.onlinestatus', expected_value: 'online' }
+  ]}
+];
+
 /**
  * Visueller Template-Builder mit Drag-and-Drop-Funktionalität
  */
 const TemplateBuilder = ({ 
   normalizedMessage = {},
   templateCode = '',
-  onChange = () => {}
+  onChange = () => {},
+  filterRules = []
 }) => {
   // Template-Struktur im Editor
   const [template, setTemplate] = useState({
@@ -34,6 +52,18 @@ const TemplateBuilder = ({
     }
   });
 
+  // State für die Filterregel-Bearbeitung
+  const [selectedRuleId, setSelectedRuleId] = useState(null);
+  const [showRuleEditor, setShowRuleEditor] = useState(false);
+  const [editingRule, setEditingRule] = useState(null);
+  const [showCreateRule, setShowCreateRule] = useState(false);
+  
+  // Mapping von Regel-IDs zu vollständigen Regelobjekten
+  const [ruleDetails, setRuleDetails] = useState({});
+
+  // Verwende die übergebenen Filterregeln, wenn vorhanden, sonst die Standardregeln
+  const availableFilterRules = filterRules.length > 0 ? filterRules : DEFAULT_FILTER_RULES;
+
   // Beim ersten Rendern den bestehenden Code einlesen, falls vorhanden
   useEffect(() => {
     if (templateCode) {
@@ -45,6 +75,15 @@ const TemplateBuilder = ({
       }
     }
   }, [templateCode]);
+
+  // Beim ersten Render oder wenn availableFilterRules sich ändert, ruleDetails aufbauen
+  useEffect(() => {
+    const details = {};
+    availableFilterRules.forEach(rule => {
+      details[rule.id] = rule;
+    });
+    setRuleDetails(details);
+  }, [availableFilterRules]);
 
   // Bei Änderungen das Template zurückgeben
   useEffect(() => {
@@ -180,6 +219,70 @@ const TemplateBuilder = ({
     });
   };
 
+  // Eine Filterregel zum Template hinzufügen
+  const addFilterRule = (ruleId) => {
+    // Überprüfen, ob die Regel bereits im Template vorhanden ist
+    if (template.filter_rules.includes(ruleId)) {
+      return;
+    }
+    
+    setTemplate(prev => ({
+      ...prev,
+      filter_rules: [...prev.filter_rules, ruleId]
+    }));
+  };
+
+  // Eine Filterregel aus dem Template entfernen
+  const removeFilterRule = (ruleId) => {
+    setTemplate(prev => ({
+      ...prev,
+      filter_rules: prev.filter_rules.filter(id => id !== ruleId)
+    }));
+  };
+
+  // Eine Filterregel bearbeiten
+  const editFilterRule = (ruleId) => {
+    const rule = availableFilterRules.find(r => r.id === ruleId);
+    if (rule) {
+      setEditingRule(rule);
+      setShowRuleEditor(true);
+    }
+  };
+
+  // Eine neue Filterregel erstellen
+  const createNewFilterRule = () => {
+    setEditingRule({
+      id: `custom_rule_${Date.now()}`,
+      name: 'Neue Filterregel',
+      description: 'Benutzerdefinierte Filterregel',
+      type: 'ValueComparisonRule'
+    });
+    setShowCreateRule(true);
+  };
+
+  // Speichern einer Filterregel (bestehend oder neu)
+  const saveFilterRule = (updatedRule) => {
+    // Hier würde normalerweise ein API-Aufruf zum Speichern der Regel erfolgen
+    // Da wir keine Backend-Integration haben, speichern wir sie nur im lokalen State
+    
+    const newRuleDetails = { ...ruleDetails };
+    newRuleDetails[updatedRule.id] = updatedRule;
+    setRuleDetails(newRuleDetails);
+    
+    // Wenn es eine neue Regel ist, fügen wir sie auch zu den verfügbaren Regeln hinzu
+    if (showCreateRule) {
+      // Hier würden wir normalerweise die Regel im Backend speichern
+      // und dann die aktualisierten Regeln abrufen
+      
+      // Als Workaround fügen wir sie dem Template direkt hinzu
+      addFilterRule(updatedRule.id);
+      setShowCreateRule(false);
+    }
+    
+    setShowRuleEditor(false);
+    setEditingRule(null);
+  };
+
   // Drag-and-Drop-Komponente für ein Feld
   const DraggableField = ({ field }) => {
     const [{ isDragging }, drag] = useDrag(() => ({
@@ -313,6 +416,64 @@ const TemplateBuilder = ({
     );
   };
 
+  // FilterRule Komponente
+  const FilterRuleItem = ({ rule }) => {
+    const isSelected = template.filter_rules.includes(rule.id);
+    
+    return (
+      <ListGroup.Item 
+        action 
+        className="d-flex justify-content-between align-items-center"
+        variant={isSelected ? "success" : ""}
+      >
+        <div>
+          <div className="fw-bold">{rule.name}</div>
+          <div className="text-muted small">{rule.description}</div>
+          <div className="d-flex align-items-center mt-1">
+            <Badge bg="info" className="me-2">
+              {rule.type === 'ValueComparisonRule' && 'Wertevergleich'}
+              {rule.type === 'RangeRule' && 'Zahlenbereich'}
+              {rule.type === 'RegexRule' && 'Regex-Muster'}
+              {rule.type === 'ListContainsRule' && 'Werte-Liste'}
+              {rule.type === 'AndRule' && 'UND-Verknüpfung'}
+              {rule.type === 'OrRule' && 'ODER-Verknüpfung'}
+            </Badge>
+            {rule.field_path && (
+              <span className="small text-muted">{rule.field_path}</span>
+            )}
+          </div>
+        </div>
+        {isSelected ? (
+          <div>
+            <Button 
+              variant="outline-secondary" 
+              size="sm"
+              className="me-2"
+              onClick={() => editFilterRule(rule.id)}
+            >
+              <Edit size={14} />
+            </Button>
+            <Button 
+              variant="outline-danger" 
+              size="sm"
+              onClick={() => removeFilterRule(rule.id)}
+            >
+              <X size={14} />
+            </Button>
+          </div>
+        ) : (
+          <Button 
+            variant="outline-success" 
+            size="sm"
+            onClick={() => addFilterRule(rule.id)}
+          >
+            <Plus size={14} />
+          </Button>
+        )}
+      </ListGroup.Item>
+    );
+  };
+
   // Hinzufügen eines leeren Events
   const addEmptyEvent = () => {
     setTemplate(prev => ({
@@ -401,14 +562,6 @@ const TemplateBuilder = ({
                     <span>Event (Nachricht)</span>
                     <Plus size={16} />
                   </ListGroup.Item>
-                  <ListGroup.Item 
-                    action
-                    className="d-flex justify-content-between align-items-center"
-                    disabled
-                  >
-                    <span>Filter-Regel</span>
-                    <Plus size={16} />
-                  </ListGroup.Item>
                 </ListGroup>
               </Card.Body>
             </Card>
@@ -457,25 +610,69 @@ const TemplateBuilder = ({
             
             <Card className="mt-3">
               <Card.Header className="d-flex justify-content-between align-items-center">
-                <span>Filter-Regeln</span>
+                <div>
+                  <span>Filter-Regeln</span>
+                  <Badge bg="info" className="ms-2">
+                    {template.filter_rules.length} aktiviert
+                  </Badge>
+                </div>
                 <Button 
-                  variant="outline-secondary" 
+                  variant="primary" 
                   size="sm"
-                  disabled
+                  onClick={createNewFilterRule}
                 >
                   <Plus size={14} className="me-1" />
-                  Filter hinzufügen
+                  Neue Regel
                 </Button>
               </Card.Header>
               <Card.Body>
-                <div className="text-center text-muted py-3">
-                  <Settings size={24} className="mb-2" />
-                  <p>Filter-Regeln werden in einer zukünftigen Version verfügbar sein.</p>
-                </div>
+                {availableFilterRules.length > 0 ? (
+                  <ListGroup>
+                    {availableFilterRules.map((rule) => (
+                      <FilterRuleItem key={rule.id} rule={rule} />
+                    ))}
+                  </ListGroup>
+                ) : (
+                  <div className="text-center text-muted py-3">
+                    <Settings size={24} className="mb-2" />
+                    <p>Keine vordefinierten Filter-Regeln verfügbar.</p>
+                  </div>
+                )}
               </Card.Body>
             </Card>
           </Col>
         </Row>
+        
+        {/* Modal für die Regelbearbeitung */}
+        <Modal 
+          show={showRuleEditor || showCreateRule} 
+          onHide={() => {
+            setShowRuleEditor(false);
+            setShowCreateRule(false);
+            setEditingRule(null);
+          }}
+          size="lg"
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>
+              {showCreateRule ? 'Neue Filterregel erstellen' : 'Filterregel bearbeiten'}
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {editingRule && (
+              <FilterRuleDetailForm 
+                rule={editingRule}
+                normalizedMessage={normalizedMessage}
+                onSave={saveFilterRule}
+                onCancel={() => {
+                  setShowRuleEditor(false);
+                  setShowCreateRule(false);
+                  setEditingRule(null);
+                }}
+              />
+            )}
+          </Modal.Body>
+        </Modal>
       </div>
     </DndProvider>
   );

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, Button, Form, Row, Col, Alert, Tabs, Tab, Spinner } from 'react-bootstrap';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { Zap, Wrench, Save, Play, RefreshCw, Info, EyeOff, Eye } from 'lucide-react';
+import { Zap, Wrench, Save, Play, RefreshCw, Info, EyeOff, Eye, ExternalLink } from 'lucide-react';
 import CodeEditor from './CodeEditor';
 import TemplateBuilder from './TemplateBuilder';
+import TransformationResultDrawer from './TransformationResultDrawer';
 import { templateApi, messageApi } from '../api';
 
 /**
@@ -21,6 +22,7 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
   const [transformedMessage, setTransformedMessage] = useState({});
   const [templateCode, setTemplateCode] = useState('');
   const [templates, setTemplates] = useState([]);
+  const [filterRules, setFilterRules] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(templateId || '');
   
   // UI-Zustände
@@ -29,10 +31,12 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
   const [success, setSuccess] = useState(null);
   const [activeTab, setActiveTab] = useState('data');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showResultDrawer, setShowResultDrawer] = useState(false);
   
-  // Lade Templates beim ersten Rendern
+  // Lade Templates und Filterregeln beim ersten Rendern
   useEffect(() => {
     fetchTemplates();
+    fetchFilterRules();
   }, []);
   
   // Lade spezifisches Template, wenn templateId gesetzt ist
@@ -41,6 +45,27 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
       loadTemplate(templateId);
     }
   }, [templateId]);
+  
+  // Automatisch den Ergebnis-Drawer öffnen, wenn ein Transformationsergebnis vorliegt
+  useEffect(() => {
+    if (Object.keys(transformedMessage).length > 0) {
+      setShowResultDrawer(true);
+    }
+  }, [transformedMessage]);
+  
+  // Verarbeite initialMessage automatisch, wenn sie vorhanden ist
+  useEffect(() => {
+    if (initialMessage && Object.keys(initialMessage).length > 0) {
+      console.log("Verarbeite übergebene Nachricht:", initialMessage);
+      setRawMessage(initialMessage);
+      // processMessage direkt aufzurufen wäre gefährlich wegen Infinite Loop
+      // Stattdessen einmalig nach einem Render verarbeiten
+      const timer = setTimeout(() => {
+        processMessage();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [initialMessage]);
   
   // Lade Templates aus der API
   const fetchTemplates = async () => {
@@ -54,6 +79,24 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
       }
     } catch (error) {
       console.error('API-Fehler beim Laden der Templates:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Lade Filterregeln aus der API
+  const fetchFilterRules = async () => {
+    try {
+      setLoading(true);
+      const response = await templateApi.getFilterRules();
+      if (response.status === 'success') {
+        setFilterRules(response.data || []);
+      } else {
+        console.warn('Filterregeln konnten nicht geladen werden:', response.error);
+        // Setze Standard-Filterregeln aus TemplateBuilder, wenn API-Aufruf fehlschlägt
+      }
+    } catch (error) {
+      console.error('API-Fehler beim Laden der Filterregeln:', error);
     } finally {
       setLoading(false);
     }
@@ -124,6 +167,8 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
       if (response.status === 'success') {
         setTransformedMessage(response.data.transformed_message || {});
         setSuccess('Nachricht erfolgreich transformiert');
+        // Drawer automatisch öffnen mit dem Ergebnis
+        setShowResultDrawer(true);
       } else {
         setError(`Fehler bei der Transformation: ${response.error?.message}`);
       }
@@ -209,6 +254,8 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
       if (response.status === 'success') {
         setTransformedMessage(response.data.transformed_message || {});
         setSuccess('Transformation aktualisiert');
+        // Drawer automatisch öffnen mit dem Ergebnis
+        setShowResultDrawer(true);
       } else {
         setError(`Fehler bei der Transformation: ${response.error?.message}`);
       }
@@ -241,6 +288,12 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
   // Handle Änderung im Template-Code (vom Builder oder Editor)
   const handleTemplateCodeChange = (code) => {
     setTemplateCode(code);
+  };
+  
+  // Transformationsergebnis zurücksetzen
+  const resetTransformationResult = () => {
+    setTransformedMessage({});
+    setShowResultDrawer(false);
   };
   
   // JSON-View-Optionen
@@ -325,105 +378,92 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
         </Tab>
         
         <Tab eventKey="template" title="Template-Editor">
-          <Row>
-            <Col md={6}>
-              <Card className="mb-4">
-                <Card.Header className="d-flex justify-content-between align-items-center">
-                  <div className="d-flex align-items-center">
-                    <Form.Select 
-                      className="me-2"
-                      style={{ width: '200px' }}
-                      value={selectedTemplate}
-                      onChange={(e) => loadTemplate(e.target.value)}
-                      disabled={loading}
-                    >
-                      <option value="">Neues Template</option>
-                      {templates.map(template => (
-                        <option key={template.id} value={template.id}>
-                          {template.name}
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Form.Check 
-                      type="switch"
-                      id="advanced-mode"
-                      label="Erweitert"
-                      checked={showAdvanced}
-                      onChange={(e) => setShowAdvanced(e.target.checked)}
-                    />
-                  </div>
-                  <div>
-                    <Button 
-                      variant="primary" 
-                      size="sm" 
-                      className="me-2"
-                      onClick={updateTransformation}
-                      disabled={loading}
-                    >
-                      <Play size={16} className="me-1" />
-                      Testen
-                    </Button>
-                    <Button 
-                      variant="success" 
-                      size="sm" 
-                      onClick={saveTemplate}
-                      disabled={loading}
-                    >
-                      <Save size={16} className="me-1" />
-                      Speichern
-                    </Button>
-                  </div>
-                </Card.Header>
-                <Card.Body>
-                  {showAdvanced ? (
-                    <CodeEditor
-                      value={templateCode}
-                      onChange={handleTemplateCodeChange}
-                      language="json"
-                      height="400px"
-                    />
-                  ) : (
-                    <TemplateBuilder 
-                      normalizedMessage={normalizedMessage}
-                      templateCode={templateCode}
-                      onChange={handleTemplateCodeChange}
-                    />
-                  )}
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={6}>
-              <Card className="mb-4">
-                <Card.Header className="d-flex justify-content-between align-items-center">
-                  <div>Transformationsergebnis</div>
-                  <Button 
-                    variant="outline-secondary" 
-                    size="sm" 
-                    onClick={() => setTransformedMessage({})}
-                    disabled={Object.keys(transformedMessage).length === 0}
-                  >
-                    <RefreshCw size={16} className="me-1" />
-                    Zurücksetzen
-                  </Button>
-                </Card.Header>
-                <Card.Body style={{ maxHeight: '400px', overflow: 'auto' }}>
-                  {Object.keys(transformedMessage).length > 0 ? (
-                    <JsonView 
-                      data={transformedMessage} 
-                      {...jsonViewOptions} 
-                    />
-                  ) : (
-                    <div className="text-center text-muted py-5">
-                      <Info size={32} className="mb-2" />
-                      <p>Verwenden Sie den "Testen"-Button, um die Transformation anzuzeigen.</p>
-                    </div>
-                  )}
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
+          <Card className="mb-4">
+            <Card.Header className="d-flex justify-content-between align-items-center">
+              <div className="d-flex align-items-center">
+                <Form.Select 
+                  className="me-2"
+                  style={{ width: '200px' }}
+                  value={selectedTemplate}
+                  onChange={(e) => loadTemplate(e.target.value)}
+                  disabled={loading}
+                >
+                  <option value="">Neues Template</option>
+                  {templates.map(template => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </Form.Select>
+                <Form.Check 
+                  type="switch"
+                  id="advanced-mode"
+                  label="Erweitert"
+                  checked={showAdvanced}
+                  onChange={(e) => setShowAdvanced(e.target.checked)}
+                />
+              </div>
+              <div>
+                <Button 
+                  variant="outline-primary" 
+                  size="sm" 
+                  className="me-2"
+                  onClick={() => setShowResultDrawer(true)}
+                  disabled={Object.keys(transformedMessage).length === 0}
+                >
+                  <ExternalLink size={16} className="me-1" />
+                  Ergebnis anzeigen
+                </Button>
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  className="me-2"
+                  onClick={updateTransformation}
+                  disabled={loading}
+                >
+                  <Play size={16} className="me-1" />
+                  Testen
+                </Button>
+                <Button 
+                  variant="success" 
+                  size="sm" 
+                  onClick={saveTemplate}
+                  disabled={loading}
+                >
+                  <Save size={16} className="me-1" />
+                  Speichern
+                </Button>
+              </div>
+            </Card.Header>
+            <Card.Body>
+              {showAdvanced ? (
+                <CodeEditor
+                  value={templateCode}
+                  onChange={handleTemplateCodeChange}
+                  language="json"
+                  height="600px"
+                />
+              ) : (
+                <TemplateBuilder 
+                  normalizedMessage={normalizedMessage}
+                  templateCode={templateCode}
+                  onChange={handleTemplateCodeChange}
+                  filterRules={filterRules}
+                />
+              )}
+            </Card.Body>
+          </Card>
         </Tab>
       </Tabs>
+      
+      {/* Drawer für Transformationsergebnis */}
+      <TransformationResultDrawer
+        show={showResultDrawer}
+        onClose={() => setShowResultDrawer(false)}
+        transformedMessage={transformedMessage}
+        onReset={resetTransformationResult}
+        loading={loading}
+      />
     </div>
   );
 };

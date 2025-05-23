@@ -1,34 +1,39 @@
-{
-  "panic_alarm": {
-    "name": "panic_alarm",
+[
+  {
+    "id": "panic_alarm",
+    "name": "Panic Alarm",
     "type": "ValueComparisonRule",
     "description": "Filtert Panic-Button-Alarme",
     "field_path": "devices[0].values.alarmtype",
     "expected_value": "panic"
   },
-  "battery_ok": {
-    "name": "battery_ok",
+  {
+    "id": "battery_ok",
+    "name": "Batterie OK",
     "type": "ValueComparisonRule", 
     "description": "Prüft, ob der Batteriestatus 'connected' ist",
     "field_path": "devices[0].values.batterystatus",
     "expected_value": "connected"
   },
-  "any_alarm": {
-    "name": "any_alarm",
+  {
+    "id": "any_alarm",
+    "name": "Beliebiger Alarm",
     "type": "ValueComparisonRule",
     "description": "Filtert alle Alarme, unabhängig vom Typ",
     "field_path": "devices[0].values.alarmstatus",
     "expected_value": "alarm"
   },
-  "online_only": {
-    "name": "online_only",
+  {
+    "id": "online_only",
+    "name": "Nur Online",
     "type": "ValueComparisonRule",
     "description": "Filtert nur Online-Geräte",
     "field_path": "devices[0].values.onlinestatus",
     "expected_value": "online"
   },
-  "temperature_range": {
-    "name": "temperature_range",
+  {
+    "id": "temperature_range",
+    "name": "Temperaturbereich",
     "type": "RangeRule",
     "description": "Prüft, ob die Temperatur im Bereich liegt",
     "field_path": "devices[0].values.temperature",
@@ -36,8 +41,9 @@
     "max_value": 32,
     "inclusive": true
   },
-  "humidity_range": {
-    "name": "humidity_range",
+  {
+    "id": "humidity_range",
+    "name": "Luftfeuchtigkeitsbereich",
     "type": "RangeRule",
     "description": "Prüft, ob die Luftfeuchtigkeit im Bereich liegt",
     "field_path": "devices[0].values.humidity",
@@ -45,17 +51,22 @@
     "max_value": 70,
     "inclusive": true
   },
-  "contains_smoke": {
-    "name": "contains_smoke",
+  {
+    "id": "contains_smoke",
+    "name": "Enthält Rauch",
     "type": "RegexRule",
     "description": "Filtert Nachrichten mit Rauchmelder-Warnungen",
     "field_path": "devices[0].values.alarmtype",
     "pattern": ".*smoke.*"
   },
-  "alarm_and_online": {
-    "name": "alarm_and_online",
+  {
+    "id": "alarm_and_online",
+    "name": "Alarm UND Online",
     "type": "AndRule",
     "description": "Kombinierte Bedingung (Alarm UND Online)",
-    "rules": ["any_alarm", "online_only"]
+    "rules": [
+      { "name": "is_alarm", "type": "ValueComparisonRule", "field_path": "devices[0].values.alarmstatus", "expected_value": "alarm" },
+      { "name": "is_online", "type": "ValueComparisonRule", "field_path": "devices[0].values.onlinestatus", "expected_value": "online" }
+    ]
   }
-} 
+] 

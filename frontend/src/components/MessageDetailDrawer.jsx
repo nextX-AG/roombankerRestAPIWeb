@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Drawer from './Drawer';
-import { Table, Badge, Button, Alert, Card } from 'react-bootstrap';
+import { Table, Badge, Button, Alert, Card, ButtonGroup } from 'react-bootstrap';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { Copy, ArrowLeft, Check, X } from 'lucide-react';
+import { Copy, ArrowLeft, Check, X, Zap, FileCode } from 'lucide-react';
 import { messageApi } from '../api';
 import config from '../config';
 
@@ -155,6 +155,25 @@ const MessageDetailDrawer = () => {
     }
   };
 
+  // Öffne den Template-Generator mit der aktuellen Nachricht
+  const openTemplateGenerator = () => {
+    if (!message) return;
+    
+    // Wir serialisieren die Nachricht und benutzen sie als URL-Parameter
+    // In einer echten Anwendung würden wir sie im State speichern und weitergeben
+    try {
+      // URL zum Template-Generator mit der aktuellen Nachricht
+      const encoded = encodeURIComponent(JSON.stringify(message.content || message));
+      const url = `/visual-template-generator?message=${encoded}`;
+      
+      // Navigiere zur Seite
+      navigate(url);
+    } catch (error) {
+      console.error('Fehler beim Öffnen des Template-Generators:', error);
+      alert('Fehler beim Öffnen des Template-Generators: ' + error.message);
+    }
+  };
+
   const renderApiResponseBadge = (statusCode) => {
     if (!statusCode) return <Badge bg="secondary">Keine Daten</Badge>;
     
@@ -226,7 +245,17 @@ const MessageDetailDrawer = () => {
     
     return (
       <div className="message-detail-content" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
-        <h5>Metadaten</h5>
+        <h5 className="d-flex justify-content-between align-items-center mb-3">
+          <span>Metadaten</span>
+          <Button 
+            variant="success" 
+            size="sm" 
+            onClick={openTemplateGenerator}
+          >
+            <FileCode size={16} className="me-1" />
+            Template erstellen
+          </Button>
+        </h5>
         <Table bordered size="sm" className="mb-3">
           <tbody>
             <tr>
@@ -269,7 +298,38 @@ const MessageDetailDrawer = () => {
         {debugResult?.extracted_properties && renderJsonSection('Extrahierte Eigenschaften', debugResult.extracted_properties)}
         
         {/* Normalisierte Daten */}
-        {debugResult?.normalized_data && renderJsonSection('Normalisierte Daten', debugResult.normalized_data)}
+        {debugResult?.normalized_data && (
+          <div className="mb-3">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <h6 className="mb-0">Normalisierte Daten</h6>
+              <ButtonGroup>
+                <Button 
+                  size="sm" 
+                  variant="outline-success"
+                  onClick={openTemplateGenerator}
+                >
+                  <Zap size={16} className="me-1" />
+                  Template erstellen
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline-secondary"
+                  onClick={() => copyToClipboard(debugResult.normalized_data, 'Normalisierte Daten')}
+                >
+                  <Copy size={16} className="me-1" />
+                  Kopieren
+                </Button>
+              </ButtonGroup>
+            </div>
+            <Card>
+              <Card.Body className="p-0">
+                <div className="border-0 rounded-0 bg-light" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                  <JsonView data={debugResult.normalized_data} />
+                </div>
+              </Card.Body>
+            </Card>
+          </div>
+        )}
         
         {/* Filterregeln (falls verfügbar) */}
         {debugResult?.filter_results && renderJsonSection('Filter-Ergebnisse', debugResult.filter_results)}

@@ -629,6 +629,40 @@ Das neue Filterregel-System ermöglicht eine detaillierte Konfiguration, welche 
 
 Die Filterregeln werden in einer JSON-Datei gespeichert und durch ein JSON-Schema validiert. Das System stellt eine `FilterRuleEngine`-Klasse bereit, die die Regeln verwaltet und auf normalisierte Nachrichten anwendet.
 
+#### Frontend-Integration der Filterregeln
+
+Im visuellen Template-Generator wurden Filterregeln vollständig integriert:
+
+1. **API-Integration**: 
+   - Neue Endpunkte in der Template-API für Filterregeln
+   - `getFilterRules()` zum Abrufen aller verfügbaren Regeln
+   - `testFilterRule()` zum Testen einer Regel gegen eine Nachricht
+
+2. **Benutzeroberfläche**:
+   - Liste aller verfügbaren Filterregeln im Template-Builder
+   - Einfache Auswahl durch Anklicken einer Regel
+   - Visuelle Hervorhebung aktivierter Regeln
+   - Anzeige der Regelanzahl im Template-Header
+   - **Erweiterte Bearbeitungsmöglichkeiten**:
+     - Detailansicht für Parameter jeder Regelart (Slider für Bereiche, Dropdown für Werte)
+     - Automatische Extraktion möglicher Werte aus normalisierten Daten
+     - Benutzerdefinierte Regelerstellung mit intuitiver UI
+     - Typen-Badges zur schnellen visuellen Unterscheidung der Regelarten
+
+3. **Datenmodell-Integration**:
+   - Filterregeln werden im `filter_rules`-Array des Templates gespeichert
+   - Regeln werden bei Template-Speicherung und -Anwendung berücksichtigt
+   - Fallback auf vordefinierte Standardregeln, falls API nicht verfügbar
+   - Unterstützung für komplexe Regeltypen wie `AndRule` und `OrRule`
+
+4. **Optimierte Benutzerführung**:
+   - Einheitliches Drawer-Pattern für Transformationsergebnisse
+   - Dialogbasierte Regelbearbeitung mit kontextabhängigen Eingabefeldern
+   - Automatische Vorschläge basierend auf verfügbaren Daten
+   - Feldpfad-Validierung gegen normalisierte Datenstruktur
+
+Diese Frontend-Integration ermöglicht es Benutzern, Filterregeln ohne tieferes technisches Verständnis intuitiv auszuwählen und anzuwenden, was die Benutzerfreundlichkeit des Systems erheblich verbessert.
+
 ### 10.4 Erweitertes Template-System
 
 Das neue Template-System bietet eine leistungsstarke und flexible Möglichkeit, normalisierte Nachrichten zu transformieren und weiterzuleiten.
@@ -882,6 +916,28 @@ Die Navigation wurde grundlegend überarbeitet:
 - Hierarchische Menüstruktur nach modernem Design-Pattern
 - Reduzierung der Top-Bar auf Logo, User-Menü und Command Palette
 - Integration von Breadcrumbs für verbesserte Navigation
+
+#### Optimierte Side-Navigation-Implementierung
+
+Die Side-Navigation wurde technisch verbessert, um Überlappungsprobleme zu vermeiden und die Benutzerführung zu optimieren:
+
+- **Dynamisches Layout-System**:
+  - Korrekte Positionierung unter der Top-Navbar (`top: 56px`)
+  - Automatische Höhenberechnung (`height: calc(100vh - 56px)`)
+  - Konsistentes Margin-Management für den Hauptinhalt (`margin-left: 250px`)
+  - Reduzierter Abstand im eingeklappten Zustand (`margin-left: 60px`)
+
+- **Verbesserte Transition-Effekte**:
+  - Weiche Übergänge beim Ein-/Ausklappen des Menüs
+  - Konsistente Animation-Geschwindigkeit (0.3s)
+  - Flüssige Anpassung des Hauptinhalts
+
+- **Responsive Verhalten**:
+  - Automatisches Ausblenden auf mobilen Geräten
+  - Offcanvas-Menü mit eigener Schließen-Funktion
+  - Angepasste Menüpunkte mit Fokus auf Touch-Bedienung
+
+Diese Implementierung verbessert nicht nur die optische Konsistenz, sondern optimiert auch die Benutzererfahrung durch ein zuverlässigeres Layout ohne Überlappungen oder Darstellungsprobleme.
 
 ### 13.2 Drawer-Pattern statt Modals
 

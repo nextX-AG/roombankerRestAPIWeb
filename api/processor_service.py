@@ -628,6 +628,76 @@ def list_endpoints():
         'data': endpoints
     })
 
+@app.route('/api/v1/templates/generate', methods=['POST'])
+def generate_template():
+    """
+    Generiert ein neues Template basierend auf einer normalisierten Nachricht
+    """
+    try:
+        # Daten aus der Anfrage holen
+        data = request.json
+        
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'error': {
+                    'message': 'Keine JSON-Daten empfangen',
+                    'code': 'invalid_input'
+                }
+            }), 400
+        
+        # Prüfen, ob eine normalisierte Nachricht vorhanden ist
+        normalized_message = data.get('message')
+        if not normalized_message:
+            return jsonify({
+                'status': 'error',
+                'error': {
+                    'message': 'Keine normalisierte Nachricht in den Daten',
+                    'code': 'missing_message'
+                }
+            }), 400
+        
+        # Name und Beschreibung aus der Anfrage holen
+        template_name = data.get('name', 'auto_template_' + str(int(time.time())))
+        description = data.get('description', 'Automatisch generiertes Template')
+        
+        # Template Engine initialisieren
+        import os
+        from utils.normalized_template_engine import NormalizedTemplateEngine
+        
+        templates_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates')
+        filter_rules_dir = os.path.join(templates_dir, 'filter_rules')
+        
+        template_engine = NormalizedTemplateEngine(templates_dir, filter_rules_dir)
+        
+        # Template generieren
+        template = template_engine.generate_template(normalized_message, template_name, description)
+        
+        # Template-Code als JSON-String zurückgeben
+        template_code = json.dumps(template, indent=2)
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'template_name': template_name,
+                'template_code': template_code
+            },
+            'message': f'Template {template_name} erfolgreich generiert'
+        })
+    
+    except Exception as e:
+        logger.error(f"Fehler bei der Template-Generierung: {str(e)}")
+        import traceback
+        logger.error(f"Stacktrace: {traceback.format_exc()}")
+        
+        return jsonify({
+            'status': 'error',
+            'error': {
+                'message': f'Fehler bei der Template-Generierung: {str(e)}',
+                'code': 'template_generation_error'
+            }
+        }), 500
+
 @app.route('/api/v1/templates', methods=['GET'])
 def list_templates():
     """
@@ -662,6 +732,56 @@ def list_templates():
         'status': 'success',
         'data': templates
     })
+
+@app.route('/api/v1/templates/filter-rules', methods=['GET'])
+def list_filter_rules():
+    """
+    Listet alle verfügbaren Filterregeln auf
+    """
+    try:
+        import os
+        import json
+        
+        # Versuche, die Filterregeln aus der Datei zu laden
+        filter_rules_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
+                                         'templates', 'filter_rules', 'evalarm_rules.json')
+        
+        # Fallback-Filterregeln, falls die Datei nicht geladen werden kann
+        default_rules = [
+            {"id": "panic_alarm", "name": "Panic Alarm", "description": "Filtert Panic-Button-Alarme", 
+             "type": "ValueComparisonRule", "field_path": "devices[0].values.alarmtype", "expected_value": "panic"},
+            {"id": "battery_ok", "name": "Batterie OK", "description": "Prüft, ob der Batteriestatus 'connected' ist", 
+             "type": "ValueComparisonRule", "field_path": "devices[0].values.batterystatus", "expected_value": "connected"},
+            {"id": "any_alarm", "name": "Beliebiger Alarm", "description": "Filtert alle Alarme, unabhängig vom Typ", 
+             "type": "ValueComparisonRule", "field_path": "devices[0].values.alarmstatus", "expected_value": "alarm"},
+            {"id": "online_only", "name": "Nur Online", "description": "Filtert nur Online-Geräte", 
+             "type": "ValueComparisonRule", "field_path": "devices[0].values.onlinestatus", "expected_value": "online"}
+        ]
+        
+        # Versuche die Datei zu laden
+        filter_rules = default_rules
+        if os.path.exists(filter_rules_path):
+            try:
+                with open(filter_rules_path, 'r') as f:
+                    loaded_rules = json.load(f)
+                    if isinstance(loaded_rules, list):
+                        filter_rules = loaded_rules
+            except Exception as e:
+                logger.error(f"Fehler beim Laden der Filterregeln aus {filter_rules_path}: {str(e)}")
+        
+        return jsonify({
+            'status': 'success',
+            'data': filter_rules
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Filterregeln: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'error': {
+                'message': f'Fehler beim Abrufen der Filterregeln: {str(e)}',
+                'code': 'filter_rules_error'
+            }
+        }), 500
 
 @app.route('/api/v1/messages/status', methods=['GET'])
 def get_message_status():

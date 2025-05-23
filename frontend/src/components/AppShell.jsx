@@ -149,7 +149,7 @@ const AppShell = () => {
         {/* Main Content */}
         <main 
           className={`flex-grow-1 main-content ${sideNavCollapsed ? 'main-content-expanded' : ''}`}
-          style={isOpen ? { transition: 'margin-right 0.3s ease' } : {}}
+          style={isOpen ? { marginRight: `${width}px` } : {}}
         >
           {/* Breadcrumbs */}
           <div className="breadcrumb-container px-4 py-2 border-bottom">
