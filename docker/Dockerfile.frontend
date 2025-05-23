@@ -1,5 +1,5 @@
 # Build Stage
-FROM node:18-alpine as builder
+FROM node:20-alpine as builder
 WORKDIR /app
 COPY frontend/package*.json ./
 RUN npm ci --legacy-peer-deps
@@ -7,12 +7,12 @@ COPY frontend/ ./
 RUN npm run build
 
 # Production Stage
-FROM node:18-alpine
+FROM node:20-alpine
 WORKDIR /app
 
 # Installiere nur die benötigten Produktions-Dependencies
 COPY docker/frontend-server.js ./
-RUN npm init -y && npm install express http-proxy-middleware
+RUN npm init -y && npm install --no-audit --no-fund express http-proxy-middleware
 
 # Kopiere das gebaute Frontend
 COPY --from=builder /app/dist ./dist
