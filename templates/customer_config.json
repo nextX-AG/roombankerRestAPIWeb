@@ -33,7 +33,8 @@
                 }
             },
             "gateways": [
-                "gw-c490b022-cc18-407e-a07e-a355747a8fdd"
+                "gw-c490b022-cc18-407e-a07e-a355747a8fdd",
+                "gw-4896687f-c4f5-404b-8500-5837b2f4d0bf"
             ],
             "forwarding": {
                 "type": "instant",
