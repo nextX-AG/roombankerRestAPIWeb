@@ -48,3 +48,6 @@ data/*.json
 .DS_Store
 
 # Env
+.env
+.env.local
+.env.production

@@ -114,6 +114,35 @@ Bei Bedarf können Sie die Konfiguration des Systems anpassen:
 - MongoDB-Verbindung: Über Umgebungsvariablen `MONGODB_URI` und `MONGODB_DB`
 - Redis-Verbindung: Über Umgebungsvariablen `REDIS_HOST`, `REDIS_PORT`, `REDIS_DB`, `REDIS_PASSWORD`
 
+## Konfiguration
+
+### Umgebungsvariablen
+
+Das Projekt verwendet verschiedene `.env` Dateien für unterschiedliche Zwecke:
+
+- **`.env.example`** - Vorlage für lokale Entwicklung OHNE Docker
+- **`.env.docker.example`** - Vorlage für Docker-Deployment (mit MongoDB Auth)
+
+#### Für Docker-Deployment:
+```bash
+# Kopiere die Docker-Vorlage
+cp .env.docker.example .env
+
+# Passe die Werte an (besonders Passwörter!)
+nano .env
+```
+
+#### Für lokale Entwicklung ohne Docker:
+```bash
+# Kopiere die Standard-Vorlage
+cp .env.example .env
+
+# Passe die Werte an
+nano .env
+```
+
+**WICHTIG**: Die `.env` Datei enthält sensible Daten und darf NIEMALS ins Git Repository!
+
 ## Schritt 7: System starten
 
 Starten Sie das gesamte System mit einem Befehl:
