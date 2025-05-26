@@ -607,7 +607,7 @@ def generate_template():
 def test_template_code():
     """Testet Template-Code ohne Speichern"""
     try:
-    data = request.json
+        data = request.json
         code = data.get('code', '')
         test_data = data.get('data', {})
         
@@ -645,7 +645,7 @@ def test_template_code():
             }
         })
         
-        except Exception as e:
+    except Exception as e:
         logger.error(f"Fehler beim Testen des Template-Codes: {e}")
         return jsonify({
             'status': 'error',
