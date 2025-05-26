@@ -1490,4 +1490,54 @@ Nachrichten werden in folgenden Fällen NICHT an evAlarm weitergeleitet:
 
 - Verhindert versehentliche Spam-Nachrichten an Produktionssysteme
 - Ermöglicht sichere Tests mit echten Geräten
-- Audit-Trail für alle blockierten Nachrichten 
+- Audit-Trail für alle blockierten Nachrichten
+
+### 16.6 UI-Integration der Forwarding-Kontrolle
+
+Die Weiterleitungskontrolle wurde vollständig in die React-Frontend-Komponenten integriert:
+
+#### Gateway-Detail-Drawer
+
+Der `GatewayDetailDrawer` wurde erweitert um:
+
+1. **Statusanzeige im Info-Tab**:
+   - Visueller Indikator für den Weiterleitungsstatus
+   - Badge-System: `Blockiert` (rot), `Aktiviert` (grün)
+   - Modus-Badge: `Produktion` (blau), `Test` (gelb), `Lernmodus` (info)
+   - Kontextabhängige Hinweistexte
+
+2. **Bearbeitungsmodus**:
+   - Bootstrap Form.Check mit Switch-Type für forwarding_enabled
+   - Form.Select für forwarding_mode Auswahl
+   - Responsive Layout mit Row/Col für optimale Darstellung
+   - Hilfstexte zur Erklärung der Funktionen
+
+#### Implementierungsdetails
+
+```javascript
+// State-Management für Forwarding-Felder
+const [formData, setFormData] = useState({
+  // ... andere Felder ...
+  forwarding_enabled: true,
+  forwarding_mode: 'production'
+});
+
+// Spezielle Behandlung für Boolean-Werte im Switch
+onChange={(e) => {
+  handleChange({
+    target: {
+      name: 'forwarding_enabled',
+      value: e.target.checked
+    }
+  });
+}}
+```
+
+#### Design-Patterns
+
+- **Konsistenz**: Verwendung der gleichen Badge-Patterns wie in anderen Komponenten
+- **Accessibility**: Klare Labels und Hilfstexte für Screenreader
+- **Responsive Design**: Anpassung für mobile Geräte durch Bootstrap Grid
+- **User Feedback**: Visuelle Hinweise bei eingeschränkter Weiterleitung
+
+Diese Integration stellt sicher, dass Benutzer die volle Kontrolle über die Nachrichtenweiterleitung haben, ohne die Kommandozeile oder API-Aufrufe verwenden zu müssen. 

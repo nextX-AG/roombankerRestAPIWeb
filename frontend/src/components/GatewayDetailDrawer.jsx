@@ -27,7 +27,9 @@ const GatewayDetailDrawer = () => {
     name: '',
     description: '',
     template_id: '',
-    status: 'online'
+    status: 'online',
+    forwarding_enabled: true,
+    forwarding_mode: 'production'
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -78,7 +80,9 @@ const GatewayDetailDrawer = () => {
           name: gatewayData.name || '',
           description: gatewayData.description || '',
           template_id: gatewayData.template_id || '',
-          status: gatewayData.status || 'online'
+          status: gatewayData.status || 'online',
+          forwarding_enabled: gatewayData.forwarding_enabled || true,
+          forwarding_mode: gatewayData.forwarding_mode || 'production'
         });
         
         // Wenn Gateway einen Kunden hat, lade Kundendaten
@@ -382,6 +386,49 @@ const GatewayDetailDrawer = () => {
           </Form.Text>
         </Form.Group>
         
+        <Row>
+          <Col md={6}>
+            <Form.Group className="mb-3">
+              <Form.Label>Nachrichtenweiterleitung</Form.Label>
+              <Form.Check 
+                type="switch"
+                id="forwarding-enabled-edit"
+                name="forwarding_enabled"
+                label={formData.forwarding_enabled ? "Aktiviert" : "Deaktiviert"}
+                checked={formData.forwarding_enabled !== false}
+                onChange={(e) => {
+                  handleChange({
+                    target: {
+                      name: 'forwarding_enabled',
+                      value: e.target.checked
+                    }
+                  });
+                }}
+              />
+              <Form.Text className="text-muted">
+                Wenn deaktiviert, werden Nachrichten nicht an evAlarm weitergeleitet.
+              </Form.Text>
+            </Form.Group>
+          </Col>
+          <Col md={6}>
+            <Form.Group className="mb-3">
+              <Form.Label>Weiterleitungsmodus</Form.Label>
+              <Form.Select
+                name="forwarding_mode"
+                value={formData.forwarding_mode || 'production'}
+                onChange={handleChange}
+              >
+                <option value="production">Produktion</option>
+                <option value="test">Test</option>
+                <option value="learning">Lernmodus</option>
+              </Form.Select>
+              <Form.Text className="text-muted">
+                Im Test- oder Lernmodus werden keine Nachrichten weitergeleitet.
+              </Form.Text>
+            </Form.Group>
+          </Col>
+        </Row>
+        
         <Form.Group className="mb-3">
           <Form.Label>Beschreibung</Form.Label>
           <Form.Control 
@@ -497,6 +544,33 @@ const GatewayDetailDrawer = () => {
             <div className="mb-3">
               <div className="small text-muted mb-1">Beschreibung</div>
               <div>{gateway.description || '-'}</div>
+            </div>
+            
+            <div className="mb-3">
+              <div className="small text-muted mb-1">Nachrichtenweiterleitung</div>
+              <div className="d-flex align-items-center">
+                {gateway.forwarding_enabled === false ? (
+                  <Badge bg="danger">Blockiert</Badge>
+                ) : (
+                  <>
+                    <Badge bg="success" className="me-2">Aktiviert</Badge>
+                    {gateway.forwarding_mode === 'test' && (
+                      <Badge bg="warning">Test-Modus</Badge>
+                    )}
+                    {gateway.forwarding_mode === 'learning' && (
+                      <Badge bg="info">Lernmodus</Badge>
+                    )}
+                    {gateway.forwarding_mode === 'production' && (
+                      <Badge bg="primary">Produktion</Badge>
+                    )}
+                  </>
+                )}
+              </div>
+              {gateway.forwarding_mode === 'test' || gateway.forwarding_mode === 'learning' ? (
+                <small className="text-muted d-block mt-1">
+                  Im {gateway.forwarding_mode === 'test' ? 'Test' : 'Lern'}-Modus werden Nachrichten nicht an evAlarm weitergeleitet.
+                </small>
+              ) : null}
             </div>
             
             <div className="mb-3">

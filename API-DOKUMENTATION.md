@@ -303,6 +303,24 @@ Nachrichten werden in folgenden Fällen blockiert:
 
 Blockierte Nachrichten werden in `/data/blocked_messages/` gespeichert.
 
+#### UI-Integration
+
+Die Forwarding-Kontrolle ist vollständig in die Benutzeroberfläche integriert:
+
+1. **Gateway-Detail-Drawer**:
+   - Anzeige des aktuellen Weiterleitungsstatus im Info-Tab
+   - Visuelle Badges für Status (Aktiviert/Blockiert) und Modus (Produktion/Test/Lernmodus)
+   - Hinweistexte bei eingeschränkter Weiterleitung
+
+2. **Gateway-Bearbeitung**:
+   - Toggle-Switch zum Aktivieren/Deaktivieren der Weiterleitung
+   - Dropdown-Auswahl für den Weiterleitungsmodus
+   - Hilftexte zur Erklärung der verschiedenen Modi
+
+3. **Gateway-Übersicht**:
+   - Status-Icons zeigen den aktuellen Weiterleitungsmodus
+   - Farbkodierung für schnelle visuelle Erkennung
+
 ### Logs-API (NEU)
 
 | Endpunkt | Methode | Beschreibung |

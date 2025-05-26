@@ -1332,27 +1332,28 @@ Das System benötigt die Möglichkeit, die Nachrichtenübermittlung an evAlarm z
 
 ### Phase 1: Gateway-Level Blockierung
 
-- [ ] **Gateway-Modell erweitern**
-  - [ ] Neues Feld `forwarding_enabled` (Boolean, Standard: true)
-  - [ ] Neues Feld `forwarding_mode` (Enum: "production", "test", "learning")
-  - [ ] Migration für bestehende Gateways
+- [x] **Gateway-Modell erweitern** (26.05.2025)
+  - [x] Neues Feld `forwarding_enabled` (Boolean, Standard: true)
+  - [x] Neues Feld `forwarding_mode` (Enum: "production", "test", "learning")
+  - [x] Migration für bestehende Gateways
 
-- [ ] **UI-Anpassungen**
-  - [ ] Toggle-Switch in Gateway-Einstellungen für "Nachrichtenweiterleitung"
-  - [ ] Status-Badge zeigt aktuellen Modus (Produktion/Test/Lernen)
-  - [ ] Warnung wenn Weiterleitung deaktiviert ist
+- [x] **UI-Anpassungen** (26.05.2025)
+  - [x] Toggle-Switch in Gateway-Einstellungen für "Nachrichtenweiterleitung"
+  - [x] Status-Badge zeigt aktuellen Modus (Produktion/Test/Lernen)
+  - [x] Warnung wenn Weiterleitung deaktiviert ist
+  - [x] Drawer-Pattern für Gateway-Details mit Forwarding-Kontrolle
 
-- [ ] **Backend-Integration**
-  - [ ] Check in `message_processor.py` vor Weiterleitung
-  - [ ] Logging wenn Nachricht blockiert wurde
-  - [ ] Statistik über blockierte Nachrichten
+- [x] **Backend-Integration** (26.05.2025)
+  - [x] Check in `message_processor.py` vor Weiterleitung
+  - [x] Logging wenn Nachricht blockiert wurde
+  - [x] Statistik über blockierte Nachrichten
 
 ### Phase 2: Automatische Blockierung beim Lernen
 
-- [ ] **Lernsystem-Integration**
-  - [ ] Automatisches Setzen von `forwarding_mode = "learning"` beim Start
-  - [ ] Automatisches Zurücksetzen nach Lernphase
-  - [ ] Option zum manuellen Override
+- [x] **Lernsystem-Integration** (26.05.2025)
+  - [x] Automatisches Setzen von `forwarding_mode = "learning"` beim Start
+  - [x] Automatisches Zurücksetzen nach Lernphase
+  - [x] Option zum manuellen Override
 
 - [ ] **Visuelles Feedback**
   - [ ] Deutlicher Hinweis im Dashboard wenn Gateway im Lernmodus
