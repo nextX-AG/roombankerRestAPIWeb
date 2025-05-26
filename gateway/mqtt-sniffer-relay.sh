@@ -2,7 +2,7 @@ cat > /usr/bin/mqtt-sniffer-relay.sh << 'EOF'
 #!/bin/sh
 
 # Konfiguration
-INTERFACE="eth0"
+INTERFACE="any"
 SERVER_URL="http://evalarm.nextxiot.com/api/v1/messages/process"
 TMP_FILE="/tmp/mqtt-sniff-last.json"
 UUID_FILE="/etc/gateway-uuid"
@@ -13,6 +13,7 @@ UUID=$(cat "$UUID_FILE")
 
 echo "[*] MQTT Sniffer-Relay gestartet..."
 echo "[*] Gateway-ID: $UUID"
+echo "[*] Lausche auf ALLEN Netzwerk-Interfaces nach MQTT-Traffic (Port 1883)"
 echo "[*] Sende erkannte JSON-Daten an: $SERVER_URL"
 echo
 
