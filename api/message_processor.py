@@ -350,29 +350,29 @@ def process_message():
         logger.info(f"Template durch neue Logik ausgewählt: {template_name}")
     else:
         # Fallback auf alte Logik
-    # Prüfen auf Panic-Alarm
-    is_panic = False
-    if isinstance(message, dict):
-        # Format 1: Prüfung für subdevicelist
-        if 'subdevicelist' in message:
-            for device in message.get('subdevicelist', []):
-                if isinstance(device, dict) and 'value' in device:
-                    value = device.get('value', {})
-                    if value.get('alarmstatus') == 'alarm' and value.get('alarmtype') == 'panic':
-                        is_panic = True
-                        break
-        # Format 2: Direkte Code-Prüfung
-        elif 'code' in message and message['code'] == 2030:
-            is_panic = True
-        # Format 3: Prüfung auf subdeviceid mit alarmtype
-        elif 'subdeviceid' in message and 'alarmtype' in message and message['alarmtype'] == 'panic':
-            is_panic = True
-    
-    # Template auswählen
-    if is_panic:
-        template_name = 'evalarm_panic'
-    else:
-        template_name = 'evalarm'  # Fallback
+        # Prüfen auf Panic-Alarm
+        is_panic = False
+        if isinstance(message, dict):
+            # Format 1: Prüfung für subdevicelist
+            if 'subdevicelist' in message:
+                for device in message.get('subdevicelist', []):
+                    if isinstance(device, dict) and 'value' in device:
+                        value = device.get('value', {})
+                        if value.get('alarmstatus') == 'alarm' and value.get('alarmtype') == 'panic':
+                            is_panic = True
+                            break
+            # Format 2: Direkte Code-Prüfung
+            elif 'code' in message and message['code'] == 2030:
+                is_panic = True
+            # Format 3: Prüfung auf subdeviceid mit alarmtype
+            elif 'subdeviceid' in message and 'alarmtype' in message and message['alarmtype'] == 'panic':
+                is_panic = True
+        
+        # Template auswählen
+        if is_panic:
+            template_name = 'evalarm_panic'
+        else:
+            template_name = 'evalarm'  # Fallback
         logger.info(f"Template durch alte Logik ausgewählt: {template_name}")
     
     # Füge die Nachricht in die Queue ein (asynchrone Verarbeitung)
