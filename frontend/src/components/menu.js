@@ -10,7 +10,8 @@ import {
   Inbox,
   FileCode,
   Zap,
-  Layers
+  Layers,
+  Brain
 } from 'lucide-react';
 
 export const menu = [
@@ -37,7 +38,8 @@ export const menu = [
     items: [
       { label: 'Template-Liste', icon: FileCode, to: '/templates' },
       { label: 'Template-Gruppen', icon: Layers, to: '/template-groups' },
-      { label: 'Visueller Generator', icon: Zap, to: '/visual-template-generator' }
+      { label: 'Visueller Generator', icon: Zap, to: '/visual-template-generator' },
+      { label: 'Template-Lernsystem', icon: Brain, to: '/template-learning' }
     ]
   }
 ];

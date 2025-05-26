@@ -225,14 +225,14 @@ def process_message_endpoint():
                             logger.info(f"Template durch neue Logik ausgewählt: {template_name}")
                         else:
                             # Fallback auf alte Logik
-                            is_panic = False
-                            for device in normalized_data.get('devices', []):
-                                values = device.get('values', {})
-                                if values.get('alarmstatus') == 'alarm' and values.get('alarmtype') == 'panic':
-                                    is_panic = True
-                                    break
-                            
-                            template_name = 'evalarm_panic' if is_panic else 'evalarm'
+                        is_panic = False
+                        for device in normalized_data.get('devices', []):
+                            values = device.get('values', {})
+                            if values.get('alarmstatus') == 'alarm' and values.get('alarmtype') == 'panic':
+                                is_panic = True
+                                break
+                        
+                        template_name = 'evalarm_panic' if is_panic else 'evalarm'
                             logger.info(f"Template durch alte Logik ausgewählt: {template_name}")
                         
                         # Nachricht in die Queue stellen (bestehende Logik)
@@ -443,18 +443,18 @@ def process_message_endpoint():
                     logger.info(f"Template durch neue Logik ausgewählt: {template_name}")
                 else:
                     # Fallback auf alte Logik
-                    # Prüfen auf Panic-Alarm
-                    is_panic = False
-                    if isinstance(message, dict) and 'subdevicelist' in message:
-                        for device in message.get('subdevicelist', []):
-                            if isinstance(device, dict) and 'value' in device:
-                                value = device.get('value', {})
-                                if value.get('alarmstatus') == 'alarm' and value.get('alarmtype') == 'panic':
-                                    is_panic = True
-                                    break
-                    
-                    # Template auswählen
-                    template_name = 'evalarm_panic' if is_panic else 'evalarm'
+                # Prüfen auf Panic-Alarm
+                is_panic = False
+                if isinstance(message, dict) and 'subdevicelist' in message:
+                    for device in message.get('subdevicelist', []):
+                        if isinstance(device, dict) and 'value' in device:
+                            value = device.get('value', {})
+                            if value.get('alarmstatus') == 'alarm' and value.get('alarmtype') == 'panic':
+                                is_panic = True
+                                break
+                
+                # Template auswählen
+                template_name = 'evalarm_panic' if is_panic else 'evalarm'
                     logger.info(f"Template durch alte Logik ausgewählt: {template_name}")
                 
                 # Nachricht in die Queue stellen

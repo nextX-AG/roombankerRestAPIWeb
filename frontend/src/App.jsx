@@ -24,6 +24,7 @@ import Gateways from './pages/Gateways';
 import Devices from './pages/Devices';
 import Debugger from './pages/Debugger';
 import TemplateGroups from './pages/TemplateGroups';
+import TemplateLearning from './pages/TemplateLearning';
 import VisualTemplateGenerator from './pages/VisualTemplateGenerator';
 
 // Auth Context
@@ -92,6 +93,11 @@ function AppContent() {
           <Route path="/template-groups" element={
             <ProtectedRoute>
               <TemplateGroups />
+            </ProtectedRoute>
+          } />
+          <Route path="/template-learning" element={
+            <ProtectedRoute>
+              <TemplateLearning />
             </ProtectedRoute>
           } />
           <Route path="/debugger" element={<Debugger />} />

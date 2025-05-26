@@ -131,4 +131,6 @@ Bei Bedarf können Sie folgende Parameter im Skript `/usr/bin/mqtt-sniffer-relay
 
 ## Hinweis zur Sicherheit
 
+ssh -oHostKeyAlgorithms=+ssh-rsa -oPubkeyAcceptedKeyTypes=+ssh-rsa root@192.168.178.67
+
 Dieses Skript erfasst MQTT-Verkehr im Netzwerk. Stellen Sie sicher, dass Sie die rechtlichen Anforderungen für das Monitoring von Netzwerkverkehr in Ihrer Umgebung erfüllen. 

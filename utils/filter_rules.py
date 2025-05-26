@@ -829,7 +829,7 @@ if __name__ == "__main__":
     
     # Zutreffende Regeln anzeigen
     matching_rules = engine.get_matching_rules(normalized_message)
-    print(f"Zutreffende Regeln: {matching_rules}")
+    print(f"Zutreffende Regeln: {matching_rules}") 
 
 
 # Vordefinierte Filterregeln

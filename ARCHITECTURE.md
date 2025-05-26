@@ -1336,4 +1336,110 @@ templateApi.deleteGroup(id)   // DELETE /api/v1/template-groups/:id
 - **A/B-Testing**: Verschiedene Template-Gruppen für dasselbe Gateway testen
 - **Versionierung**: Änderungsverlauf für Template-Gruppen
 
+## 15. Template-Lernsystem (NEU)
+
+Das Template-Lernsystem ermöglicht es, neue Gateways automatisch "einzulernen", indem es deren Nachrichten über einen Zeitraum von 24-48 Stunden sammelt, analysiert und daraus automatisch passende Templates generiert.
+
+### 15.1 Konzept
+
+Das Lernsystem basiert auf Mustererkennung:
+
+1. **Datensammlung**: Alle Nachrichten eines Gateways werden über einen definierten Zeitraum gesammelt
+2. **Musteranalyse**: Das System identifiziert wiederkehrende Nachrichtentypen und deren Struktur
+3. **Template-Generierung**: Basierend auf den Mustern werden automatisch Templates vorgeschlagen
+4. **Überprüfung**: Ein Administrator kann die generierten Templates überprüfen und anpassen
+5. **Gruppierung**: Die Templates werden zu einer wiederverwendbaren Template-Gruppe zusammengefasst
+
+### 15.2 UI-Komponenten
+
+#### 15.2.1 Template-Lernsystem-Dashboard
+
+```jsx
+frontend/src/pages/TemplateLearning.jsx
+```
+
+Hauptfunktionen:
+- Übersicht aller Gateways im Lernmodus
+- Fortschrittsanzeige (Prozent der Lernzeit)
+- Statistiken (Anzahl gesammelter Nachrichten, erkannte Muster)
+- Start/Stopp des Lernmodus
+
+#### 15.2.2 Nachrichtenmuster-Analyse
+
+Die Komponente visualisiert erkannte Nachrichtenmuster:
+- Häufigkeit verschiedener Nachrichtentypen
+- Gemeinsame Felder und deren Wertebereiche
+- Beispielnachrichten für jedes Muster
+- Automatische Kategorisierung (Alarm, Status, Sensordaten)
+
+#### 15.2.3 Template-Vorschläge
+
+Nach Abschluss der Lernphase:
+- Automatisch generierte Templates basierend auf Mustern
+- Vorschau der Transformation mit Beispieldaten
+- Filterregeln für jedes Template
+- Prioritätsvergabe basierend auf Nachrichtenhäufigkeit
+
+### 15.3 Workflow
+
+```
+1. Gateway auswählen → Lernmodus starten
+2. 24-48 Stunden Datensammlung
+3. Musteranalyse → Template-Generierung
+4. Admin-Review → Anpassungen
+5. Template-Gruppe erstellen
+6. Gruppe für ähnliche Gateways wiederverwenden
+```
+
+### 15.4 Datenmodell (geplant)
+
+```javascript
+// Learning Session
+{
+  gateway_id: "gw-xyz",
+  start_time: ISODate(),
+  end_time: ISODate(),
+  status: "learning|analyzing|completed",
+  message_count: 4896,
+  patterns: [
+    {
+      pattern_id: "p1",
+      type: "panic_alarm",
+      count: 12,
+      frequency: "hourly",
+      common_fields: {
+        "alarmtype": { constant: true, value: "panic" },
+        "temperature": { min: 18.5, max: 23.2 }
+      },
+      sample_messages: [...]
+    }
+  ],
+  generated_templates: [...]
+}
+```
+
+### 15.5 Integration mit Template-Gruppen
+
+Das Lernsystem arbeitet nahtlos mit dem Template-Gruppen-System zusammen:
+- Generierte Templates werden automatisch gruppiert
+- Die Gruppe kann für ähnliche Gateways wiederverwendet werden
+- Reduziert die Einrichtungszeit für neue Gateways erheblich
+
+### 15.6 Vorteile
+
+1. **Automatisierung**: Keine manuelle Template-Erstellung nötig
+2. **Genauigkeit**: Templates basieren auf echten Daten
+3. **Zeitersparnis**: Einmal lernen, vielfach wiederverwenden
+4. **Benutzerfreundlichkeit**: Keine technischen Kenntnisse erforderlich
+5. **Skalierbarkeit**: Neue Gerätetypen werden automatisch unterstützt
+
+### 15.7 Nächste Schritte
+
+Die Backend-Implementierung für das Lernsystem steht noch aus:
+- API-Endpunkte für Lernmodus-Verwaltung
+- Nachrichtenspeicherung und -analyse
+- Mustererkennung-Algorithmen
+- Automatische Template-Generierung
+- Integration mit dem Message-Processor
+
 </rewritten_file> 

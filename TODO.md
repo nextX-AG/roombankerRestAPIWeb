@@ -1409,11 +1409,14 @@ Nachricht → Normalisierung → Regel-Matching → Template-Auswahl → Transfo
 
 ### Phase 4: UI für Einlern-System und Template-Verwaltung
 
-- [ ] **Einlern-Dashboard**
-  - [ ] Status-Anzeige des Lernfortschritts
-  - [ ] Visualisierung erkannter Nachrichtenmuster
-  - [ ] Manuelle Klassifizierung unklarer Nachrichten
-  - [ ] Template-Vorschau basierend auf Lerndaten
+- [x] **Einlern-Dashboard**
+  - [x] Status-Anzeige des Lernfortschritts
+  - [x] Visualisierung erkannter Nachrichtenmuster
+  - [x] Manuelle Klassifizierung unklarer Nachrichten
+  - [x] Template-Vorschau basierend auf Lerndaten
+  - [x] Übersicht aller Gateways im Lernmodus
+  - [x] Fortschrittsbalken und Statistiken
+  - [x] Tabs für Übersicht, Muster und Template-Vorschläge
 
 - [x] **Template-Gruppen-Verwaltung**
   - [x] Übersicht aller verfügbaren Template-Gruppen

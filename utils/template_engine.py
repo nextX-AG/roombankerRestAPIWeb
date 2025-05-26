@@ -510,43 +510,6 @@ class MessageForwarder:
             logger.error(f"Endpunkt '{endpoint_name}' nicht gefunden oder ungültig - Weiterleitung nicht möglich")
             return None
             
-        # Hier laden wir die Kundenkonfiguration aus der Datei
-        import os
-        import json
-        
-        PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        config_path = os.path.join(PROJECT_DIR, 'templates', 'customer_config.json')
-        
-        customer_config = None
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-                for customer_id, customer in config['customers'].items():
-                    if gateway_uuid in customer.get('gateways', []):
-                        customer_config = customer
-                        break
-        except Exception as e:
-            logger.error(f"Fehler beim Laden der Kundenkonfiguration: {str(e)}")
-        
-        if not customer_config and gateway_uuid:
-            logger.warning(f"Kein Kunde für Gateway {gateway_uuid} gefunden")
-            # SICHERHEITSÄNDERUNG: Blockiere Weiterleitung für nicht zugeordnete Gateways
-            logger.error(f"SICHERHEITSWARNUNG: Weiterleitung für nicht zugeordnetes Gateway {gateway_uuid} blockiert")
-            return None
-        
-        if endpoint_name not in self.endpoints and customer_config:
-            # Dynamischen Endpunkt erstellen aus customer_config
-            self.endpoints[endpoint_name] = {
-                'url': customer_config['api_config']['url'],
-                'auth': (customer_config['api_config']['username'], customer_config['api_config']['password']),
-                'headers': customer_config['api_config']['headers']
-            }
-            logger.info(f"Dynamischen Endpunkt '{endpoint_name}' für Kunde {customer_config['name']} erstellt")
-        
-        if endpoint_name not in self.endpoints:
-            logger.error(f"Endpunkt '{endpoint_name}' nicht gefunden")
-            return None
-        
         endpoint = self.endpoints[endpoint_name]
         
         # Anpassen der Nachricht mit Kundendaten, falls vorhanden

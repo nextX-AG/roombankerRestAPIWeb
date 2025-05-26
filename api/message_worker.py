@@ -195,7 +195,13 @@ class MessageWorker:
                 if not self.message_forwarder.get_customer_by_gateway(gateway_id):
                     error_msg = f'Weiterleitung blockiert: Gateway {gateway_id} ist keinem Kunden zugeordnet'
                 else:
-                    error_msg = 'Fehler bei der Weiterleitung an evAlarm API: Keine Antwort'
+                    error_msg = 'Fehler bei der Weiterleitung an evAlarm API: Verbindungsfehler oder Timeout'
+                logger.error(error_msg)
+                self.queue.mark_as_failed(job['id'], error_msg)
+                return
+            elif response.status_code == 422:
+                # Spezialbehandlung für 422 - Unprocessable Entity
+                error_msg = f'Fehler bei der Weiterleitung an evAlarm API: Ungültiges Datenformat - {response.text}'
                 logger.error(error_msg)
                 self.queue.mark_as_failed(job['id'], error_msg)
                 return
@@ -601,7 +607,7 @@ def generate_template():
 def test_template_code():
     """Testet Template-Code ohne Speichern"""
     try:
-        data = request.json
+    data = request.json
         code = data.get('code', '')
         test_data = data.get('data', {})
         
@@ -639,7 +645,7 @@ def test_template_code():
             }
         })
         
-    except Exception as e:
+        except Exception as e:
         logger.error(f"Fehler beim Testen des Template-Codes: {e}")
         return jsonify({
             'status': 'error',
