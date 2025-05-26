@@ -1226,3 +1226,126 @@ Das aktuelle Template-System ist für technisch weniger versierte Benutzer zu ko
 | 2      | Erweiterte Filterregeln-UI           | FE Team | Hoch       |
 | 3      | Integration mit Nachrichtenseite     | FE+BE   | Hoch       |
 | 4      | Flow-basierter Editor (Konzept)      | UX+FE   | Niedrig    |
+
+## 20. Template-Auswahl-Architektur korrigieren (HÖCHSTE PRIORITÄT)
+
+Die aktuelle Template-Auswahl im System ignoriert die Gateway-Template-Einstellung und wählt Templates hart kodiert basierend auf Gerätetypen. Dies muss korrigiert werden, um eine flexible und korrekte Template-Verwaltung zu ermöglichen.
+
+### Identifizierte Probleme
+
+- **Gateway-Template wird ignoriert**: Obwohl Gateways ein `template_id` Feld haben, wird es in der Nachrichtenverarbeitung nicht verwendet
+- **Keine Geräte-Templates**: Geräte haben kein eigenes Template-Feld in der Datenbank oder UI
+- **Hart kodierte Template-Auswahl**: Die Auswahl erfolgt im Code basierend auf Alarm-Typen (panic → `evalarm_panic`)
+
+### Phase 1: Unterscheidung zwischen Gateway- und Geräte-Nachrichten
+
+- [ ] **Nachrichtentyp-Erkennung implementieren**
+  - [ ] Funktion zur Unterscheidung zwischen Gateway-Status-Nachrichten und Geräte-Nachrichten
+  - [ ] Gateway-Nachrichten: Enthalten nur Gateway-spezifische Informationen (Status, Verbindung, etc.)
+  - [ ] Geräte-Nachrichten: Enthalten `subdevicelist` oder einzelne Geräte-Informationen
+
+- [ ] **Template-Auswahl-Logik überarbeiten**
+  - [ ] Bei Gateway-Nachrichten: Verwende das im Gateway konfigurierte Template (`gateway.template_id`)
+  - [ ] Bei Geräte-Nachrichten: Verwende das gerätespezifische Template (wenn vorhanden)
+  - [ ] Fallback-Mechanismus: Wenn kein spezifisches Template vorhanden, dann automatische Auswahl
+
+### Phase 2: Geräte-Template-Funktionalität implementieren
+
+- [ ] **Datenbank-Erweiterung**
+  - [ ] Neues Feld `template_id` in der Device-Collection/Tabelle hinzufügen
+  - [ ] Migration für bestehende Geräte mit Default-Templates
+
+- [ ] **API-Erweiterungen**
+  - [ ] Device-Update-Endpunkt um Template-Feld erweitern
+  - [ ] Template-Zuordnung in der Geräte-API implementieren
+
+- [ ] **UI-Erweiterungen**
+  - [ ] Template-Auswahl-Dropdown in der Geräte-Detailansicht hinzufügen
+  - [ ] Template-Spalte in der Geräteliste anzeigen
+  - [ ] Bulk-Update-Funktion für Template-Zuordnung bei mehreren Geräten
+
+### Phase 3: Template-Auswahl-Engine refactoring
+
+- [ ] **Neue Template-Auswahl-Funktion in `processor_service.py`**
+  ```python
+  def select_template_for_message(gateway, devices, message_type):
+      """
+      Wählt das korrekte Template basierend auf Nachrichtentyp
+      
+      Args:
+          gateway: Gateway-Objekt mit template_id
+          devices: Liste der Geräte in der Nachricht
+          message_type: 'gateway' oder 'device'
+      
+      Returns:
+          template_id: Das zu verwendende Template
+      """
+      if message_type == 'gateway':
+          # Verwende Gateway-Template
+          return gateway.template_id or 'default_gateway'
+      
+      elif message_type == 'device' and devices:
+          # Bei einem Gerät: Verwende dessen Template
+          if len(devices) == 1:
+              device = devices[0]
+              return device.template_id or gateway.template_id or 'default_device'
+          
+          # Bei mehreren Geräten: Priorisierung oder Gateway-Template
+          device_templates = [d.template_id for d in devices if d.template_id]
+          if device_templates:
+              # Verwende das häufigste Template oder das erste
+              return device_templates[0]
+          
+          return gateway.template_id or 'default_device'
+      
+      # Fallback
+      return 'default'
+  ```
+
+- [ ] **Integration in bestehende Nachrichtenverarbeitung**
+  - [ ] Entfernen der hart kodierten Template-Auswahl
+  - [ ] Einbindung der neuen `select_template_for_message` Funktion
+  - [ ] Logging der Template-Auswahl-Entscheidungen
+
+### Phase 4: Template-Hierarchie und Vererbung
+
+- [ ] **Template-Vererbungskonzept**
+  - [ ] Gateway-Template als Default für alle seine Geräte
+  - [ ] Geräte können Gateway-Template überschreiben
+  - [ ] Globale Default-Templates als Fallback
+
+- [ ] **UI für Template-Verwaltung**
+  - [ ] Visualisierung der Template-Hierarchie
+  - [ ] Bulk-Operationen für Template-Zuordnungen
+  - [ ] Template-Vorschau direkt in der Zuordnungs-UI
+
+### Phase 5: Testing und Migration
+
+- [ ] **Umfassende Tests**
+  - [ ] Unit-Tests für neue Template-Auswahl-Logik
+  - [ ] Integrationstests für verschiedene Nachrichtentypen
+  - [ ] Test der Rückwärtskompatibilität
+
+- [ ] **Migrations-Strategie**
+  - [ ] Analyse bestehender Nachrichten und deren Template-Zuordnungen
+  - [ ] Migrations-Skript für bestehende Geräte
+  - [ ] Dokumentation der neuen Template-Auswahl-Logik
+
+### Implementierungsplan
+
+| Sprint | Deliverable                           | Owner   | Priorität |
+|--------|---------------------------------------|---------|-----------|
+| 1      | Nachrichtentyp-Erkennung              | BE Team | Höchst    |
+| 1      | Template-Auswahl-Logik Refactoring    | BE Team | Höchst    |
+| 2      | Geräte-Template Datenbank-Erweiterung | BE Team | Hoch      |
+| 2      | API-Erweiterungen für Geräte-Templates| BE Team | Hoch      |
+| 3      | UI für Geräte-Template-Auswahl       | FE Team | Hoch      |
+| 3      | Template-Hierarchie-Visualisierung    | FE Team | Mittel    |
+| 4      | Tests und Migration                   | QA Team | Hoch      |
+
+### Erwartete Vorteile
+
+- **Flexibilität**: Verschiedene Templates für verschiedene Nachrichtentypen
+- **Korrektheit**: Gateway-Templates werden respektiert
+- **Erweiterbarkeit**: Neue Gerätetypen können eigene Templates haben
+- **Wartbarkeit**: Keine hart kodierten Template-Zuordnungen mehr im Code

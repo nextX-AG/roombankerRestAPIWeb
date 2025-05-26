@@ -3,7 +3,7 @@ cat > /usr/bin/mqtt-sniffer-relay.sh << 'EOF'
 
 # Konfiguration
 INTERFACE="eth0"
-SERVER_URL="http://167.235.56.144/api/v1/messages/process"
+SERVER_URL="http://23.88.59.133/api/v1/messages/process"
 TMP_FILE="/tmp/mqtt-sniff-last.json"
 UUID_FILE="/etc/gateway-uuid"
 
