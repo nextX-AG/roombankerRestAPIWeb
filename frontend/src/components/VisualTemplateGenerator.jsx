@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Form, Row, Col, Alert, Tabs, Tab, Spinner } from 'react-bootstrap';
+import { Card, Button, Form, Row, Col, Alert, Tabs, Tab, Spinner, Modal } from 'react-bootstrap';
 import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { Zap, Wrench, Save, Play, RefreshCw, Info, EyeOff, Eye, ExternalLink } from 'lucide-react';
+import { Zap, Wrench, Save, Play, RefreshCw, Info, EyeOff, Eye, ExternalLink, Layers } from 'lucide-react';
 import CodeEditor from './CodeEditor';
 import TemplateBuilder from './TemplateBuilder';
 import TransformationResultDrawer from './TransformationResultDrawer';
@@ -24,6 +24,11 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
   const [templates, setTemplates] = useState([]);
   const [filterRules, setFilterRules] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(templateId || '');
+  const [templateGroups, setTemplateGroups] = useState([]);
+  const [selectedTemplateGroup, setSelectedTemplateGroup] = useState('');
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [templateDescription, setTemplateDescription] = useState('');
   
   // UI-Zustände
   const [loading, setLoading] = useState(false);
@@ -37,6 +42,7 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
   useEffect(() => {
     fetchTemplates();
     fetchFilterRules();
+    fetchTemplateGroups();
   }, []);
   
   // Lade spezifisches Template, wenn templateId gesetzt ist
@@ -99,6 +105,20 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
       console.error('API-Fehler beim Laden der Filterregeln:', error);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Lade Template-Gruppen aus der API
+  const fetchTemplateGroups = async () => {
+    try {
+      const response = await templateApi.listGroups();
+      if (response.status === 'success') {
+        setTemplateGroups(response.data || []);
+      } else {
+        console.warn('Template-Gruppen konnten nicht geladen werden:', response.error);
+      }
+    } catch (error) {
+      console.error('API-Fehler beim Laden der Template-Gruppen:', error);
     }
   };
   
@@ -207,27 +227,61 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
   };
   
   // Speichere das Template
-  const saveTemplate = async () => {
+  const saveTemplate = () => {
+    // Öffne das Speichern-Modal
+    setShowSaveModal(true);
+  };
+  
+  // Führe das tatsächliche Speichern durch
+  const handleSaveTemplate = async () => {
     try {
       setLoading(true);
       
-      // Parsen des Template-Codes zu einem Objekt
-      const templateObj = JSON.parse(templateCode);
-      
       // Erstellung eines neuen Templates
       const response = await templateApi.create({
-        name: templateObj.name || 'Neues Template',
-        description: templateObj.description || 'Erstelltes Template',
-        template_code: templateCode
+        name: templateName || 'Neues Template',
+        description: templateDescription || 'Erstelltes Template',
+        template_code: templateCode,
+        provider_type: 'evalarm' // Standard-Provider
       });
       
       if (response.status === 'success') {
+        const newTemplateId = response.data.id;
+        
+        // Wenn eine Template-Gruppe ausgewählt wurde, füge das Template zur Gruppe hinzu
+        if (selectedTemplateGroup && newTemplateId) {
+          try {
+            // Finde die ausgewählte Gruppe
+            const group = templateGroups.find(g => g.id === selectedTemplateGroup);
+            if (group) {
+              // Füge das neue Template zur Gruppe hinzu
+              const updatedTemplates = [...group.templates, {
+                template_id: newTemplateId,
+                template_name: templateName,
+                priority: 50 // Standard-Priorität
+              }];
+              
+              await templateApi.updateGroup(selectedTemplateGroup, {
+                ...group,
+                templates: updatedTemplates
+              });
+            }
+          } catch (groupError) {
+            console.error('Fehler beim Hinzufügen zur Template-Gruppe:', groupError);
+            // Zeige trotzdem Erfolg an, da das Template gespeichert wurde
+          }
+        }
+        
         setSuccess('Template erfolgreich gespeichert');
         // Templates neu laden und das neue Template auswählen
         await fetchTemplates();
-        if (response.data && response.data.id) {
-          setSelectedTemplate(response.data.id);
-        }
+        setSelectedTemplate(newTemplateId);
+        
+        // Modal schließen und Felder zurücksetzen
+        setShowSaveModal(false);
+        setTemplateName('');
+        setTemplateDescription('');
+        setSelectedTemplateGroup('');
       } else {
         setError(`Fehler beim Speichern: ${response.error?.message}`);
       }
@@ -405,6 +459,15 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
               </div>
               <div>
                 <Button 
+                  variant="outline-secondary" 
+                  size="sm" 
+                  className="me-2"
+                  onClick={() => window.open('/template-groups', '_blank')}
+                >
+                  <Layers size={16} className="me-1" />
+                  Gruppen verwalten
+                </Button>
+                <Button 
                   variant="outline-primary" 
                   size="sm" 
                   className="me-2"
@@ -464,6 +527,84 @@ const VisualTemplateGenerator = ({ initialMessage = null, templateId = null }) =
         onReset={resetTransformationResult}
         loading={loading}
       />
+      
+      {/* Modal für Template speichern */}
+      <Modal show={showSaveModal} onHide={() => setShowSaveModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <Save size={20} className="me-2" />
+            Template speichern
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Template-Name *</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="z.B. evAlarm Panic Button"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                required
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-3">
+              <Form.Label>Beschreibung</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                placeholder="Beschreiben Sie, wofür dieses Template verwendet wird..."
+                value={templateDescription}
+                onChange={(e) => setTemplateDescription(e.target.value)}
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-3">
+              <Form.Label>
+                <Layers size={16} className="me-1" />
+                Template-Gruppe (optional)
+              </Form.Label>
+              <Form.Select
+                value={selectedTemplateGroup}
+                onChange={(e) => setSelectedTemplateGroup(e.target.value)}
+              >
+                <option value="">Keine Gruppe zuweisen</option>
+                {templateGroups.map(group => (
+                  <option key={group.id} value={group.id}>
+                    {group.name} ({group.templates?.length || 0} Templates)
+                  </option>
+                ))}
+              </Form.Select>
+              <Form.Text className="text-muted">
+                Wählen Sie eine Template-Gruppe aus, um dieses Template automatisch für bestimmte Gerätetypen verfügbar zu machen.
+              </Form.Text>
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowSaveModal(false)}>
+            Abbrechen
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleSaveTemplate}
+            disabled={loading || !templateName.trim()}
+          >
+            {loading ? (
+              <>
+                <Spinner size="sm" className="me-2" />
+                Speichern...
+              </>
+            ) : (
+              <>
+                <Save size={16} className="me-2" />
+                Speichern
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

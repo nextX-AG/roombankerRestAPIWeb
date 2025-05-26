@@ -343,6 +343,35 @@ export const templateApi = {
       method: 'POST',
       body: JSON.stringify({ rule_id: ruleId, message })
     });
+  },
+  
+  // Template-Gruppen
+  listGroups: async () => {
+    return fetchApi(getApiUrl('template-groups', ''));
+  },
+  
+  getGroup: async (id) => {
+    return fetchApi(getApiUrl('template-groups', id));
+  },
+  
+  createGroup: async (data) => {
+    return fetchApi(getApiUrl('template-groups', ''), {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+  
+  updateGroup: async (id, data) => {
+    return fetchApi(getApiUrl('template-groups', id), {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+  
+  deleteGroup: async (id) => {
+    return fetchApi(getApiUrl('template-groups', id), {
+      method: 'DELETE'
+    });
   }
 };
 

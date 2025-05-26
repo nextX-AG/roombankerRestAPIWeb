@@ -170,8 +170,26 @@ Erfolgreiche Antwort ohne Weiterleitung (Gateway keinem Kunden zugeordnet):
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
 | `/api/v1/templates` | GET | Liste aller verfügbaren Templates |
+| `/api/v1/templates/<id>` | GET | Details zu einem spezifischen Template |
+| `/api/v1/templates` | POST | Neues Template erstellen |
+| `/api/v1/templates/<id>` | PUT | Template aktualisieren |
+| `/api/v1/templates/<id>` | DELETE | Template löschen |
+| `/api/v1/templates/<id>/test` | POST | Template mit Beispieldaten testen |
+| `/api/v1/templates/test-code` | POST | Template-Code ohne Speichern testen |
+| `/api/v1/templates/generate` | POST | Template aus normalisierten Daten generieren |
+| `/api/v1/templates/filter-rules` | GET | Liste aller verfügbaren Filterregeln |
 | `/api/v1/templates/reload` | POST | Alle Templates neu laden |
 | `/api/v1/templates/test-transform` | POST | Transformation mit einem Template testen |
+
+### Template-Gruppen-API
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/v1/template-groups` | GET | Liste aller Template-Gruppen |
+| `/api/v1/template-groups/<id>` | GET | Details zu einer Template-Gruppe |
+| `/api/v1/template-groups` | POST | Neue Template-Gruppe erstellen |
+| `/api/v1/template-groups/<id>` | PUT | Template-Gruppe aktualisieren |
+| `/api/v1/template-groups/<id>` | DELETE | Template-Gruppe löschen |
 
 ### Logs-API (NEU)
 
@@ -278,7 +296,8 @@ Antwortformat für `/api/v1/messages/debug`:
     "customer_id": ObjectId,  # Kann null sein (unzugeordnet)
     "name": String,
     "description": String,
-    "template_id": String,
+    "template_id": String,  # Legacy: Einzelnes Template (wird beibehalten für Rückwärtskompatibilität)
+    "template_group_id": String,  # NEU: ID der Template-Gruppe für intelligente Template-Auswahl
     "status": String,  # "online", "offline", "unknown", "maintenance"
     "last_contact": DateTime,
     "created_at": DateTime,
@@ -298,6 +317,26 @@ Antwortformat für `/api/v1/messages/debug`:
     "description": String,
     "status": Object,  # JSON-Objekt mit Gerätestatus
     "last_update": DateTime,
+    "created_at": DateTime,
+    "updated_at": DateTime
+}
+```
+
+### Template-Gruppe (TemplateGroup)
+
+```python
+{
+    "_id": ObjectId,
+    "name": String,  # Pflichtfeld, z.B. "Roombanker Panic System"
+    "description": String,
+    "templates": [  # Liste von Templates mit Prioritäten
+        {
+            "template_id": String,
+            "template_name": String,  # Für Anzeige im UI
+            "priority": Number  # Höhere Zahlen = höhere Priorität
+        }
+    ],
+    "usage_count": Number,  # Anzahl der Gateways, die diese Gruppe verwenden
     "created_at": DateTime,
     "updated_at": DateTime
 }

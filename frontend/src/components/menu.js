@@ -9,7 +9,8 @@ import {
   Cpu,
   Inbox,
   FileCode,
-  Zap
+  Zap,
+  Layers
 } from 'lucide-react';
 
 export const menu = [
@@ -35,6 +36,7 @@ export const menu = [
     icon: FileCode, 
     items: [
       { label: 'Template-Liste', icon: FileCode, to: '/templates' },
+      { label: 'Template-Gruppen', icon: Layers, to: '/template-groups' },
       { label: 'Visueller Generator', icon: Zap, to: '/visual-template-generator' }
     ]
   }

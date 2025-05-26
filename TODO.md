@@ -1,5 +1,30 @@
 # TODO: evAlarm-IoT Gateway Management System
 
+## ✅ Erfolgreiche Tests und Validierungen (26.05.2025)
+
+### Hardware-Test mit echtem Gateway und Panic-Button
+- **Test durchgeführt am**: 26.05.2025, 14:20 Uhr
+- **Testaufbau**:
+  - Echtes Hardware-Gateway mit MQTT-Sniffer-Script
+  - Panic-Button-Device (ID: 673922542395461)
+  - Gateway-ID: gw-c490b022-cc18-407e-a07e-a355747a8fdd
+  
+- **Testergebnisse**:
+  - ✅ Gateway registriert sich automatisch beim ersten Kontakt
+  - ✅ Gateway erscheint als "unassigned" in der UI
+  - ✅ Manuelle Zuordnung zu Kunde "Christian Kreuter" über UI erfolgreich
+  - ✅ Panic-Button-Gerät wird automatisch erkannt und registriert
+  - ✅ Nachrichtenverarbeitung funktioniert korrekt
+  - ✅ Template-Anwendung (evalarm_panic) erfolgreich
+  - ✅ Weiterleitung an evAlarm API erfolgreich (Status 200, eva_id erhalten)
+  - ✅ Durchschnittliche Verarbeitungszeit: 0.51 Sekunden
+
+- **Bestätigte Funktionalität**:
+  - Kompletter End-to-End-Workflow vom Hardware-Button bis zur evAlarm-API
+  - Automatische Geräteregistrierung
+  - Korrekte Template-Transformation
+  - Zuverlässige API-Weiterleitung
+
 ## 1. Datenbank-Erweiterung
 
 ### Datenbank-Setup
@@ -657,6 +682,14 @@ Das System hat ein persistentes Problem mit der Anzeige von aktuellen Daten in d
   - [x] Verbesserte Fehlerbehandlung und -meldungen
   - [x] Einheitliches Response-Format-Handling
 
+- [x] **Template-Gruppen-System implementiert**
+  - [x] Backend-Modelle für Template-Gruppen erstellt
+  - [x] API-Endpunkte für CRUD-Operationen
+  - [x] UI-Komponenten für Template-Gruppen-Verwaltung
+  - [x] Integration in Gateway-Verwaltung
+  - [x] Template-Selector mit intelligenter Auswahl
+  - [x] Prioritätsbasierte Template-Auswahl
+
 ### Implementierungsplan
 
 - [x] **Phase 1: Analyse und Dokumentation** 
@@ -1227,125 +1260,415 @@ Das aktuelle Template-System ist für technisch weniger versierte Benutzer zu ko
 | 3      | Integration mit Nachrichtenseite     | FE+BE   | Hoch       |
 | 4      | Flow-basierter Editor (Konzept)      | UX+FE   | Niedrig    |
 
-## 20. Template-Auswahl-Architektur korrigieren (HÖCHSTE PRIORITÄT)
+## 20. Template-Auswahl-Architektur mit intelligentem Matching und Einlern-System (HÖCHSTE PRIORITÄT)
 
-Die aktuelle Template-Auswahl im System ignoriert die Gateway-Template-Einstellung und wählt Templates hart kodiert basierend auf Gerätetypen. Dies muss korrigiert werden, um eine flexible und korrekte Template-Verwaltung zu ermöglichen.
+Die aktuelle Template-Auswahl im System ignoriert die Gateway-Template-Einstellung und wählt Templates hart kodiert basierend auf Gerätetypen. Ein Gateway sendet jedoch verschiedene Nachrichtentypen (Status, Alarme, Sensordaten), die unterschiedliche Templates benötigen. Dies erfordert eine grundlegende Neuarchitektur mit einem intelligenten Matching-System.
 
 ### Identifizierte Probleme
 
 - **Gateway-Template wird ignoriert**: Obwohl Gateways ein `template_id` Feld haben, wird es in der Nachrichtenverarbeitung nicht verwendet
 - **Keine Geräte-Templates**: Geräte haben kein eigenes Template-Feld in der Datenbank oder UI
 - **Hart kodierte Template-Auswahl**: Die Auswahl erfolgt im Code basierend auf Alarm-Typen (panic → `evalarm_panic`)
+- **Ein Gateway = Viele Nachrichtentypen**: Ein Gateway sendet verschiedene Nachrichten, die unterschiedliche Behandlung erfordern
 
-### Phase 1: Unterscheidung zwischen Gateway- und Geräte-Nachrichten
+### Neue Architektur: Intelligentes Template-Matching mit Einlern-System
 
-- [ ] **Nachrichtentyp-Erkennung implementieren**
-  - [ ] Funktion zur Unterscheidung zwischen Gateway-Status-Nachrichten und Geräte-Nachrichten
-  - [ ] Gateway-Nachrichten: Enthalten nur Gateway-spezifische Informationen (Status, Verbindung, etc.)
-  - [ ] Geräte-Nachrichten: Enthalten `subdevicelist` oder einzelne Geräte-Informationen
+```
+Nachricht → Normalisierung → Regel-Matching → Template-Auswahl → Transformation
+                                ↑
+                          Learning-System
+```
 
-- [ ] **Template-Auswahl-Logik überarbeiten**
-  - [ ] Bei Gateway-Nachrichten: Verwende das im Gateway konfigurierte Template (`gateway.template_id`)
-  - [ ] Bei Geräte-Nachrichten: Verwende das gerätespezifische Template (wenn vorhanden)
-  - [ ] Fallback-Mechanismus: Wenn kein spezifisches Template vorhanden, dann automatische Auswahl
+### Phase 1: Einlern-System (Device Discovery & Learning)
 
-### Phase 2: Geräte-Template-Funktionalität implementieren
+- [ ] **Learning-Mode für neue Gateways**
+  - [ ] Automatisches Sammeln aller Nachrichten eines neuen Gateways (24-48 Stunden)
+  - [ ] Mustererkennung: Welche Nachrichtentypen, Felder, Wertebereiche
+  - [ ] Häufigkeitsanalyse der verschiedenen Nachrichtentypen
+  - [ ] Speicherung der Lern-Daten in separater Collection
 
-- [ ] **Datenbank-Erweiterung**
-  - [ ] Neues Feld `template_id` in der Device-Collection/Tabelle hinzufügen
-  - [ ] Migration für bestehende Geräte mit Default-Templates
-
-- [ ] **API-Erweiterungen**
-  - [ ] Device-Update-Endpunkt um Template-Feld erweitern
-  - [ ] Template-Zuordnung in der Geräte-API implementieren
-
-- [ ] **UI-Erweiterungen**
-  - [ ] Template-Auswahl-Dropdown in der Geräte-Detailansicht hinzufügen
-  - [ ] Template-Spalte in der Geräteliste anzeigen
-  - [ ] Bulk-Update-Funktion für Template-Zuordnung bei mehreren Geräten
-
-### Phase 3: Template-Auswahl-Engine refactoring
-
-- [ ] **Neue Template-Auswahl-Funktion in `processor_service.py`**
-  ```python
-  def select_template_for_message(gateway, devices, message_type):
-      """
-      Wählt das korrekte Template basierend auf Nachrichtentyp
-      
-      Args:
-          gateway: Gateway-Objekt mit template_id
-          devices: Liste der Geräte in der Nachricht
-          message_type: 'gateway' oder 'device'
-      
-      Returns:
-          template_id: Das zu verwendende Template
-      """
-      if message_type == 'gateway':
-          # Verwende Gateway-Template
-          return gateway.template_id or 'default_gateway'
-      
-      elif message_type == 'device' and devices:
-          # Bei einem Gerät: Verwende dessen Template
-          if len(devices) == 1:
-              device = devices[0]
-              return device.template_id or gateway.template_id or 'default_device'
-          
-          # Bei mehreren Geräten: Priorisierung oder Gateway-Template
-          device_templates = [d.template_id for d in devices if d.template_id]
-          if device_templates:
-              # Verwende das häufigste Template oder das erste
-              return device_templates[0]
-          
-          return gateway.template_id or 'default_device'
-      
-      # Fallback
-      return 'default'
+- [ ] **Datenbank-Schema für Learning**
+  ```javascript
+  {
+    gateway_id: "gw-xyz",
+    start_time: ISODate(),
+    status: "learning|completed|templates_generated",
+    message_patterns: [
+      {
+        pattern_hash: "hash",
+        count: 288,
+        common_fields: {
+          "temperature": {"min": 18.5, "max": 23.2},
+          "humidity": {"min": 45, "max": 62}
+        },
+        sample_messages: [...]
+      }
+    ]
+  }
   ```
 
-- [ ] **Integration in bestehende Nachrichtenverarbeitung**
-  - [ ] Entfernen der hart kodierten Template-Auswahl
-  - [ ] Einbindung der neuen `select_template_for_message` Funktion
-  - [ ] Logging der Template-Auswahl-Entscheidungen
+- [ ] **API-Endpunkte für Learning**
+  - [ ] POST `/api/v1/gateways/{id}/learn` - Startet Einlern-Modus
+  - [ ] GET `/api/v1/gateways/{id}/learning-status` - Zeigt Lernfortschritt
+  - [ ] POST `/api/v1/gateways/{id}/generate-templates` - Generiert Templates
 
-### Phase 4: Template-Hierarchie und Vererbung
+### Phase 2: Template-Pool mit Regel-basiertem Matching
 
-- [ ] **Template-Vererbungskonzept**
-  - [ ] Gateway-Template als Default für alle seine Geräte
-  - [ ] Geräte können Gateway-Template überschreiben
-  - [ ] Globale Default-Templates als Fallback
+- [x] **Template-Gruppen-System**
+  - [x] Vordefinierte Template-Gruppen für bekannte Gerätetypen
+  - [x] Gruppierung von zusammengehörigen Templates (z.B. "Roombanker Panic System")
+  - [x] Einmal lernen → Template-Gruppe erstellen → Wiederverwenden
+  - [x] Hersteller-spezifische Gruppen mit optimierten Templates
+  
+  ```json
+  {
+    "template_group": {
+      "id": "roombanker_panic_system",
+      "name": "Roombanker Panic Button System",
+      "manufacturer": "Roombanker",
+      "device_types": ["panic_button", "gateway_status"],
+      "templates": [
+        {"id": "panic_alarm", "priority": 100},
+        {"id": "battery_low", "priority": 90},
+        {"id": "gateway_status", "priority": 10}
+      ],
+      "learned_from": ["gw-abc123"],
+      "usage_count": 47
+    }
+  }
+  ```
 
-- [ ] **UI für Template-Verwaltung**
-  - [ ] Visualisierung der Template-Hierarchie
-  - [ ] Bulk-Operationen für Template-Zuordnungen
-  - [ ] Template-Vorschau direkt in der Zuordnungs-UI
+- [ ] **Template-Pool-Architektur**
+  ```json
+  {
+    "templates": [
+      {
+        "id": "evalarm_panic",
+        "name": "Panic Button Alarm",
+        "filter_rules": ["panic_alarm", "battery_ok"],
+        "priority": 100,
+        "transform": { ... }
+      },
+      {
+        "id": "evalarm_temperature",
+        "name": "Temperatur-Update",
+        "filter_rules": ["temperature_range"],
+        "priority": 50,
+        "transform": { ... }
+      }
+    ]
+  }
+  ```
 
-### Phase 5: Testing und Migration
+- [x] **API-Endpunkte für Template-Gruppen**
+  - [x] GET `/api/v1/template-groups` - Liste aller Gruppen
+  - [x] POST `/api/v1/template-groups` - Neue Gruppe erstellen
+  - [x] PUT `/api/v1/gateways/{id}/template-group` - Gruppe zuweisen
+  - [x] POST `/api/v1/template-groups/{id}/clone` - Gruppe duplizieren und anpassen
 
-- [ ] **Umfassende Tests**
-  - [ ] Unit-Tests für neue Template-Auswahl-Logik
-  - [ ] Integrationstests für verschiedene Nachrichtentypen
-  - [ ] Test der Rückwärtskompatibilität
+- [ ] **Erweiterte Filterregeln**
+  - [ ] `FieldExistsRule` - Prüft ob ein Feld existiert
+  - [ ] `FieldNotExistsRule` - Prüft ob ein Feld NICHT existiert
+  - [ ] `MessageTypeRule` - Unterscheidet Gateway- vs. Geräte-Nachrichten
+  - [ ] `PatternMatchRule` - Komplexe Mustervergleiche
 
-- [ ] **Migrations-Strategie**
-  - [ ] Analyse bestehender Nachrichten und deren Template-Zuordnungen
-  - [ ] Migrations-Skript für bestehende Geräte
-  - [ ] Dokumentation der neuen Template-Auswahl-Logik
+- [x] **Template-Matching-Engine**
+  ```python
+  def select_template_for_message(normalized_message, gateway):
+      # 1. Hole Template-Gruppe des Gateways
+      template_group = gateway.template_group
+      templates = template_group.templates if template_group else get_default_templates()
+      
+      # 2. Prüfe Filterregeln
+      matching_templates = []
+      for template in templates:
+          if all_filter_rules_match(template.filter_rules, normalized_message):
+              matching_templates.append(template)
+      
+      # 3. Wähle nach Priorität
+      if matching_templates:
+          return max(matching_templates, key=lambda t: t.priority)
+      
+      # 4. Fallback
+      return 'evalarm_status'
+  ```
+
+### Phase 3: Automatische Template-Generierung
+
+- [ ] **Template-Generator aus Lern-Daten**
+  - [ ] Analyse der gesammelten Nachrichtenmuster
+  - [ ] Automatische Erstellung von Filterregeln basierend auf Mustern
+  - [ ] Vorschlag von sinnvollen Transformationen
+  - [ ] Prioritäten basierend auf Nachrichtenhäufigkeit
+
+- [ ] **Intelligente Regel-Generierung**
+  - [ ] Für Panic-Buttons: Erkenne `alarmtype: panic` Muster
+  - [ ] Für Sensoren: Erkenne numerische Wertebereiche
+  - [ ] Für Status: Erkenne Gateway-spezifische Felder
+  - [ ] Kombinierte Regeln für komplexe Geräte
+
+### Phase 4: UI für Einlern-System und Template-Verwaltung
+
+- [ ] **Einlern-Dashboard**
+  - [ ] Status-Anzeige des Lernfortschritts
+  - [ ] Visualisierung erkannter Nachrichtenmuster
+  - [ ] Manuelle Klassifizierung unklarer Nachrichten
+  - [ ] Template-Vorschau basierend auf Lerndaten
+
+- [x] **Template-Gruppen-Verwaltung**
+  - [x] Übersicht aller verfügbaren Template-Gruppen
+  - [x] Schnellzuweisung bei Gateway-Erstellung: "Template-Gruppe wählen" statt Einlernen
+  - [x] Template-Gruppen-Editor: Templates hinzufügen/entfernen/priorisieren
+  - [ ] Import/Export von Template-Gruppen für Sharing zwischen Installationen
+  - [ ] Statistiken: Welche Gruppen werden wie oft verwendet
+  - [ ] Marketplace-Konzept: Community-Template-Gruppen teilen
+
+- [x] **Gateway-Onboarding vereinfacht**
+  ```
+  Neues Gateway hinzufügen:
+  
+  ○ Gateway einlernen (24-48h)
+  ● Template-Gruppe verwenden:
+     
+     [▼ Roombanker Panic System        ]
+        ├─ 3 Templates enthalten
+        ├─ 47x verwendet
+        └─ Zuletzt aktualisiert: vor 2 Tagen
+  
+  [Gateway hinzufügen]
+  ```
+
+- [ ] **Template-Review und -Anpassung**
+  - [ ] Übersicht generierter Template-Vorschläge
+  - [ ] Drag-and-Drop Anpassung von Filterregeln
+  - [ ] Test mit echten Nachrichten aus Lernphase
+  - [ ] Bulk-Aktivierung von Templates
+
+- [ ] **Template-Pool-Verwaltung**
+  - [ ] Übersicht aller Templates mit Matching-Statistik
+  - [ ] Prioritäts-Management
+  - [ ] Template-Versionierung
+  - [ ] A/B-Testing für Templates
+
+### Phase 5: Migration und Rückwärtskompatibilität
+
+- [ ] **Migration bestehender Konfigurationen**
+  - [ ] Konvertierung hart kodierter Logik in Filterregeln
+  - [ ] Migration von Gateway-Templates zu Template-Pools
+  - [ ] Beibehaltung der Funktionalität während Migration
+
+- [ ] **Monitoring und Optimierung**
+  - [ ] Logging welches Template für welche Nachricht gewählt wurde
+  - [ ] Statistiken über Template-Nutzung
+  - [ ] Automatische Vorschläge für neue Templates bei ungematchten Nachrichten
+  - [ ] Performance-Optimierung des Matching-Prozesses
 
 ### Implementierungsplan
 
 | Sprint | Deliverable                           | Owner   | Priorität |
 |--------|---------------------------------------|---------|-----------|
-| 1      | Nachrichtentyp-Erkennung              | BE Team | Höchst    |
-| 1      | Template-Auswahl-Logik Refactoring    | BE Team | Höchst    |
-| 2      | Geräte-Template Datenbank-Erweiterung | BE Team | Hoch      |
-| 2      | API-Erweiterungen für Geräte-Templates| BE Team | Hoch      |
-| 3      | UI für Geräte-Template-Auswahl       | FE Team | Hoch      |
-| 3      | Template-Hierarchie-Visualisierung    | FE Team | Mittel    |
-| 4      | Tests und Migration                   | QA Team | Hoch      |
+| 1      | Learning-System Backend               | BE Team | Höchst    |
+| 1      | Erweiterte Filterregeln               | BE Team | Höchst    |
+| 2      | Template-Matching-Engine              | BE Team | Höchst    |
+| 2      | Einlern-Dashboard UI                  | FE Team | Hoch      |
+| 3      | Automatische Template-Generierung     | BE Team | Hoch      |
+| 3      | Template-Pool-Verwaltung UI           | FE Team | Hoch      |
+| 4      | Migration bestehender Systeme         | BE Team | Mittel    |
+| 4      | Monitoring und Optimierung            | QA Team | Mittel    |
 
 ### Erwartete Vorteile
 
-- **Flexibilität**: Verschiedene Templates für verschiedene Nachrichtentypen
-- **Korrektheit**: Gateway-Templates werden respektiert
-- **Erweiterbarkeit**: Neue Gerätetypen können eigene Templates haben
+- **Intelligenz**: System lernt automatisch neue Gerätetypen
+- **Flexibilität**: Verschiedene Templates für verschiedene Nachrichtentypen eines Gateways
+- **Benutzerfreundlichkeit**: Keine technischen Kenntnisse für Template-Erstellung nötig
+- **Genauigkeit**: Templates basieren auf echten Daten
+- **Skalierbarkeit**: Neue Geräte = automatisches Lernen, keine Code-Änderungen
 - **Wartbarkeit**: Keine hart kodierten Template-Zuordnungen mehr im Code
+
+### Beispiel-Workflow
+
+1. **Erstes Gateway eines Typs**
+   - Admin aktiviert "Einlern-Modus"
+   - System sammelt 24-48 Stunden alle Nachrichten
+   - System erkennt: 3 Panic-Alarme, 576 Temperatur-Updates, 48 Status-Meldungen
+   - Admin erstellt Template-Gruppe "Roombanker Panic System"
+   - Gruppe wird für zukünftige Verwendung gespeichert
+
+2. **Alle weiteren Gateways desselben Typs**
+   - Admin wählt "Template-Gruppe verwenden"
+   - Wählt "Roombanker Panic System" aus
+   - Gateway ist sofort einsatzbereit - kein Einlernen nötig!
+
+3. **Automatische Analyse (nur beim ersten Mal)**
+   - System erkennt Nachrichtenmuster
+   - Generiert Template-Vorschläge mit passenden Filterregeln
+   - Admin gruppiert diese zu wiederverwendbarer Template-Gruppe
+
+4. **Produktivbetrieb**
+   - Jede Nachricht wird gegen alle Templates der Gruppe geprüft
+   - Bestes Match wird automatisch gewählt
+   - Ungematchte Nachrichten werden geloggt für weitere Optimierung
+
+5. **Template-Gruppen-Sharing (optional)**
+   - Exportiere erfolgreiche Template-Gruppen
+   - Teile mit Community oder anderen Installationen
+   - Importiere bewährte Gruppen von anderen Nutzern
+
+## 21. Cloudflare-Integration und Sicherheitshärtung (HÖCHSTE PRIORITÄT)
+
+Nach dem MongoDB-Ransomware-Angriff vom 26.05.2025 ist die Implementierung zusätzlicher Sicherheitsmaßnahmen kritisch. Die Integration von Cloudflare oder ähnlichen Diensten bietet mehrschichtige Sicherheit und Schutz vor verschiedenen Angriffsarten.
+
+### Identifizierte Sicherheitsprobleme
+
+- **MongoDB-Ransomware-Angriff**: Angreifer von IP 196.251.91.75 (und andere) haben die offene MongoDB auf Port 27017 kompromittiert
+- **Offene Server-IP**: Die direkte Server-IP (23.88.59.133) ist öffentlich zugänglich und anfällig für Scans
+- **Fehlender DDoS-Schutz**: Keine Absicherung gegen Überlastungsangriffe
+- **Keine Bot-Filterung**: Automatisierte Scanner können Services entdecken
+
+### Phase 1: Cloudflare Free Plan Setup (Sofort)
+
+- [ ] **Domain-Registrierung bei Cloudflare**
+  - [ ] evalarm.nextxiot.com bei Cloudflare registrieren
+  - [ ] DNS-Records auf Cloudflare übertragen
+  - [ ] A-Record für evalarm.nextxiot.com → 23.88.59.133
+  - [ ] Proxy-Status aktivieren (Orange Wolke) für IP-Verschleierung
+
+- [ ] **Basis-Sicherheitskonfiguration**
+  - [ ] SSL/TLS-Modus auf "Full (strict)" setzen
+  - [ ] Automatische HTTPS-Umleitung aktivieren
+  - [ ] Minimum TLS-Version auf 1.2 setzen
+  - [ ] HSTS (HTTP Strict Transport Security) aktivieren
+
+- [ ] **Firewall-Regeln konfigurieren**
+  - [ ] Bot-Fight-Mode aktivieren
+  - [ ] Security Level auf "Medium" oder "High" setzen
+  - [ ] Challenge Passage auf 30 Minuten setzen
+  - [ ] Browser Integrity Check aktivieren
+
+### Phase 2: Server-Firewall anpassen (Sprint 1)
+
+- [ ] **Hetzner Firewall-Konfiguration**
+  - [ ] Firewall-Regel erstellen: Nur Cloudflare-IPs erlauben (https://www.cloudflare.com/ips/)
+  - [ ] Automatisches Update-Skript für Cloudflare-IP-Listen
+  - [ ] Alle anderen IPs für Port 80/443 blockieren
+  - [ ] SSH-Zugang auf spezifische IPs beschränken
+
+- [ ] **Docker-Sicherheit**
+  - [ ] Sicherstellen, dass keine Ports direkt exposed sind
+  - [ ] Nur notwendige Ports über Reverse-Proxy zugänglich
+  - [ ] Docker-Socket nicht nach außen exponieren
+  - [ ] Container-Isolation überprüfen
+
+### Phase 3: Erweiterte Cloudflare-Features (Sprint 2)
+
+- [ ] **Page Rules einrichten (3 kostenlos)**
+  - [ ] API-Endpunkte mit Cache-Bypass
+  - [ ] Statische Assets mit langem Cache
+  - [ ] Admin-Bereiche mit zusätzlicher Sicherheit
+
+- [ ] **Firewall-Rules (5 kostenlos)**
+  - [ ] Rate-Limiting für API-Endpunkte
+  - [ ] Geo-Blocking für nicht benötigte Regionen
+  - [ ] User-Agent-Blocking für bekannte Scanner
+  - [ ] Path-basierte Zugriffsbeschränkungen
+
+- [ ] **Zero Trust Access (optional)**
+  - [ ] Cloudflare Access für Admin-Bereiche evaluieren
+  - [ ] 2FA für kritische Endpunkte
+  - [ ] Service-Token für API-Zugriffe
+
+### Phase 4: Monitoring und Alerting (Sprint 3)
+
+- [ ] **Cloudflare Analytics nutzen**
+  - [ ] Dashboard für Traffic-Überwachung einrichten
+  - [ ] Threat-Analytics regelmäßig überprüfen
+  - [ ] Bot-Traffic-Analyse
+  - [ ] Performance-Metriken überwachen
+
+- [ ] **Alerting konfigurieren**
+  - [ ] DDoS-Angriff-Benachrichtigungen
+  - [ ] Ungewöhnliche Traffic-Muster
+  - [ ] SSL-Zertifikat-Ablauf
+  - [ ] Origin-Server-Erreichbarkeit
+
+- [ ] **Incident Response Plan**
+  - [ ] Dokumentation für DDoS-Mitigation
+  - [ ] Rollback-Strategien
+  - [ ] Kontakt-Eskalation definieren
+  - [ ] Backup-Zugangswege dokumentieren
+
+### Phase 5: Alternative Lösungen evaluieren
+
+- [ ] **Andere CDN/WAF-Anbieter prüfen**
+  - [ ] AWS CloudFront + WAF (teurer, aber mächtiger)
+  - [ ] Fastly (entwicklerfreundlich)
+  - [ ] Bunny CDN (kostengünstig)
+  - [ ] Sucuri (spezialisiert auf Sicherheit)
+
+- [ ] **Self-Hosted Alternativen**
+  - [ ] ModSecurity WAF evaluieren
+  - [ ] Fail2ban für Brute-Force-Schutz
+  - [ ] CrowdSec für kollaborative Sicherheit
+  - [ ] WireGuard VPN für Admin-Zugriff
+
+### Implementierungsplan
+
+| Sprint | Deliverable                          | Owner     | Priorität |
+|--------|--------------------------------------|-----------|-----------|
+| Sofort | Cloudflare Free Plan Setup           | DevOps    | Höchst    |
+| 1      | Server-Firewall Härtung              | DevOps    | Höchst    |
+| 2      | Erweiterte Cloudflare-Konfiguration  | DevOps    | Hoch      |
+| 3      | Monitoring und Alerting              | DevOps/QA | Hoch      |
+| 4      | Alternative Lösungen evaluieren      | Arch Team | Mittel    |
+
+### Erwartete Sicherheitsverbesserungen
+
+- **IP-Verschleierung**: Server-IP nicht mehr direkt erreichbar
+- **DDoS-Schutz**: Automatische Mitigation von Überlastungsangriffen
+- **Bot-Filterung**: Blockierung automatisierter Scanner
+- **WAF-Schutz**: Basis-Schutz gegen Web-Angriffe
+- **SSL/TLS**: Durchgängige Verschlüsselung
+- **Caching**: Verbesserte Performance und reduzierte Server-Last
+- **Analytics**: Einblick in Angriffsmuster und Traffic
+
+### Kritische Sofortmaßnahmen
+
+1. **MongoDB bereits gesichert** ✅
+   - Port 27017 geschlossen
+   - Authentifizierung implementiert
+   - Nur Docker-interne Kommunikation
+
+2. **Cloudflare-Setup** (SOFORT DURCHFÜHREN)
+   - Verhindert weitere direkte Scans
+   - Sofortiger DDoS-Schutz
+   - IP-Verschleierung aktiv
+
+3. **Server-Firewall** (INNERHALB 24H)
+   - Nur Cloudflare-IPs erlauben
+   - Direkte Zugriffe blockieren
+   - SSH absichern
+
+### Template-Gruppen-Implementierung
+
+- [x] **Backend-API für Template-Gruppen**
+  - [x] Datenmodell TemplateGroup in api/models.py
+  - [x] CRUD-Endpunkte in message_worker.py
+  - [x] API-Konfiguration in utils/api_config.py
+  - [x] Gateway-Routing für template-groups
+  - [x] Erfolgreich getestet auf allen Ebenen (Processor, Gateway, Frontend)
+
+- [x] **Frontend für Template-Gruppen**
+  - [x] TemplateGroups.jsx Seite
+  - [x] TemplateGroupModal.jsx Komponente
+  - [x] API-Integration in frontend/src/api.js
+  - [x] Navigation in Navbar.jsx
+  - [x] Routing in App.jsx
+
+- [x] **Gateway-Integration**
+  - [x] Gateway-Formular erweitert für template_group_id
+  - [x] Datenbank-Schema angepasst
+
+- [x] **Dokumentation**
+  - [x] API-Endpunkte in API-DOKUMENTATION.md
+  - [x] Datenmodelle dokumentiert
+  - [x] Architektur in ARCHITECTURE.md beschrieben

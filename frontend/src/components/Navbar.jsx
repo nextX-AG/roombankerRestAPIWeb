@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faHome, faBell, faGear, faList, faCode, faUser, 
-  faSignOutAlt, faBuilding, faNetworkWired, faDesktop, faBug, faEnvelope
+  faSignOutAlt, faBuilding, faNetworkWired, faDesktop, faBug, faEnvelope, faFileText, faLayers
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
 
@@ -61,7 +61,12 @@ const AppNavbar = () => {
                   <span className="nav-link-text">Debugger</span>
                 </Nav.Link>
                 <Nav.Link as={Link} to="/templates" active={location.pathname === '/templates'}>
-                  <FontAwesomeIcon icon={faCode} className="me-1" /> Templates
+                  <FontAwesomeIcon icon={faFileText} className="me-1" />
+                  Templates
+                </Nav.Link>
+                <Nav.Link as={Link} to="/template-groups" active={location.pathname === '/template-groups'}>
+                  <FontAwesomeIcon icon={faLayers} className="me-1" />
+                  Template-Gruppen
                 </Nav.Link>
                 <Nav.Link as={Link} to="/settings" active={location.pathname === '/settings'}>
                   <FontAwesomeIcon icon={faGear} className="me-1" /> Einstellungen

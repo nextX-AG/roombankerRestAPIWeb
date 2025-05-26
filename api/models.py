@@ -137,14 +137,15 @@ class Gateway:
     collection = "gateways"
     
     def __init__(self, uuid, customer_id, name=None, description=None, 
-                 template_id=None, status="unknown", last_contact=None, _id=None,
+                 template_id=None, template_group_id=None, status="unknown", last_contact=None, _id=None,
                  created_at=None, updated_at=None):
         self._id = _id or ObjectId()
         self.uuid = uuid
         self.customer_id = ObjectId(customer_id) if isinstance(customer_id, str) and customer_id else customer_id
         self.name = name or f"Gateway {uuid[-8:]}"
         self.description = description
-        self.template_id = template_id
+        self.template_id = template_id  # Behalten für Rückwärtskompatibilität
+        self.template_group_id = template_group_id  # Neu für Template-Gruppen
         self.status = status  # online, offline, unknown, maintenance
         self.last_contact = last_contact or datetime.datetime.now()
         self.created_at = created_at or datetime.datetime.now()
@@ -296,6 +297,96 @@ class Device:
     
     def delete(self):
         """Löscht das Gerät aus der Datenbank"""
+        db[self.collection].delete_one({"_id": self._id})
+    
+    def to_dict(self):
+        """Konvertiert das Objekt in ein Dictionary"""
+        result = self.__dict__.copy()
+        result['id'] = str(result.pop('_id'))
+        return result
+
+# Template-Gruppen-Modell
+class TemplateGroup:
+    """Repräsentiert eine Template-Gruppe für verschiedene Gerätetypen"""
+    
+    collection = "template_groups"
+    
+    def __init__(self, name, description=None, templates=None, usage_count=0,
+                 _id=None, created_at=None, updated_at=None):
+        self._id = _id or ObjectId()
+        self.name = name
+        self.description = description
+        self.templates = templates or []  # [{template_id: str, priority: int}, ...]
+        self.usage_count = usage_count
+        self.created_at = created_at or datetime.datetime.now()
+        self.updated_at = updated_at or self.created_at
+    
+    @classmethod
+    def create(cls, **kwargs):
+        """Erstellt eine neue Template-Gruppe in der Datenbank"""
+        template_group = cls(**kwargs)
+        db[cls.collection].insert_one(template_group.__dict__)
+        return template_group
+    
+    @classmethod
+    def find_by_id(cls, group_id):
+        """Findet eine Template-Gruppe anhand ihrer ID"""
+        data = db[cls.collection].find_one({"_id": ObjectId(group_id)})
+        if data:
+            return cls(**data)
+        return None
+    
+    @classmethod
+    def find_all(cls):
+        """Liefert alle Template-Gruppen zurück"""
+        return [cls(**data) for data in db[cls.collection].find()]
+    
+    def update(self, **kwargs):
+        """Aktualisiert die Template-Gruppen-Informationen"""
+        kwargs['updated_at'] = datetime.datetime.now()
+        
+        # Entferne die _id aus den Update-Daten, falls vorhanden
+        if '_id' in kwargs:
+            del kwargs['_id']
+        if 'id' in kwargs:
+            del kwargs['id']
+            
+        db[self.collection].update_one(
+            {"_id": self._id},
+            {"$set": kwargs}
+        )
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+    
+    def add_template(self, template_id, priority=50):
+        """Fügt ein Template zur Gruppe hinzu"""
+        # Prüfe, ob das Template bereits in der Gruppe ist
+        existing = next((t for t in self.templates if t.get('template_id') == template_id), None)
+        
+        if existing:
+            # Aktualisiere die Priorität
+            existing['priority'] = priority
+        else:
+            # Füge neues Template hinzu
+            self.templates.append({
+                'template_id': template_id,
+                'priority': priority
+            })
+        
+        self.update(templates=self.templates)
+    
+    def remove_template(self, template_id):
+        """Entfernt ein Template aus der Gruppe"""
+        self.templates = [t for t in self.templates if t.get('template_id') != template_id]
+        self.update(templates=self.templates)
+    
+    def increment_usage(self):
+        """Erhöht den Verwendungszähler"""
+        self.usage_count += 1
+        self.update(usage_count=self.usage_count)
+    
+    def delete(self):
+        """Löscht die Template-Gruppe aus der Datenbank"""
         db[self.collection].delete_one({"_id": self._id})
     
     def to_dict(self):

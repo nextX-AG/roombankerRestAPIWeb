@@ -39,14 +39,23 @@ const Gateways = () => {
     customer_id: '',
     name: '',
     description: '',
-    template_id: '',
+    template_group_id: '',
     status: 'online'
   });
+  const [templateGroups, setTemplateGroups] = useState([]);
 
   // Lade initialisierungsdaten: Gateways, Kunden, Templates
   useEffect(() => {
     fetchData();
     fetchTemplates();
+    fetchTemplateGroups();
+    
+    // Polling für Live-Updates alle 10 Sekunden
+    const interval = setInterval(() => {
+      fetchGatewayLatestData();
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   // Hole alle Daten
@@ -151,6 +160,25 @@ const Gateways = () => {
       console.error('Fehler beim Laden der Templates:', err);
       setError('Templates konnten nicht geladen werden.');
       setAvailableTemplates([]);
+    }
+  };
+
+  // Lade alle verfügbaren Template-Gruppen
+  const fetchTemplateGroups = async () => {
+    try {
+      const response = await templateApi.listGroups();
+      console.log('Template groups response:', response);
+      
+      if (response.status === 'success') {
+        const groups = response.data || [];
+        setTemplateGroups(Array.isArray(groups) ? groups : []);
+      } else {
+        throw new Error(response.error?.message || 'Fehler beim Laden der Template-Gruppen');
+      }
+    } catch (err) {
+      console.error('Fehler beim Laden der Template-Gruppen:', err);
+      setError('Template-Gruppen konnten nicht geladen werden.');
+      setTemplateGroups([]);
     }
   };
 
@@ -263,7 +291,7 @@ const Gateways = () => {
       customer_id: '',
       name: '',
       description: '',
-      template_id: '',
+      template_group_id: '',
       status: 'online'
     });
   };
@@ -276,7 +304,7 @@ const Gateways = () => {
       customer_id: gateway.customer_id || '',
       name: gateway.name || '',
       description: gateway.description || '',
-      template_id: gateway.template_id || '',
+      template_group_id: gateway.template_group_id || '',
       status: gateway.status || 'online'
     });
     setShowEditModal(true);
@@ -531,21 +559,22 @@ const Gateways = () => {
             <Row>
               <Col>
                 <Form.Group className="mb-3">
-                  <Form.Label>Template zur Transformation</Form.Label>
+                  <Form.Label>Template-Gruppe für Transformation</Form.Label>
                   <Form.Select
-                    name="template_id"
-                    value={formData.template_id}
+                    name="template_group_id"
+                    value={formData.template_group_id}
                     onChange={handleChange}
                   >
                     <option value="">Bitte auswählen</option>
-                    {availableTemplates.map((template) => (
-                      <option key={template.id || template} value={template.id || template}>
-                        {template.name || template}
+                    {templateGroups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name} ({group.templates?.length || 0} Templates)
                       </option>
                     ))}
                   </Form.Select>
                   <Form.Text className="text-muted">
-                    Wählen Sie ein Template für die Nachrichten-Transformation. Dies ist notwendig für die Weiterleitung an evAlarm.
+                    Wählen Sie eine Template-Gruppe für die intelligente Nachrichten-Transformation. 
+                    Das System wählt automatisch das passende Template basierend auf dem Nachrichtentyp.
                   </Form.Text>
                 </Form.Group>
               </Col>
@@ -644,21 +673,22 @@ const Gateways = () => {
             <Row>
               <Col>
                 <Form.Group className="mb-3">
-                  <Form.Label>Template zur Transformation</Form.Label>
+                  <Form.Label>Template-Gruppe für Transformation</Form.Label>
                   <Form.Select
-                    name="template_id"
-                    value={formData.template_id}
+                    name="template_group_id"
+                    value={formData.template_group_id}
                     onChange={handleChange}
                   >
                     <option value="">Bitte auswählen</option>
-                    {availableTemplates.map((template) => (
-                      <option key={template.id || template} value={template.id || template}>
-                        {template.name || template}
+                    {templateGroups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name} ({group.templates?.length || 0} Templates)
                       </option>
                     ))}
                   </Form.Select>
                   <Form.Text className="text-muted">
-                    Wählen Sie ein Template für die Nachrichten-Transformation. Dies ist notwendig für die Weiterleitung an evAlarm.
+                    Wählen Sie eine Template-Gruppe für die intelligente Nachrichten-Transformation. 
+                    Das System wählt automatisch das passende Template basierend auf dem Nachrichtentyp.
                   </Form.Text>
                 </Form.Group>
               </Col>

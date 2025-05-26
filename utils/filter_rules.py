@@ -829,4 +829,90 @@ if __name__ == "__main__":
     
     # Zutreffende Regeln anzeigen
     matching_rules = engine.get_matching_rules(normalized_message)
-    print(f"Zutreffende Regeln: {matching_rules}") 
+    print(f"Zutreffende Regeln: {matching_rules}")
+
+
+# Vordefinierte Filterregeln
+FILTER_RULES = {
+    'panic_alarm': {
+        'id': 'panic_alarm',
+        'name': 'Panic Alarm',
+        'description': 'Filtert Panic-Button-Alarme',
+        'type': 'ValueComparisonRule',
+        'field_path': 'devices[0].values.alarmtype',
+        'expected_value': 'panic'
+    },
+    'battery_ok': {
+        'id': 'battery_ok',
+        'name': 'Batterie OK',
+        'description': 'Prüft, ob der Batteriestatus "connected" ist',
+        'type': 'ValueComparisonRule',
+        'field_path': 'devices[0].values.batterystatus',
+        'expected_value': 'connected'
+    },
+    'any_alarm': {
+        'id': 'any_alarm',
+        'name': 'Beliebiger Alarm',
+        'description': 'Filtert alle Alarme, unabhängig vom Typ',
+        'type': 'ValueComparisonRule',
+        'field_path': 'devices[0].values.alarmstatus',
+        'expected_value': 'alarm'
+    },
+    'online_only': {
+        'id': 'online_only',
+        'name': 'Nur Online',
+        'description': 'Filtert nur Online-Geräte',
+        'type': 'ValueComparisonRule',
+        'field_path': 'devices[0].values.onlinestatus',
+        'expected_value': 'online'
+    },
+    'temperature_range': {
+        'id': 'temperature_range',
+        'name': 'Temperaturbereich',
+        'description': 'Prüft, ob die Temperatur im Bereich liegt',
+        'type': 'RangeRule',
+        'field_path': 'devices[0].values.temperature',
+        'min_value': 18,
+        'max_value': 30,
+        'inclusive': True
+    },
+    'humidity_range': {
+        'id': 'humidity_range',
+        'name': 'Luftfeuchtigkeitsbereich',
+        'description': 'Prüft, ob die Luftfeuchtigkeit im Bereich liegt',
+        'type': 'RangeRule',
+        'field_path': 'devices[0].values.humidity',
+        'min_value': 30,
+        'max_value': 70,
+        'inclusive': True
+    },
+    'contains_smoke': {
+        'id': 'contains_smoke',
+        'name': 'Enthält Rauch',
+        'description': 'Filtert Nachrichten mit Rauchmelder-Warnungen',
+        'type': 'ValueComparisonRule',
+        'field_path': 'devices[0].values.smoke',
+        'expected_value': True
+    }
+}
+
+def get_filter_rule(rule_id: str) -> dict:
+    """
+    Holt eine Filterregel anhand ihrer ID
+    
+    Args:
+        rule_id: Die ID der Filterregel
+        
+    Returns:
+        Die Filterregel als Dictionary oder None
+    """
+    return FILTER_RULES.get(rule_id)
+
+def get_all_filter_rules() -> list:
+    """
+    Gibt alle verfügbaren Filterregeln zurück
+    
+    Returns:
+        Liste aller Filterregeln
+    """
+    return list(FILTER_RULES.values()) 

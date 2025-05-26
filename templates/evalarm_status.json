@@ -1,0 +1,18 @@
+{
+  "name": "evalarm_status",
+  "description": "Template für Status-Updates ohne Alarmierung",
+  "version": "1.0",
+  "transform": {
+    "events": [
+      {
+        "message": "Status-Update: Gateway {{ gateway_id }} {% if message.gateway %}[{% for key, value in message.gateway.items() %}{{ key }}:{{ value }} {% endfor %}]{% endif %}",
+        "address": "0",
+        "namespace": "{{ customer_config.api_config.namespace }}",
+        "id": "{{ timestamp }}_{{ uuid }}",
+        "device_id": "{{ gateway_id }}",
+        "priority": "low",
+        "is_status": true
+      }
+    ]
+  }
+} 

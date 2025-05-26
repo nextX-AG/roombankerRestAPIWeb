@@ -106,6 +106,15 @@ ENDPOINTS = {
         'filter-rules': '/filter-rules'
     },
     
+    'template-groups': {
+        'base': f'{API_BASE}/template-groups',
+        'list': '',
+        'detail': '/<id>',
+        'create': '',
+        'update': '/<id>',
+        'delete': '/<id>'
+    },
+    
     'system': {
         'base': f'{API_BASE}/system',
         'health': '/health',
@@ -183,6 +192,7 @@ def _get_service_for_category(category):
         'devices': 'api',
         'messages': 'processor',
         'templates': 'processor',
+        'template-groups': 'processor',
         'system': 'processor'
     }
     

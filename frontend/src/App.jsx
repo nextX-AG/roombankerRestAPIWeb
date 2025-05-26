@@ -23,6 +23,7 @@ import Customers from './pages/Customers';
 import Gateways from './pages/Gateways';
 import Devices from './pages/Devices';
 import Debugger from './pages/Debugger';
+import TemplateGroups from './pages/TemplateGroups';
 import VisualTemplateGenerator from './pages/VisualTemplateGenerator';
 
 // Auth Context
@@ -80,17 +81,30 @@ function AppContent() {
             {/* Verschachtelte Route für Nachrichten-Detail als Drawer */}
             <Route path=":messageId" element={<MessageDetailDrawer />} />
           </Route>
-          <Route path="/templates" element={<Templates />}>
+          <Route path="/templates" element={
+            <ProtectedRoute>
+              <Templates />
+            </ProtectedRoute>
+          }>
             {/* Verschachtelte Route für Template-Detail als Drawer */}
             <Route path=":id" element={<TemplateDetailDrawer />} />
           </Route>
+          <Route path="/template-groups" element={
+            <ProtectedRoute>
+              <TemplateGroups />
+            </ProtectedRoute>
+          } />
           <Route path="/debugger" element={<Debugger />} />
           {/* Umleitung von alten Pfaden */}
           <Route path="/message-debugger" element={<Navigate to="/debugger" />} />
           <Route path="/settings" element={<Settings />} />
           {/* Neue Betrieb-Routen */}
           <Route path="/status" element={<div>Live-Status (Implementierung folgt)</div>} />
-          <Route path="/visual-template-generator" element={<VisualTemplateGenerator />} />
+          <Route path="/visual-template-generator" element={
+            <ProtectedRoute>
+              <VisualTemplateGenerator />
+            </ProtectedRoute>
+          } />
         </Route>
       </Routes>
     </div>

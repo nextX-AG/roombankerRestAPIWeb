@@ -1183,3 +1183,157 @@ Folgende UI-Verbesserungen sind für kommende Iterationen geplant:
 - Toast-Notification-System für einheitliches Feedback
 - Dark-Mode für verbesserte Benutzerfreundlichkeit
 - CSS-Variablen-System für einheitliche Designsprache 
+
+## 14. Template-Gruppen-System (NEU)
+
+Das Template-Gruppen-System wurde entwickelt, um die Verwaltung von Templates für verschiedene Gerätetypen und Nachrichtenformate zu vereinfachen. Es löst das Problem, dass ein Gateway verschiedene Nachrichtentypen senden kann, die unterschiedliche Templates benötigen.
+
+### 14.1 Konzept
+
+Template-Gruppen ermöglichen es, mehrere zusammengehörige Templates zu bündeln und intelligent basierend auf dem Nachrichteninhalt auszuwählen. Dies ist besonders wichtig für Gateways, die verschiedene Nachrichtentypen senden:
+
+- Alarmnachrichten (z.B. Panic-Button)
+- Statusnachrichten (z.B. Batteriestatus, Online-Status)
+- Sensordaten (z.B. Temperatur, Luftfeuchtigkeit)
+
+### 14.2 Datenmodell
+
+#### TemplateGroup
+
+```javascript
+{
+  "_id": ObjectId,
+  "name": "Roombanker Panic System",  // Eindeutiger Name der Gruppe
+  "description": "Templates für Roombanker Panic-Button-Systeme",
+  "templates": [
+    {
+      "template_id": "evalarm_panic",
+      "template_name": "Panic Alarm",  // Für UI-Anzeige
+      "priority": 100  // Höhere Priorität = wird bevorzugt ausgewählt
+    },
+    {
+      "template_id": "evalarm_battery_low",
+      "template_name": "Batterie Warnung",
+      "priority": 90
+    },
+    {
+      "template_id": "evalarm_status",
+      "template_name": "Status-Update",
+      "priority": 10
+    }
+  ],
+  "usage_count": 47,  // Anzahl der Gateways, die diese Gruppe verwenden
+  "created_at": DateTime,
+  "updated_at": DateTime
+}
+```
+
+#### Gateway-Erweiterung
+
+Das Gateway-Modell wurde um das `template_group_id` Feld erweitert:
+
+```javascript
+{
+  // ... bestehende Felder ...
+  "template_id": String,  // Legacy: Einzelnes Template (Rückwärtskompatibilität)
+  "template_group_id": String,  // NEU: Referenz zur Template-Gruppe
+  // ... weitere Felder ...
+}
+```
+
+### 14.3 Template-Auswahl-Logik
+
+Die Template-Auswahl erfolgt durch die `template_selector.py` Komponente:
+
+```python
+def select_template_for_message(gateway, message):
+    # 1. Prüfe, ob Gateway eine Template-Gruppe hat
+    if gateway.template_group_id:
+        template_group = TemplateGroup.find_by_id(gateway.template_group_id)
+        
+        # 2. Normalisiere die Nachricht
+        normalized = normalize_message(message)
+        
+        # 3. Gehe durch alle Templates (sortiert nach Priorität)
+        for template_config in sorted_templates:
+            template = Template.get(template_config['template_id'])
+            
+            # 4. Prüfe Filterregeln
+            if check_filter_rules(normalized, template.filter_rules):
+                return template_config['template_id']
+    
+    # 5. Fallback auf Legacy-Template oder Standard
+    return gateway.template_id or 'evalarm_status'
+```
+
+### 14.4 UI-Komponenten
+
+#### Template-Gruppen-Verwaltung
+
+Die `TemplateGroups.jsx` Seite bietet:
+- Übersicht aller Template-Gruppen
+- Anzeige der enthaltenen Templates und ihrer Prioritäten
+- Verwendungsstatistiken
+- Erstellen, Bearbeiten und Löschen von Gruppen
+
+#### Template-Gruppen-Modal
+
+Das `TemplateGroupModal.jsx` ermöglicht:
+- Hinzufügen/Entfernen von Templates zu einer Gruppe
+- Prioritätsvergabe für jedes Template
+- Drag-and-Drop-Sortierung (vorbereitet für zukünftige Implementierung)
+
+#### Gateway-Integration
+
+In der Gateway-Verwaltung (`Gateways.jsx`) kann jetzt:
+- Eine Template-Gruppe aus einer Dropdown-Liste ausgewählt werden
+- Die Anzahl der enthaltenen Templates angezeigt werden
+- Eine visuelle Vorschau der Template-Gruppe erfolgen
+
+### 14.5 API-Endpunkte
+
+Neue API-Endpunkte für Template-Gruppen:
+
+```javascript
+// In api.js
+templateApi.listGroups()     // GET /api/v1/template-groups
+templateApi.getGroup(id)      // GET /api/v1/template-groups/:id
+templateApi.createGroup(data) // POST /api/v1/template-groups
+templateApi.updateGroup(id, data) // PUT /api/v1/template-groups/:id
+templateApi.deleteGroup(id)   // DELETE /api/v1/template-groups/:id
+```
+
+### 14.6 Workflow-Beispiel
+
+1. **Administrator erstellt Template-Gruppe**:
+   - Name: "Roombanker Panic System"
+   - Fügt Templates hinzu: evalarm_panic (Priorität 100), evalarm_status (Priorität 10)
+
+2. **Gateway-Konfiguration**:
+   - Administrator wählt beim Gateway-Setup die Template-Gruppe aus
+   - Keine einzelne Template-Auswahl mehr nötig
+
+3. **Nachrichtenverarbeitung**:
+   - Gateway sendet Panic-Alarm
+   - System normalisiert die Nachricht
+   - Prüft alle Templates der Gruppe nach Priorität
+   - evalarm_panic-Template erfüllt die Filterregeln und wird ausgewählt
+   - Nachricht wird transformiert und weitergeleitet
+
+### 14.7 Vorteile des Systems
+
+- **Flexibilität**: Ein Gateway kann verschiedene Nachrichtentypen mit unterschiedlichen Templates verarbeiten
+- **Wiederverwendbarkeit**: Einmal konfigurierte Template-Gruppen können für mehrere Gateways genutzt werden
+- **Benutzerfreundlichkeit**: Vereinfachtes Gateway-Setup durch Auswahl vorgefertigter Gruppen
+- **Skalierbarkeit**: Neue Templates können einfach zu bestehenden Gruppen hinzugefügt werden
+- **Wartbarkeit**: Zentrale Verwaltung von Template-Konfigurationen
+
+### 14.8 Zukünftige Erweiterungen
+
+- **Import/Export**: Template-Gruppen zwischen Installationen teilen
+- **Marketplace**: Community-basierte Template-Gruppen
+- **Auto-Learning**: Automatische Template-Gruppen-Generierung basierend auf Nachrichtenmustern
+- **A/B-Testing**: Verschiedene Template-Gruppen für dasselbe Gateway testen
+- **Versionierung**: Änderungsverlauf für Template-Gruppen
+
+</rewritten_file> 

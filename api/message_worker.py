@@ -26,6 +26,10 @@ from utils.api_handlers import (
     unauthorized_response, forbidden_response,
     api_error_handler
 )
+from utils.auth_middleware import require_auth
+
+# Importiere Models
+from api.models import TemplateGroup
 
 # Konfiguriere Logging
 logging.basicConfig(
@@ -593,80 +597,54 @@ def generate_template():
         return error_response(f"Fehler beim Generieren des Templates: {str(e)}", 500)
 
 @app.route(get_route('templates', 'test-code'), methods=['POST'])
-@api_error_handler
+@require_auth
 def test_template_code():
-    """Testet einen Template-Code mit einer Nachricht, ohne das Template zu speichern"""
-    error = check_worker_initialized()
-    if error:
-        return error
-    
-    data = request.json
-    
-    # Validierung
-    validation_errors = {}
-    if not data or not isinstance(data, dict):
-        return validation_error_response({"request": "Ungültiges JSON-Format"})
-    
-    if 'template_code' not in data:
-        validation_errors['template_code'] = "Template-Code ist erforderlich"
-    
-    if 'message' not in data:
-        validation_errors['message'] = "Nachricht ist erforderlich"
-    
-    if validation_errors:
-        return validation_error_response(validation_errors)
-    
-    template_code = data.get('template_code')
-    message = data.get('message')
-    
-    # Temporären Dateinamen generieren
-    temp_template_name = f"temp_template_{uuid.uuid4()}"
-    temp_template_path = os.path.join(worker_instance.template_engine.templates_dir, f"{temp_template_name}.json")
-    
+    """Testet Template-Code ohne Speichern"""
     try:
-        # Template-Code parsen
-        template_data = None
-        try:
-            template_data = json.loads(template_code)
-        except json.JSONDecodeError as e:
-            return error_response(f"Ungültiges JSON-Format im Template-Code: {str(e)}", 400)
+        data = request.json
+        code = data.get('code', '')
+        test_data = data.get('data', {})
         
-        # Temporäre Template-Datei erstellen
-        with open(temp_template_path, 'w') as f:
-            json.dump(template_data, f)
+        # Code validieren
+        if not code:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Template-Code ist erforderlich'}
+            }), 400
         
-        # Template-Engine aktualisieren
-        worker_instance.template_engine.reload_templates()
+        # Test-Template erstellen
+        test_template = {
+            'name': 'test',
+            'template_code': code
+        }
         
-        # Transformation durchführen
-        transformed = worker_instance.template_engine.transform_message(message, temp_template_name)
+        # Code ausführen
+        sandbox = create_safe_sandbox()
+        exec(code, sandbox)
         
-        # Temporäre Datei löschen
-        try:
-            os.remove(temp_template_path)
-        except Exception as e:
-            logger.warning(f"Konnte temporäre Template-Datei nicht löschen: {str(e)}")
+        if 'transform' not in sandbox:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Template muss eine transform() Funktion definieren'}
+            }), 400
         
-        if transformed:
-            logger.info(f"Test-Transformation mit temporärem Template erfolgreich")
-            return success_response({
-                'original_message': message,
-                'transformed_message': transformed,
-                'template_code': template_code
-            })
-        else:
-            logger.warning(f"Test-Transformation mit temporärem Template fehlgeschlagen")
-            return error_response("Transformation fehlgeschlagen", 400)
+        # Transformation ausführen
+        result = sandbox['transform'](test_data)
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'result': result,
+                'success': True
+            }
+        })
+        
     except Exception as e:
-        # Aufräumen im Fehlerfall
-        try:
-            if os.path.exists(temp_template_path):
-                os.remove(temp_template_path)
-        except:
-            pass
-        
-        logger.error(f"Fehler beim Testen des Template-Codes: {str(e)}")
-        return error_response(f"Fehler beim Testen des Template-Codes: {str(e)}", 500)
+        logger.error(f"Fehler beim Testen des Template-Codes: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': f'Fehler bei der Ausführung: {str(e)}'}
+        }), 500
 
 @app.route(get_route('templates', 'test'), methods=['POST'])
 @api_error_handler
@@ -733,6 +711,226 @@ def list_worker_endpoints():
     
     return success_response(endpoints)
 
+# Endpunkt zum Testen eines Templates anhand seiner ID
+@app.route(get_route('templates', 'test'), methods=['POST'])
+@require_auth
+def test_template(id):
+    """Testet ein Template mit Beispiel-Daten"""
+    try:
+        data = request.json
+        
+        # Template holen
+        template = Template().get(id)
+        if not template:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Template nicht gefunden'}
+            }), 404
+        
+        # Template-Code validieren
+        template_code = template.get('template_code', '')
+        if not template_code:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Template enthält keinen Code'}
+            }), 400
+        
+        # Template parsen
+        template_dict = json.loads(template_code)
+        
+        # Transformation durchführen
+        transformer = TemplateTransformer()
+        
+        # Filter prüfen (wenn vorhanden)
+        filter_rules = template_dict.get('filter_rules', [])
+        if filter_rules:
+            if not transformer.check_filter_rules(data, filter_rules):
+                return jsonify({
+                    'status': 'success',
+                    'data': {
+                        'filter_passed': False,
+                        'message': 'Die Nachricht entspricht nicht den Filterregeln des Templates',
+                        'transformed_message': None
+                    }
+                })
+        
+        # Transformation
+        transformation_template = template_dict.get('transform', '{}')
+        transformed = transformer.transform(data, transformation_template)
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'filter_passed': True,
+                'transformed_message': transformed
+            }
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Testen des Templates: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# ==================== TEMPLATE GRUPPEN API ENDPUNKTE ====================
+
+# Liste aller Template-Gruppen
+@app.route(get_route('template-groups', 'list'), methods=['GET'])
+@require_auth
+def list_template_groups():
+    """Liste aller Template-Gruppen"""
+    try:
+        groups = TemplateGroup.find_all()
+        
+        # Konvertiere zu Dict-Format
+        groups_list = [group.to_dict() for group in groups]
+        
+        return jsonify({
+            'status': 'success',
+            'data': groups_list
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Template-Gruppen: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Details einer Template-Gruppe
+@app.route(get_route('template-groups', 'detail'), methods=['GET'])
+@require_auth
+def get_template_group(id):
+    """Details einer Template-Gruppe"""
+    try:
+        group = TemplateGroup.find_by_id(id)
+        
+        if not group:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Template-Gruppe nicht gefunden'}
+            }), 404
+        
+        return jsonify({
+            'status': 'success',
+            'data': group.to_dict()
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Template-Gruppe: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Template-Gruppe erstellen
+@app.route(get_route('template-groups', 'create'), methods=['POST'])
+@require_auth
+def create_template_group():
+    """Erstellt eine neue Template-Gruppe"""
+    try:
+        data = request.json
+        
+        # Validierung
+        if not data.get('name'):
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Name ist erforderlich'}
+            }), 400
+        
+        # Erstellen
+        group = TemplateGroup.create(
+            name=data.get('name'),
+            description=data.get('description', ''),
+            templates=data.get('templates', [])
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'data': group.to_dict()
+        }), 201
+    except Exception as e:
+        logger.error(f"Fehler beim Erstellen der Template-Gruppe: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Template-Gruppe aktualisieren
+@app.route(get_route('template-groups', 'update'), methods=['PUT'])
+@require_auth
+def update_template_group(id):
+    """Aktualisiert eine Template-Gruppe"""
+    try:
+        data = request.json
+        
+        # Prüfen ob Gruppe existiert
+        group = TemplateGroup.find_by_id(id)
+        if not group:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Template-Gruppe nicht gefunden'}
+            }), 404
+        
+        # Aktualisieren
+        group.update(**data)
+        
+        return jsonify({
+            'status': 'success',
+            'data': group.to_dict()
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Aktualisieren der Template-Gruppe: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Template-Gruppe löschen
+@app.route(get_route('template-groups', 'delete'), methods=['DELETE'])
+@require_auth
+def delete_template_group(id):
+    """Löscht eine Template-Gruppe"""
+    try:
+        # Prüfen ob Gruppe existiert
+        group = TemplateGroup.find_by_id(id)
+        if not group:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Template-Gruppe nicht gefunden'}
+            }), 404
+        
+        # Löschen
+        group.delete()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {'message': 'Template-Gruppe erfolgreich gelöscht'}
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Löschen der Template-Gruppe: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Endpunkt für fehlgeschlagene Verarbeitungen
+@app.route(get_route('messages', 'failed'), methods=['GET'])
+@require_auth
+def get_failed_messages():
+    """Gibt fehlgeschlagene Nachrichten zurück"""
+    try:
+        # In der Zukunft würden wir fehlgeschlagene Nachrichten aus einer DB oder Queue holen
+        # Für jetzt geben wir eine leere Liste zurück
+        return jsonify({
+            'status': 'success',
+            'data': []
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen fehlgeschlagener Nachrichten: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
 # Singleton-Instanz für die Anwendung
 worker_instance = None
 
@@ -764,6 +962,37 @@ def get_worker():
     """
     return worker_instance
 
+def error_response(message, status_code=500):
+    """Erstellt eine Standard-Fehlerantwort im API-Format"""
+    logger.error(f"API Error: {message}")
+    return jsonify({
+        'status': 'error',
+        'error': {'message': str(message)}
+    }), status_code
+
+def create_safe_sandbox():
+    """Erstellt eine sichere Sandbox-Umgebung für die Template-Ausführung"""
+    return {
+        '__builtins__': {
+            'len': len,
+            'str': str,
+            'int': int,
+            'float': float,
+            'bool': bool,
+            'list': list,
+            'dict': dict,
+            'range': range,
+            'enumerate': enumerate,
+            'zip': zip,
+            'min': min,
+            'max': max,
+            'sum': sum,
+            'abs': abs,
+            'round': round,
+            'isinstance': isinstance,
+            'print': print,
+        }
+    }
 
 if __name__ == '__main__':
     # Standalone-Worker-Prozess

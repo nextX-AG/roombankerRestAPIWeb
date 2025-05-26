@@ -204,6 +204,7 @@ def determine_target_service(path):
         'devices': 'api',
         'messages': 'processor',  # Message-Processor verarbeitet alle /messages Endpunkte
         'templates': 'processor', 
+        'template-groups': 'processor',  # NEU: Template-Gruppen werden auch vom Processor verarbeitet
         'system': 'processor',    
         'health': 'api',          # Health-Status für API-Service
         'iot-status': 'processor',

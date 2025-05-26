@@ -38,12 +38,23 @@ except ImportError as e:
     NORMALIZER_AVAILABLE = False
     normalizer = None
 
+# Importiere die neue Template-Auswahl-Funktion
+try:
+    from utils.template_selector import select_template_for_message
+    TEMPLATE_SELECTOR_AVAILABLE = True
+    logger.info("Template Selector erfolgreich importiert")
+except ImportError as e:
+    logger.warning(f"Template Selector konnte nicht importiert werden: {str(e)}")
+    TEMPLATE_SELECTOR_AVAILABLE = False
+    select_template_for_message = None
+
 app = Flask(__name__)
 
 # Template-Auswahl basierend auf Nachrichteninhalt
 def select_template(message):
     """
     Wählt das passende Template basierend auf dem Nachrichteninhalt aus.
+    DEPRECATED: Verwende stattdessen select_template_for_message
     """
     if not isinstance(message, dict):
         return 'default'
@@ -208,15 +219,21 @@ def process_message_endpoint():
                         # Transformations- und Weiterleitungsschritt
                         # (Für die Übergangsphase verwenden wir noch das bestehende Template-System)
                         
-                        # Template automatisch auswählen
-                        is_panic = False
-                        for device in normalized_data.get('devices', []):
-                            values = device.get('values', {})
-                            if values.get('alarmstatus') == 'alarm' and values.get('alarmtype') == 'panic':
-                                is_panic = True
-                                break
-                        
-                        template_name = 'evalarm_panic' if is_panic else 'evalarm'
+                        # Template auswählen mit neuer Logik
+                        if TEMPLATE_SELECTOR_AVAILABLE and gateway:
+                            template_name = select_template_for_message(gateway, normalized_data)
+                            logger.info(f"Template durch neue Logik ausgewählt: {template_name}")
+                        else:
+                            # Fallback auf alte Logik
+                            is_panic = False
+                            for device in normalized_data.get('devices', []):
+                                values = device.get('values', {})
+                                if values.get('alarmstatus') == 'alarm' and values.get('alarmtype') == 'panic':
+                                    is_panic = True
+                                    break
+                            
+                            template_name = 'evalarm_panic' if is_panic else 'evalarm'
+                            logger.info(f"Template durch alte Logik ausgewählt: {template_name}")
                         
                         # Nachricht in die Queue stellen (bestehende Logik)
                         message_id = int(time.time() * 1000)
@@ -420,19 +437,25 @@ def process_message_endpoint():
                         }
                     })
                 
-                # Template automatisch auswählen
-                # Prüfen auf Panic-Alarm
-                is_panic = False
-                if isinstance(message, dict) and 'subdevicelist' in message:
-                    for device in message.get('subdevicelist', []):
-                        if isinstance(device, dict) and 'value' in device:
-                            value = device.get('value', {})
-                            if value.get('alarmstatus') == 'alarm' and value.get('alarmtype') == 'panic':
-                                is_panic = True
-                                break
-                
-                # Template auswählen
-                template_name = 'evalarm_panic' if is_panic else 'evalarm'
+                # Template auswählen mit neuer Logik
+                if TEMPLATE_SELECTOR_AVAILABLE and gateway:
+                    template_name = select_template_for_message(gateway, message)
+                    logger.info(f"Template durch neue Logik ausgewählt: {template_name}")
+                else:
+                    # Fallback auf alte Logik
+                    # Prüfen auf Panic-Alarm
+                    is_panic = False
+                    if isinstance(message, dict) and 'subdevicelist' in message:
+                        for device in message.get('subdevicelist', []):
+                            if isinstance(device, dict) and 'value' in device:
+                                value = device.get('value', {})
+                                if value.get('alarmstatus') == 'alarm' and value.get('alarmtype') == 'panic':
+                                    is_panic = True
+                                    break
+                    
+                    # Template auswählen
+                    template_name = 'evalarm_panic' if is_panic else 'evalarm'
+                    logger.info(f"Template durch alte Logik ausgewählt: {template_name}")
                 
                 # Nachricht in die Queue stellen
                 message_id = int(time.time() * 1000)
@@ -705,7 +728,7 @@ def list_templates():
     """
     # Statt nur Beispiel-Template-Namen zurückgeben, echte Template-Objekte erstellen
     templates = []
-    template_names = ["evalarm_payload", "evalarm_panic", "standard", "evalarm_panic_v2", "evalarm", "endpoints", "customer_config", "evalarm_alarm", "evalarm_raw"]
+    template_names = ["evalarm_payload", "evalarm_panic", "standard", "evalarm_panic_v2", "evalarm", "evalarm_status", "endpoints", "customer_config", "evalarm_alarm", "evalarm_raw"]
     
     # Aktuelle Zeit für created_at
     import datetime
