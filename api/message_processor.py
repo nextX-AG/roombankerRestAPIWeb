@@ -40,6 +40,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger('message-processor')
 
+# Importiere das Template-Lernsystem NACH der Logger-Definition
+try:
+    from utils.template_learning import TemplateLearningEngine
+    learning_engine = TemplateLearningEngine()
+    LEARNING_SYSTEM_AVAILABLE = True
+    logger.info("Template-Lernsystem erfolgreich importiert")
+except ImportError as e:
+    logger.warning(f"Konnte Template-Lernsystem nicht importieren: {str(e)}")
+    LEARNING_SYSTEM_AVAILABLE = False
+    learning_engine = None
+
 # Importiere die neue Template-Auswahl-Funktion
 try:
     from utils.template_selector import select_template_for_message
@@ -375,23 +386,84 @@ def process_message():
             template_name = 'evalarm'  # Fallback
         logger.info(f"Template durch alte Logik ausgewählt: {template_name}")
     
-    # Füge die Nachricht in die Queue ein (asynchrone Verarbeitung)
-    message_id = queue.enqueue_message(
-        message=message,
-        template_name=template_name,
-        endpoint_name='auto',  # Verwende 'auto' statt 'evalarm' für dynamische Endpunktauswahl
-        customer_config=customer_config,
-        gateway_id=gateway_id
-    )
+    # Nachricht zum Lernsystem hinzufügen (wenn aktiv)
+    if LEARNING_SYSTEM_AVAILABLE and learning_engine:
+        try:
+            if learning_engine.add_message(gateway_id, message):
+                logger.info(f"Nachricht zum Lernsystem für Gateway {gateway_id} hinzugefügt")
+        except Exception as e:
+            logger.warning(f"Fehler beim Hinzufügen zum Lernsystem: {str(e)}")
     
-    logger.info(f"Nachricht in Queue eingefügt: ID {message_id}, Template {template_name}, Kunde {customer_config['name']}")
+    # Prüfe ob Nachrichtenweiterleitung aktiviert ist
+    forward_message = True
+    blocked_reason = None
     
-    # Erstelle Antwort mit Message-ID
-    return success_response({
-        'message_id': message_id,
-        'status': 'queued',
-        'message': f'Nachricht wurde in die Queue eingefügt (ID: {message_id})'
-    })
+    if gateway and hasattr(gateway, 'forwarding_enabled'):
+        if not gateway.forwarding_enabled:
+            forward_message = False
+            blocked_reason = "Gateway-Weiterleitung deaktiviert"
+            logger.info(f"Nachrichtenweiterleitung für Gateway {gateway_id} ist deaktiviert")
+        elif hasattr(gateway, 'forwarding_mode') and gateway.forwarding_mode != 'production':
+            forward_message = False
+            blocked_reason = f"Gateway im {gateway.forwarding_mode}-Modus"
+            logger.info(f"Gateway {gateway_id} ist im {gateway.forwarding_mode}-Modus - Nachricht wird nicht weitergeleitet")
+    
+    # Überprüfe globalen Test-Modus
+    if os.environ.get('EVALARM_TEST_MODE', 'false').lower() == 'true':
+        forward_message = False
+        blocked_reason = "Globaler Test-Modus aktiv"
+        logger.info("Globaler Test-Modus ist aktiv - Nachricht wird nicht weitergeleitet")
+    
+    if forward_message:
+        # Füge die Nachricht in die Queue ein (asynchrone Verarbeitung)
+        message_id = queue.enqueue_message(
+            message=message,
+            template_name=template_name,
+            endpoint_name='auto',  # Verwende 'auto' statt 'evalarm' für dynamische Endpunktauswahl
+            customer_config=customer_config,
+            gateway_id=gateway_id
+        )
+        
+        logger.info(f"Nachricht in Queue eingefügt: ID {message_id}, Template {template_name}, Kunde {customer_config['name']}")
+        
+        # Erstelle Antwort mit Message-ID
+        return success_response({
+            'message_id': message_id,
+            'status': 'queued',
+            'message': f'Nachricht wurde in die Queue eingefügt (ID: {message_id})'
+        })
+    else:
+        # Nachricht wird blockiert
+        logger.info(f"Nachricht von Gateway {gateway_id} blockiert: {blocked_reason}")
+        
+        # Optional: Speichere blockierte Nachricht für spätere Analyse
+        try:
+            blocked_log_dir = os.path.join(PROJECT_DIR, 'data', 'blocked_messages')
+            os.makedirs(blocked_log_dir, exist_ok=True)
+            
+            filename = f"blocked_{gateway_id}_{int(datetime.now().timestamp())}.json"
+            filepath = os.path.join(blocked_log_dir, filename)
+            
+            with open(filepath, 'w') as f:
+                json.dump({
+                    'timestamp': datetime.now().isoformat(),
+                    'gateway_id': gateway_id,
+                    'reason': blocked_reason,
+                    'template': template_name,
+                    'message': message,
+                    'customer': customer_config['name'] if customer_config else None
+                }, f, indent=2)
+            
+            logger.info(f"Blockierte Nachricht in {filepath} gespeichert")
+        except Exception as e:
+            logger.error(f"Fehler beim Speichern der blockierten Nachricht: {str(e)}")
+        
+        return success_response({
+            'status': 'blocked',
+            'reason': blocked_reason,
+            'gateway_id': gateway_id,
+            'message': f'Nachricht wurde blockiert: {blocked_reason}'
+        }, status_code=202)  # 202 Accepted
 
 @app.route('/api/v1/list-messages', methods=['GET'])
 @api_error_handler

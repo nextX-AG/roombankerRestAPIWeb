@@ -191,6 +191,118 @@ Erfolgreiche Antwort ohne Weiterleitung (Gateway keinem Kunden zugeordnet):
 | `/api/v1/template-groups/<id>` | PUT | Template-Gruppe aktualisieren |
 | `/api/v1/template-groups/<id>` | DELETE | Template-Gruppe löschen |
 
+### Template-Lernsystem-API
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/v1/learning` | GET | Liste aller aktiven Lernsessions |
+| `/api/v1/learning/start` | POST | Startet eine neue Lernsession für ein Gateway |
+| `/api/v1/learning/stop/<gateway_id>` | POST | Stoppt eine laufende Lernsession |
+| `/api/v1/learning/status/<gateway_id>` | GET | Zeigt den Status einer Lernsession |
+| `/api/v1/learning/patterns/<gateway_id>` | GET | Zeigt erkannte Nachrichtenmuster |
+| `/api/v1/learning/generate-templates/<gateway_id>` | POST | Generiert Templates aus Lerndaten |
+
+#### Lernsystem-Workflow
+
+1. **Lernsession starten**:
+   ```json
+   POST /api/v1/learning/start
+   {
+     "gateway_id": "gw-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+     "duration_hours": 48  // Standard: 48 Stunden
+   }
+   ```
+
+2. **Status abfragen**:
+   ```json
+   GET /api/v1/learning/status/gw-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   {
+     "status": "success",
+     "data": {
+       "gateway_id": "gw-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+       "status": "learning",
+       "start_time": "2025-05-26T20:19:19.524000",
+       "end_time": "2025-05-28T20:19:19.524000",
+       "message_count": 21,
+       "patterns": [],
+       "devices": ["444444", "555555", "777777"]
+     }
+   }
+   ```
+
+3. **Muster analysieren** (nach Abschluss):
+   ```json
+   GET /api/v1/learning/patterns/gw-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   {
+     "status": "success",
+     "data": {
+       "patterns": [
+         {
+           "pattern_id": "panic_alarm",
+           "type": "alarm",
+           "count": 4,
+           "percentage": 20,
+           "common_fields": {
+             "alarmtype": "panic",
+             "alarmstatus": "alarm"
+           }
+         },
+         {
+           "pattern_id": "normal_status",
+           "type": "status",
+           "count": 16,
+           "percentage": 80,
+           "common_fields": {
+             "alarmstatus": "normal",
+             "batterystatus": "ok"
+           }
+         }
+       ]
+     }
+   }
+   ```
+
+4. **Templates generieren**:
+   ```json
+   POST /api/v1/learning/generate-templates/gw-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   {
+     "create_group": true,
+     "group_name": "Mein Panic-System"
+   }
+   ```
+
+Das Lernsystem sammelt automatisch alle Nachrichten eines Gateways über den konfigurierten Zeitraum, analysiert Muster und kann daraus automatisch passende Templates generieren.
+
+### Gateway-Forwarding-Kontrolle
+
+Das Gateway-Modell unterstützt jetzt die Kontrolle der Nachrichtenweiterleitung:
+
+#### Gateway-Felder für Forwarding
+
+```json
+{
+  "uuid": "gw-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "forwarding_enabled": true,  // Ob Nachrichten weitergeleitet werden
+  "forwarding_mode": "production"  // production, test, learning
+}
+```
+
+#### Forwarding-Modi
+
+- **production**: Normale Weiterleitung an evAlarm
+- **test**: Nachrichten werden NICHT weitergeleitet
+- **learning**: Automatisch im Lernmodus, keine Weiterleitung
+
+#### Nachrichten-Blockierung
+
+Nachrichten werden in folgenden Fällen blockiert:
+1. Gateway ist keinem Kunden zugeordnet
+2. `forwarding_enabled` ist `false`
+3. `forwarding_mode` ist nicht `production`
+4. Globale Umgebungsvariable `EVALARM_TEST_MODE=true`
+
+Blockierte Nachrichten werden in `/data/blocked_messages/` gespeichert.
+
 ### Logs-API (NEU)
 
 | Endpunkt | Methode | Beschreibung |
@@ -716,12 +828,4 @@ Alle Frontend-Komponenten sollten ausschließlich die folgenden API-Endpunkte ve
 | `customerApi.list()` | `/api/v1/customers` | Liste aller Kunden |
 | `logsApi.getSystemLogs()` | `/api/v1/logs/system` | System-Logs abrufen |
 | `logsApi.getProcessorLogs()` | `/api/v1/logs/processor` | Processor-Logs abrufen |
-| `logsApi.getGatewayLogs()` | `/api/v1/logs/gateway` | Gateway-Logs abrufen |
-
-### Häufige Fehlerquellen bei der API-Integration
-
-1. **Direkte Axios-Aufrufe:** Verwenden Sie niemals direkte `axios.get()` oder `fetch()` Aufrufe, sondern immer den zentralen API-Client
-2. **Inkonsistente URL-Pfade:** Stellen Sie sicher, dass alle Pfade mit `/api/v1/` beginnen
-3. **Fehlende Error-Handling:** Behandeln Sie stets alle möglichen Fehlerfälle
-4. **Unvollständige Response-Verarbeitung:** Überprüfen Sie immer das `status`-Feld und extrahieren Sie Daten aus dem `data`-Feld
-5. **Simultane API-Aufrufe ohne Promise.all:** Bei mehreren Anfragen verwenden Sie `Promise.all` für bessere Performance 
+| `logsApi.getGatewayLogs()` | `/api/v1/logs/gateway` | Gateway-Logs abrufen | 

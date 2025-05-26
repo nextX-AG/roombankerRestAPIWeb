@@ -937,6 +937,160 @@ def get_failed_messages():
             'error': {'message': str(e)}
         }), 500
 
+# ==================== TEMPLATE LERNSYSTEM API ENDPUNKTE ====================
+
+from utils.template_learning import TemplateLearningEngine
+
+# Singleton-Instanz für die Learning Engine
+learning_engine = TemplateLearningEngine()
+
+# Liste aller Lernsessions
+@app.route(get_route('learning', 'list'), methods=['GET'])
+@require_auth
+def list_learning_sessions():
+    """Liste aller Lernsessions"""
+    try:
+        sessions = learning_engine.get_learning_status()
+        return jsonify({
+            'status': 'success',
+            'data': sessions
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Lernsessions: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Lernmodus starten
+@app.route(get_route('learning', 'start'), methods=['POST'])
+@require_auth
+def start_learning():
+    """Startet den Lernmodus für ein Gateway"""
+    try:
+        data = request.json
+        gateway_id = data.get('gateway_id')
+        duration_hours = data.get('duration_hours')
+        
+        if not gateway_id:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Gateway-ID ist erforderlich'}
+            }), 400
+        
+        result = learning_engine.start_learning(gateway_id, duration_hours)
+        
+        if result['status'] == 'error':
+            return jsonify({
+                'status': 'error',
+                'error': {'message': result['message']}
+            }), 400
+        
+        return jsonify({
+            'status': 'success',
+            'data': result
+        }), 201
+    except Exception as e:
+        logger.error(f"Fehler beim Starten des Lernmodus: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Lernmodus stoppen
+@app.route(get_route('learning', 'stop'), methods=['POST'])
+@require_auth
+def stop_learning(gateway_id):
+    """Stoppt den Lernmodus für ein Gateway"""
+    try:
+        result = learning_engine.stop_learning(gateway_id)
+        
+        if result['status'] == 'error':
+            return jsonify({
+                'status': 'error',
+                'error': {'message': result['message']}
+            }), 404
+        
+        return jsonify({
+            'status': 'success',
+            'data': result
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Stoppen des Lernmodus: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Status einer Lernsession
+@app.route(get_route('learning', 'status'), methods=['GET'])
+@require_auth
+def get_learning_status(gateway_id):
+    """Gibt den Status der Lernsession für ein Gateway zurück"""
+    try:
+        sessions = learning_engine.get_learning_status(gateway_id)
+        
+        if not sessions:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Keine Lernsession für dieses Gateway gefunden'}
+            }), 404
+        
+        return jsonify({
+            'status': 'success',
+            'data': sessions[0]  # Neueste Session
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen des Lernstatus: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Nachrichtenmuster abrufen
+@app.route(get_route('learning', 'patterns'), methods=['GET'])
+@require_auth
+def get_message_patterns(gateway_id):
+    """Gibt die erkannten Nachrichtenmuster zurück"""
+    try:
+        patterns = learning_engine.analyze_patterns(gateway_id)
+        
+        return jsonify({
+            'status': 'success',
+            'data': patterns
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Nachrichtenmuster: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Templates generieren
+@app.route(get_route('learning', 'generate-templates'), methods=['POST'])
+@require_auth
+def generate_templates_from_learning(gateway_id):
+    """Generiert Templates basierend auf gelernten Mustern"""
+    try:
+        templates = learning_engine.generate_templates(gateway_id)
+        
+        if not templates:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Keine Muster gefunden, um Templates zu generieren'}
+            }), 404
+        
+        return jsonify({
+            'status': 'success',
+            'data': templates
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Generieren der Templates: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
 # Singleton-Instanz für die Anwendung
 worker_instance = None
 

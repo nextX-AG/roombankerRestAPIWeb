@@ -40,7 +40,9 @@ const Gateways = () => {
     name: '',
     description: '',
     template_group_id: '',
-    status: 'online'
+    status: 'online',
+    forwarding_enabled: true,
+    forwarding_mode: 'production'
   });
   const [templateGroups, setTemplateGroups] = useState([]);
 
@@ -292,7 +294,9 @@ const Gateways = () => {
       name: '',
       description: '',
       template_group_id: '',
-      status: 'online'
+      status: 'online',
+      forwarding_enabled: true,
+      forwarding_mode: 'production'
     });
   };
 
@@ -305,7 +309,9 @@ const Gateways = () => {
       name: gateway.name || '',
       description: gateway.description || '',
       template_group_id: gateway.template_group_id || '',
-      status: gateway.status || 'online'
+      status: gateway.status || 'online',
+      forwarding_enabled: gateway.forwarding_enabled || true,
+      forwarding_mode: gateway.forwarding_mode || 'production'
     });
     setShowEditModal(true);
   };
@@ -387,6 +393,30 @@ const Gateways = () => {
         header: 'Status',
         size: 100,
         cell: ({ row }) => renderStatusBadge(row.original.status),
+      },
+      {
+        accessorKey: 'forwarding_mode',
+        header: 'Modus',
+        size: 100,
+        cell: ({ row }) => {
+          const mode = row.original.forwarding_mode || 'production';
+          const enabled = row.original.forwarding_enabled !== false;
+          
+          if (!enabled) {
+            return <Badge bg="danger">Blockiert</Badge>;
+          }
+          
+          switch (mode) {
+            case 'production':
+              return <Badge bg="success">Produktion</Badge>;
+            case 'test':
+              return <Badge bg="warning">Test</Badge>;
+            case 'learning':
+              return <Badge bg="info">Lernmodus</Badge>;
+            default:
+              return <Badge bg="secondary">{mode}</Badge>;
+          }
+        }
       },
       {
         id: 'status_icons',
@@ -557,6 +587,48 @@ const Gateways = () => {
               </Col>
             </Row>
             <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Nachrichtenweiterleitung</Form.Label>
+                  <Form.Check 
+                    type="switch"
+                    id="forwarding-enabled-add"
+                    name="forwarding_enabled"
+                    label={formData.forwarding_enabled ? "Aktiviert" : "Deaktiviert"}
+                    checked={formData.forwarding_enabled !== false}
+                    onChange={(e) => {
+                      handleChange({
+                        target: {
+                          name: 'forwarding_enabled',
+                          value: e.target.checked
+                        }
+                      });
+                    }}
+                  />
+                  <Form.Text className="text-muted">
+                    Wenn deaktiviert, werden Nachrichten nicht an evAlarm weitergeleitet.
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Weiterleitungsmodus</Form.Label>
+                  <Form.Select
+                    name="forwarding_mode"
+                    value={formData.forwarding_mode || 'production'}
+                    onChange={handleChange}
+                  >
+                    <option value="production">Produktion</option>
+                    <option value="test">Test</option>
+                    <option value="learning">Lernmodus</option>
+                  </Form.Select>
+                  <Form.Text className="text-muted">
+                    Im Test- oder Lernmodus werden keine Nachrichten weitergeleitet.
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
               <Col>
                 <Form.Group className="mb-3">
                   <Form.Label>Template-Gruppe für Transformation</Form.Label>
@@ -667,6 +739,48 @@ const Gateways = () => {
                     <option value="maintenance">Wartung</option>
                     <option value="unknown">Unbekannt</option>
                   </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Nachrichtenweiterleitung</Form.Label>
+                  <Form.Check 
+                    type="switch"
+                    id="forwarding-enabled-add"
+                    name="forwarding_enabled"
+                    label={formData.forwarding_enabled ? "Aktiviert" : "Deaktiviert"}
+                    checked={formData.forwarding_enabled !== false}
+                    onChange={(e) => {
+                      handleChange({
+                        target: {
+                          name: 'forwarding_enabled',
+                          value: e.target.checked
+                        }
+                      });
+                    }}
+                  />
+                  <Form.Text className="text-muted">
+                    Wenn deaktiviert, werden Nachrichten nicht an evAlarm weitergeleitet.
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Weiterleitungsmodus</Form.Label>
+                  <Form.Select
+                    name="forwarding_mode"
+                    value={formData.forwarding_mode || 'production'}
+                    onChange={handleChange}
+                  >
+                    <option value="production">Produktion</option>
+                    <option value="test">Test</option>
+                    <option value="learning">Lernmodus</option>
+                  </Form.Select>
+                  <Form.Text className="text-muted">
+                    Im Test- oder Lernmodus werden keine Nachrichten weitergeleitet.
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>

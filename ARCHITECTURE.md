@@ -1350,79 +1350,90 @@ Das Lernsystem basiert auf Mustererkennung:
 4. **Überprüfung**: Ein Administrator kann die generierten Templates überprüfen und anpassen
 5. **Gruppierung**: Die Templates werden zu einer wiederverwendbaren Template-Gruppe zusammengefasst
 
-### 15.2 UI-Komponenten
+### 15.2 Implementierte Komponenten
 
-#### 15.2.1 Template-Lernsystem-Dashboard
+#### 15.2.1 Backend-Komponenten
 
-```jsx
-frontend/src/pages/TemplateLearning.jsx
+**Template-Lernsystem-Engine** (`utils/template_learning.py`):
+- Verwaltung von Lernsessions
+- Nachrichtenspeicherung während der Lernphase
+- Mustererkennung in gesammelten Nachrichten
+- Automatische Template-Generierung
+
+**API-Endpunkte** (`api/message_worker.py`):
+- Vollständige REST-API für Lernsystem-Verwaltung
+- Integration mit dem Message-Processor für automatisches Lernen
+- Musteranalyse und Template-Generierung
+
+**Automatische Nachrichtenerfassung** (`api/message_processor.py`):
+- Nachrichten werden automatisch zum Lernsystem hinzugefügt
+- Keine zusätzliche Konfiguration erforderlich
+- Läuft parallel zur normalen Nachrichtenverarbeitung
+
+#### 15.2.2 Frontend-Komponenten
+
+**Template-Lernsystem-Dashboard** (`frontend/src/pages/TemplateLearning.jsx`):
+- Übersicht aller Gateways im Lernmodus
+- Fortschrittsanzeige mit Prozent und Nachrichtenanzahl
+- Einstellbare Lernzeit (24-48 Stunden)
+- Start/Stopp-Funktionalität
+- Echtzeitaktualisierung der Statistiken
+
+### 15.3 Technische Implementierung
+
+#### 15.3.1 Datenstruktur
+
+```python
+learning_sessions = {
+    "gateway_id": {
+        "start_time": datetime,
+        "end_time": datetime,
+        "status": "learning|analyzing|completed",
+        "messages": [],
+        "patterns": {},
+        "devices": set()
+    }
+}
 ```
 
-Hauptfunktionen:
-- Übersicht aller Gateways im Lernmodus
-- Fortschrittsanzeige (Prozent der Lernzeit)
-- Statistiken (Anzahl gesammelter Nachrichten, erkannte Muster)
-- Start/Stopp des Lernmodus
+#### 15.3.2 Nachrichtenerfassung
 
-#### 15.2.2 Nachrichtenmuster-Analyse
+Die Integration erfolgt nahtlos in den bestehenden Nachrichtenfluss:
 
-Die Komponente visualisiert erkannte Nachrichtenmuster:
+```python
+# In message_processor.py
+if LEARNING_SYSTEM_AVAILABLE and learning_engine:
+    try:
+        if learning_engine.add_message(gateway_id, message):
+            logger.info(f"Nachricht zum Lernsystem für Gateway {gateway_id} hinzugefügt")
+    except Exception as e:
+        logger.warning(f"Fehler beim Hinzufügen zum Lernsystem: {str(e)}")
+```
+
+#### 15.3.3 Musteranalyse
+
+Das System analysiert:
 - Häufigkeit verschiedener Nachrichtentypen
 - Gemeinsame Felder und deren Wertebereiche
-- Beispielnachrichten für jedes Muster
-- Automatische Kategorisierung (Alarm, Status, Sensordaten)
+- Gerätespezifische Muster
+- Zeitliche Verteilung von Nachrichten
 
-#### 15.2.3 Template-Vorschläge
-
-Nach Abschluss der Lernphase:
-- Automatisch generierte Templates basierend auf Mustern
-- Vorschau der Transformation mit Beispieldaten
-- Filterregeln für jedes Template
-- Prioritätsvergabe basierend auf Nachrichtenhäufigkeit
-
-### 15.3 Workflow
+### 15.4 Workflow
 
 ```
-1. Gateway auswählen → Lernmodus starten
-2. 24-48 Stunden Datensammlung
-3. Musteranalyse → Template-Generierung
-4. Admin-Review → Anpassungen
-5. Template-Gruppe erstellen
-6. Gruppe für ähnliche Gateways wiederverwenden
-```
-
-### 15.4 Datenmodell (geplant)
-
-```javascript
-// Learning Session
-{
-  gateway_id: "gw-xyz",
-  start_time: ISODate(),
-  end_time: ISODate(),
-  status: "learning|analyzing|completed",
-  message_count: 4896,
-  patterns: [
-    {
-      pattern_id: "p1",
-      type: "panic_alarm",
-      count: 12,
-      frequency: "hourly",
-      common_fields: {
-        "alarmtype": { constant: true, value: "panic" },
-        "temperature": { min: 18.5, max: 23.2 }
-      },
-      sample_messages: [...]
-    }
-  ],
-  generated_templates: [...]
-}
+1. Gateway auswählen → Lernmodus starten (mit einstellbarer Zeit)
+2. 24-48 Stunden automatische Datensammlung
+3. Echtzeit-Fortschrittsanzeige im Dashboard
+4. Nach Abschluss: Musteranalyse verfügbar
+5. Template-Generierung auf Knopfdruck
+6. Template-Gruppe erstellen und zuweisen
 ```
 
 ### 15.5 Integration mit Template-Gruppen
 
 Das Lernsystem arbeitet nahtlos mit dem Template-Gruppen-System zusammen:
-- Generierte Templates werden automatisch gruppiert
-- Die Gruppe kann für ähnliche Gateways wiederverwendet werden
+- Generierte Templates können direkt zu Gruppen hinzugefügt werden
+- Einmal erstellte Gruppen sind für ähnliche Gateways wiederverwendbar
 - Reduziert die Einrichtungszeit für neue Gateways erheblich
 
 ### 15.6 Vorteile
@@ -1433,13 +1444,50 @@ Das Lernsystem arbeitet nahtlos mit dem Template-Gruppen-System zusammen:
 4. **Benutzerfreundlichkeit**: Keine technischen Kenntnisse erforderlich
 5. **Skalierbarkeit**: Neue Gerätetypen werden automatisch unterstützt
 
-### 15.7 Nächste Schritte
+### 15.7 Zukünftige Erweiterungen
 
-Die Backend-Implementierung für das Lernsystem steht noch aus:
-- API-Endpunkte für Lernmodus-Verwaltung
-- Nachrichtenspeicherung und -analyse
-- Mustererkennung-Algorithmen
-- Automatische Template-Generierung
-- Integration mit dem Message-Processor
+- **Erweiterte Musteranalyse**: KI-basierte Erkennung komplexer Muster
+- **Automatische Template-Optimierung**: Selbstlernende Templates
+- **Anomalie-Erkennung**: Warnung bei ungewöhnlichen Nachrichten
+- **Template-Marketplace**: Teilen von Template-Gruppen zwischen Installationen
 
-</rewritten_file> 
+## 16. Nachrichtenweiterleitung und Blockierung (NEU)
+
+Das System bietet umfassende Kontrolle über die Nachrichtenweiterleitung an evAlarm, um Testzwecke und Lernphasen zu unterstützen.
+
+### 16.1 Gateway-Level-Kontrolle
+
+Jedes Gateway verfügt über individuelle Einstellungen für die Nachrichtenweiterleitung:
+
+```python
+class Gateway:
+    forwarding_enabled: bool = True  # Master-Schalter
+    forwarding_mode: str = 'production'  # production, test, learning
+```
+
+### 16.2 Blockierungsszenarien
+
+Nachrichten werden in folgenden Fällen NICHT an evAlarm weitergeleitet:
+
+1. **Gateway ohne Kundenzuordnung**: Sicherheitsmaßnahme gegen unbekannte Gateways
+2. **Forwarding deaktiviert**: Explizit über `forwarding_enabled = False`
+3. **Nicht-Produktions-Modi**: `test` oder `learning` Modi
+4. **Globaler Test-Modus**: Umgebungsvariable `EVALARM_TEST_MODE=true`
+
+### 16.3 Automatische Modusumschaltung
+
+- Beim Start einer Lernsession: Automatisch `forwarding_mode = 'learning'`
+- Nach Abschluss: Zurück zu `forwarding_mode = 'production'`
+- Manuelle Übersteuerung möglich über UI oder API
+
+### 16.4 Blockierte Nachrichten
+
+- Speicherung in `/data/blocked_messages/` für spätere Analyse
+- JSON-Format mit Zeitstempel, Grund der Blockierung und Originalnachricht
+- Möglichkeit zur nachträglichen Weiterleitung (geplant)
+
+### 16.5 Sicherheitsaspekte
+
+- Verhindert versehentliche Spam-Nachrichten an Produktionssysteme
+- Ermöglicht sichere Tests mit echten Geräten
+- Audit-Trail für alle blockierten Nachrichten 

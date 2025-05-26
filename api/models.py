@@ -138,7 +138,7 @@ class Gateway:
     
     def __init__(self, uuid, customer_id, name=None, description=None, 
                  template_id=None, template_group_id=None, status="unknown", last_contact=None, _id=None,
-                 created_at=None, updated_at=None):
+                 created_at=None, updated_at=None, forwarding_enabled=True, forwarding_mode='production'):
         self._id = _id or ObjectId()
         self.uuid = uuid
         self.customer_id = ObjectId(customer_id) if isinstance(customer_id, str) and customer_id else customer_id
@@ -150,32 +150,121 @@ class Gateway:
         self.last_contact = last_contact or datetime.datetime.now()
         self.created_at = created_at or datetime.datetime.now()
         self.updated_at = updated_at or self.created_at
+        self.forwarding_enabled = forwarding_enabled
+        self.forwarding_mode = forwarding_mode
     
     @classmethod
-    def create(cls, **kwargs):
-        """Erstellt ein neues Gateway in der Datenbank"""
-        gateway = cls(**kwargs)
-        db[cls.collection].insert_one(gateway.__dict__)
-        return gateway
+    def create(cls, uuid, customer_id=None, name=None, description=None, 
+               template_id=None, template_group_id=None, status='online',
+               forwarding_enabled=True, forwarding_mode='production'):
+        """
+        Erstellt ein neues Gateway
+        
+        Args:
+            uuid: Eindeutige Gateway-ID
+            customer_id: Zugehöriger Kunde (ObjectId oder None)
+            name: Gateway-Name
+            description: Beschreibung
+            template_id: Template-ID (Legacy)
+            template_group_id: Template-Gruppen-ID für intelligente Template-Auswahl
+            status: Gateway-Status
+            forwarding_enabled: Ob Nachrichten weitergeleitet werden sollen
+            forwarding_mode: Modus der Weiterleitung (production, test, learning)
+            
+        Returns:
+            Gateway-Instanz
+        """
+        try:
+            gateway_doc = {
+                'uuid': uuid,
+                'customer_id': customer_id,
+                'name': name or f"Gateway {uuid[-8:]}",
+                'description': description or '',
+                'template_id': template_id,
+                'template_group_id': template_group_id,
+                'status': status,
+                'forwarding_enabled': forwarding_enabled,
+                'forwarding_mode': forwarding_mode,
+                'last_contact': datetime.utcnow(),
+                'created_at': datetime.utcnow(),
+                'updated_at': datetime.utcnow()
+            }
+            
+            result = cls.collection.insert_one(gateway_doc)
+            gateway_doc['_id'] = result.inserted_id
+            return cls(gateway_doc)
+        except Exception as e:
+            logger.error(f"Fehler beim Erstellen des Gateways: {str(e)}")
+            raise
     
     @classmethod
     def find_by_uuid(cls, uuid):
-        """Findet ein Gateway anhand seiner UUID"""
-        data = db[cls.collection].find_one({"uuid": uuid})
-        if data:
-            return cls(**data)
-        return None
+        """
+        Findet ein Gateway anhand seiner UUID
+        
+        Args:
+            uuid: Die UUID des Gateways
+            
+        Returns:
+            Gateway-Instanz oder None
+        """
+        try:
+            gateway_doc = cls.collection.find_one({'uuid': uuid})
+            if gateway_doc:
+                # Setze Standardwerte für neue Felder falls nicht vorhanden
+                if 'forwarding_enabled' not in gateway_doc:
+                    gateway_doc['forwarding_enabled'] = True
+                if 'forwarding_mode' not in gateway_doc:
+                    gateway_doc['forwarding_mode'] = 'production'
+                    
+                return cls(
+                    uuid=gateway_doc['uuid'],
+                    customer_id=gateway_doc.get('customer_id'),
+                    name=gateway_doc.get('name'),
+                    description=gateway_doc.get('description'),
+                    template_id=gateway_doc.get('template_id'),
+                    template_group_id=gateway_doc.get('template_group_id'),
+                    status=gateway_doc.get('status', 'unknown'),
+                    last_contact=gateway_doc.get('last_contact'),
+                    _id=gateway_doc['_id'],
+                    created_at=gateway_doc.get('created_at'),
+                    updated_at=gateway_doc.get('updated_at'),
+                    forwarding_enabled=gateway_doc.get('forwarding_enabled', True),
+                    forwarding_mode=gateway_doc.get('forwarding_mode', 'production')
+                )
+            return None
+        except Exception as e:
+            logger.error(f"Fehler beim Finden des Gateways: {str(e)}")
+            return None
     
     @classmethod
     def find_by_customer(cls, customer_id):
         """Findet alle Gateways eines Kunden"""
         customer_oid = ObjectId(customer_id) if isinstance(customer_id, str) else customer_id
-        return [cls(**data) for data in db[cls.collection].find({"customer_id": customer_oid})]
+        gateways = []
+        for doc in cls.collection.find({"customer_id": customer_oid}):
+            # Setze Standardwerte für neue Felder
+            if 'forwarding_enabled' not in doc:
+                doc['forwarding_enabled'] = True
+            if 'forwarding_mode' not in doc:
+                doc['forwarding_mode'] = 'production'
+            gateway = cls(**doc)
+            gateways.append(gateway)
+        return gateways
     
     @classmethod
     def find_all(cls):
         """Liefert alle Gateways zurück"""
-        return [cls(**data) for data in db[cls.collection].find()]
+        gateways = []
+        for doc in cls.collection.find():
+            # Setze Standardwerte für neue Felder
+            if 'forwarding_enabled' not in doc:
+                doc['forwarding_enabled'] = True
+            if 'forwarding_mode' not in doc:
+                doc['forwarding_mode'] = 'production'
+            gateway = cls(**doc)
+            gateways.append(gateway)
+        return gateways
     
     @classmethod
     def find_unassigned(cls):
@@ -183,27 +272,69 @@ class Gateway:
         return [cls(**data) for data in db[cls.collection].find({"customer_id": None})]
     
     def update(self, **kwargs):
-        """Aktualisiert die Gateway-Informationen"""
-        kwargs['updated_at'] = datetime.datetime.now()
+        """
+        Aktualisiert das Gateway mit den angegebenen Feldern
         
-        # Debugging-Log hinzufügen
-        logger.info(f"Aktualisiere Gateway {self.uuid} mit Daten: {kwargs}")
+        Args:
+            **kwargs: Zu aktualisierende Felder
+            
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        try:
+            # Erlaubte Felder für Update
+            allowed_fields = ['name', 'description', 'customer_id', 'template_id', 
+                            'template_group_id', 'status', 'forwarding_enabled', 
+                            'forwarding_mode', 'last_contact']
+            
+            update_doc = {}
+            for field, value in kwargs.items():
+                if field in allowed_fields:
+                    update_doc[field] = value
+                    setattr(self, field, value)
+            
+            if update_doc:
+                update_doc['updated_at'] = datetime.utcnow()
+                self.updated_at = update_doc['updated_at']
+                
+                result = self.collection.update_one(
+                    {'_id': self._id},
+                    {'$set': update_doc}
+                )
+                return result.modified_count > 0
+            return False
+        except Exception as e:
+            logger.error(f"Fehler beim Aktualisieren des Gateways: {str(e)}")
+            return False
+
+    def set_forwarding_mode(self, mode, enabled=None):
+        """
+        Setzt den Forwarding-Modus des Gateways
         
-        # Wenn customer_id ein String ist, in ObjectId umwandeln
-        if 'customer_id' in kwargs and isinstance(kwargs['customer_id'], str) and kwargs['customer_id']:
-            kwargs['customer_id'] = ObjectId(kwargs['customer_id'])
-        
-        # Update in der Datenbank durchführen
-        update_result = db[self.collection].update_one(
-            {"_id": self._id},
-            {"$set": kwargs}
-        )
-        
-        logger.info(f"Datenbank-Update für Gateway {self.uuid}: {update_result.modified_count} Dokumente geändert")
-        
-        # Attribute in der Instanz aktualisieren
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+        Args:
+            mode: 'production', 'test' oder 'learning'
+            enabled: Optional - ob Forwarding aktiviert sein soll
+            
+        Returns:
+            True bei Erfolg
+        """
+        update_fields = {'forwarding_mode': mode}
+        if enabled is not None:
+            update_fields['forwarding_enabled'] = enabled
+            
+        # Wenn Lernmodus aktiviert wird, Forwarding automatisch deaktivieren
+        if mode == 'learning' and enabled is None:
+            update_fields['forwarding_enabled'] = False
+            
+        return self.update(**update_fields)
+    
+    def enable_forwarding(self):
+        """Aktiviert die Nachrichtenweiterleitung"""
+        return self.update(forwarding_enabled=True)
+    
+    def disable_forwarding(self):
+        """Deaktiviert die Nachrichtenweiterleitung"""
+        return self.update(forwarding_enabled=False)
     
     def update_status(self, status="online"):
         """Aktualisiert den Status und den Zeitpunkt des letzten Kontakts"""
@@ -230,6 +361,11 @@ class Gateway:
         result = self.__dict__.copy()
         result['id'] = str(result.pop('_id'))
         result['customer_id'] = str(result['customer_id']) if result['customer_id'] else None
+        # Stelle sicher, dass die neuen Felder enthalten sind
+        if 'forwarding_enabled' not in result:
+            result['forwarding_enabled'] = True
+        if 'forwarding_mode' not in result:
+            result['forwarding_mode'] = 'production'
         return result
 
 # Geräte-Modell

@@ -103,7 +103,9 @@ ENDPOINTS = {
         'reload': '/reload',
         'generate': '/generate',
         'test-code': '/test-code',
-        'filter-rules': '/filter-rules'
+        'filter-rules': '/filter-rules',
+        'test-transform': '/test-transform',
+        'test-filter-rule': '/test-filter-rule'
     },
     
     'template-groups': {
@@ -121,6 +123,17 @@ ENDPOINTS = {
         'iot_status': '/iot-status',
         'endpoints': '/endpoints',
         'logs': '/logs'
+    },
+    
+    # Template-Lernsystem Endpunkte
+    'learning': {
+        'base': f'{API_BASE}/learning',
+        'list': '',
+        'start': '/start',
+        'stop': '/stop/<gateway_id>',
+        'status': '/status/<gateway_id>',
+        'patterns': '/patterns/<gateway_id>',
+        'generate-templates': '/generate-templates/<gateway_id>'
     }
 }
 
@@ -193,7 +206,8 @@ def _get_service_for_category(category):
         'messages': 'processor',
         'templates': 'processor',
         'template-groups': 'processor',
-        'system': 'processor'
+        'system': 'processor',
+        'learning': 'processor'  # Learning läuft auf dem Processor-Service
     }
     
     return service_mapping.get(category, 'api')  # Default: api-Service

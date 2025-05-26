@@ -25,6 +25,26 @@
   - Korrekte Template-Transformation
   - Zuverlässige API-Weiterleitung
 
+### Template-Lernsystem-Test
+- **Test durchgeführt am**: 26.05.2025, 21:00 Uhr
+- **Testergebnisse**:
+  - ✅ Learning-Engine erfolgreich implementiert
+  - ✅ Frontend-Dashboard funktionsfähig
+  - ✅ Nachrichten werden während Lernphase gesammelt
+  - ✅ Gateway automatisch in Lernmodus versetzt
+  - ✅ 21 Nachrichten in Testsession gesammelt
+  - ✅ Geräte werden erkannt (3 verschiedene IDs)
+  - ✅ Nachrichtenweiterleitung während Lernphase blockiert
+
+### Forwarding-Blockierung
+- **Implementiert am**: 26.05.2025, 22:00 Uhr
+- **Features**:
+  - ✅ Gateway-Level forwarding_enabled Flag
+  - ✅ Gateway-Level forwarding_mode (production/test/learning)
+  - ✅ Automatische Blockierung im Lernmodus
+  - ✅ Speicherung blockierter Nachrichten in /data/blocked_messages/
+  - ✅ UI-Integration mit Toggle-Switch und Modus-Auswahl
+
 ## 1. Datenbank-Erweiterung
 
 ### Datenbank-Setup
@@ -1279,245 +1299,102 @@ Nachricht → Normalisierung → Regel-Matching → Template-Auswahl → Transfo
                           Learning-System
 ```
 
-### Phase 1: Einlern-System (Device Discovery & Learning)
+### Phase 1: Einlern-System (Device Discovery & Learning) - IMPLEMENTIERT ✅
 
-- [ ] **Learning-Mode für neue Gateways**
-  - [ ] Automatisches Sammeln aller Nachrichten eines neuen Gateways (24-48 Stunden)
-  - [ ] Mustererkennung: Welche Nachrichtentypen, Felder, Wertebereiche
-  - [ ] Häufigkeitsanalyse der verschiedenen Nachrichtentypen
-  - [ ] Speicherung der Lern-Daten in separater Collection
+- [x] **Learning-Mode für neue Gateways**
+  - [x] Automatisches Sammeln aller Nachrichten eines neuen Gateways (24-48 Stunden)
+  - [x] Mustererkennung: Welche Nachrichtentypen, Felder, Wertebereiche
+  - [x] Häufigkeitsanalyse der verschiedenen Nachrichtentypen
+  - [x] Speicherung der Lern-Daten in Memory (noch nicht persistent)
 
-- [ ] **Datenbank-Schema für Learning**
-  ```javascript
-  {
-    gateway_id: "gw-xyz",
-    start_time: ISODate(),
-    status: "learning|completed|templates_generated",
-    message_patterns: [
-      {
-        pattern_hash: "hash",
-        count: 288,
-        common_fields: {
-          "temperature": {"min": 18.5, "max": 23.2},
-          "humidity": {"min": 45, "max": 62}
-        },
-        sample_messages: [...]
-      }
-    ]
-  }
-  ```
+- [x] **Backend-Implementierung**
+  - [x] `TemplateLearningEngine` in `utils/template_learning.py`
+  - [x] API-Endpunkte in `api/message_worker.py`
+  - [x] Automatische Nachrichtenerfassung in `api/message_processor.py`
+  - [x] In-Memory-Speicherung der Lernsessions
 
-- [ ] **API-Endpunkte für Learning**
-  - [ ] POST `/api/v1/gateways/{id}/learn` - Startet Einlern-Modus
-  - [ ] GET `/api/v1/gateways/{id}/learning-status` - Zeigt Lernfortschritt
-  - [ ] POST `/api/v1/gateways/{id}/generate-templates` - Generiert Templates
+- [x] **Frontend-Implementierung**
+  - [x] Template-Lernsystem-Dashboard (`TemplateLearning.jsx`)
+  - [x] Einstellbare Lernzeit (24-48 Stunden)
+  - [x] Echtzeit-Fortschrittsanzeige
+  - [x] Start/Stopp-Funktionalität
 
-### Phase 2: Template-Pool mit Regel-basiertem Matching
+- [x] **API-Endpunkte für Learning**
+  - [x] POST `/api/v1/learning/start` - Startet Einlern-Modus
+  - [x] GET `/api/v1/learning/status/{id}` - Zeigt Lernfortschritt
+  - [x] POST `/api/v1/learning/stop/{id}` - Stoppt Lernmodus
+  - [x] GET `/api/v1/learning` - Liste aller Lernsessions
+  - [x] POST `/api/v1/learning/generate-templates/{id}` - Generiert Templates (noch nicht implementiert)
 
-- [x] **Template-Gruppen-System**
-  - [x] Vordefinierte Template-Gruppen für bekannte Gerätetypen
-  - [x] Gruppierung von zusammengehörigen Templates (z.B. "Roombanker Panic System")
-  - [x] Einmal lernen → Template-Gruppe erstellen → Wiederverwenden
-  - [x] Hersteller-spezifische Gruppen mit optimierten Templates
-  
-  ```json
-  {
-    "template_group": {
-      "id": "roombanker_panic_system",
-      "name": "Roombanker Panic Button System",
-      "manufacturer": "Roombanker",
-      "device_types": ["panic_button", "gateway_status"],
-      "templates": [
-        {"id": "panic_alarm", "priority": 100},
-        {"id": "battery_low", "priority": 90},
-        {"id": "gateway_status", "priority": 10}
-      ],
-      "learned_from": ["gw-abc123"],
-      "usage_count": 47
-    }
-  }
-  ```
+## 21. evAlarm-Übermittlungs-Blockierung (HÖCHSTE PRIORITÄT - NEU)
 
-- [ ] **Template-Pool-Architektur**
-  ```json
-  {
-    "templates": [
-      {
-        "id": "evalarm_panic",
-        "name": "Panic Button Alarm",
-        "filter_rules": ["panic_alarm", "battery_ok"],
-        "priority": 100,
-        "transform": { ... }
-      },
-      {
-        "id": "evalarm_temperature",
-        "name": "Temperatur-Update",
-        "filter_rules": ["temperature_range"],
-        "priority": 50,
-        "transform": { ... }
-      }
-    ]
-  }
-  ```
+Das System benötigt die Möglichkeit, die Nachrichtenübermittlung an evAlarm zu blockieren, um während des Anlernens oder beim Testen nicht den evAlarm-Server mit Nachrichten zu überfluten.
 
-- [x] **API-Endpunkte für Template-Gruppen**
-  - [x] GET `/api/v1/template-groups` - Liste aller Gruppen
-  - [x] POST `/api/v1/template-groups` - Neue Gruppe erstellen
-  - [x] PUT `/api/v1/gateways/{id}/template-group` - Gruppe zuweisen
-  - [x] POST `/api/v1/template-groups/{id}/clone` - Gruppe duplizieren und anpassen
+### Phase 1: Gateway-Level Blockierung
 
-- [ ] **Erweiterte Filterregeln**
-  - [ ] `FieldExistsRule` - Prüft ob ein Feld existiert
-  - [ ] `FieldNotExistsRule` - Prüft ob ein Feld NICHT existiert
-  - [ ] `MessageTypeRule` - Unterscheidet Gateway- vs. Geräte-Nachrichten
-  - [ ] `PatternMatchRule` - Komplexe Mustervergleiche
+- [ ] **Gateway-Modell erweitern**
+  - [ ] Neues Feld `forwarding_enabled` (Boolean, Standard: true)
+  - [ ] Neues Feld `forwarding_mode` (Enum: "production", "test", "learning")
+  - [ ] Migration für bestehende Gateways
 
-- [x] **Template-Matching-Engine**
-  ```python
-  def select_template_for_message(normalized_message, gateway):
-      # 1. Hole Template-Gruppe des Gateways
-      template_group = gateway.template_group
-      templates = template_group.templates if template_group else get_default_templates()
-      
-      # 2. Prüfe Filterregeln
-      matching_templates = []
-      for template in templates:
-          if all_filter_rules_match(template.filter_rules, normalized_message):
-              matching_templates.append(template)
-      
-      # 3. Wähle nach Priorität
-      if matching_templates:
-          return max(matching_templates, key=lambda t: t.priority)
-      
-      # 4. Fallback
-      return 'evalarm_status'
-  ```
+- [ ] **UI-Anpassungen**
+  - [ ] Toggle-Switch in Gateway-Einstellungen für "Nachrichtenweiterleitung"
+  - [ ] Status-Badge zeigt aktuellen Modus (Produktion/Test/Lernen)
+  - [ ] Warnung wenn Weiterleitung deaktiviert ist
 
-### Phase 3: Automatische Template-Generierung
+- [ ] **Backend-Integration**
+  - [ ] Check in `message_processor.py` vor Weiterleitung
+  - [ ] Logging wenn Nachricht blockiert wurde
+  - [ ] Statistik über blockierte Nachrichten
 
-- [ ] **Template-Generator aus Lern-Daten**
-  - [ ] Analyse der gesammelten Nachrichtenmuster
-  - [ ] Automatische Erstellung von Filterregeln basierend auf Mustern
-  - [ ] Vorschlag von sinnvollen Transformationen
-  - [ ] Prioritäten basierend auf Nachrichtenhäufigkeit
+### Phase 2: Automatische Blockierung beim Lernen
 
-- [ ] **Intelligente Regel-Generierung**
-  - [ ] Für Panic-Buttons: Erkenne `alarmtype: panic` Muster
-  - [ ] Für Sensoren: Erkenne numerische Wertebereiche
-  - [ ] Für Status: Erkenne Gateway-spezifische Felder
-  - [ ] Kombinierte Regeln für komplexe Geräte
+- [ ] **Lernsystem-Integration**
+  - [ ] Automatisches Setzen von `forwarding_mode = "learning"` beim Start
+  - [ ] Automatisches Zurücksetzen nach Lernphase
+  - [ ] Option zum manuellen Override
 
-### Phase 4: UI für Einlern-System und Template-Verwaltung
+- [ ] **Visuelles Feedback**
+  - [ ] Deutlicher Hinweis im Dashboard wenn Gateway im Lernmodus
+  - [ ] Anzahl blockierter Nachrichten während Lernphase
+  - [ ] Möglichkeit einzelne Nachrichten trotzdem zu senden
 
-- [x] **Einlern-Dashboard**
-  - [x] Status-Anzeige des Lernfortschritts
-  - [x] Visualisierung erkannter Nachrichtenmuster
-  - [x] Manuelle Klassifizierung unklarer Nachrichten
-  - [x] Template-Vorschau basierend auf Lerndaten
-  - [x] Übersicht aller Gateways im Lernmodus
-  - [x] Fortschrittsbalken und Statistiken
-  - [x] Tabs für Übersicht, Muster und Template-Vorschläge
+### Phase 3: Globaler Test-Modus
 
-- [x] **Template-Gruppen-Verwaltung**
-  - [x] Übersicht aller verfügbaren Template-Gruppen
-  - [x] Schnellzuweisung bei Gateway-Erstellung: "Template-Gruppe wählen" statt Einlernen
-  - [x] Template-Gruppen-Editor: Templates hinzufügen/entfernen/priorisieren
-  - [ ] Import/Export von Template-Gruppen für Sharing zwischen Installationen
-  - [ ] Statistiken: Welche Gruppen werden wie oft verwendet
-  - [ ] Marketplace-Konzept: Community-Template-Gruppen teilen
+- [ ] **System-weiter Test-Modus**
+  - [ ] Umgebungsvariable `EVALARM_TEST_MODE=true`
+  - [ ] Admin-UI zum Aktivieren/Deaktivieren
+  - [ ] Automatische Deaktivierung nach X Stunden
 
-- [x] **Gateway-Onboarding vereinfacht**
-  ```
-  Neues Gateway hinzufügen:
-  
-  ○ Gateway einlernen (24-48h)
-  ● Template-Gruppe verwenden:
-     
-     [▼ Roombanker Panic System        ]
-        ├─ 3 Templates enthalten
-        ├─ 47x verwendet
-        └─ Zuletzt aktualisiert: vor 2 Tagen
-  
-  [Gateway hinzufügen]
-  ```
+- [ ] **Test-Nachrichten-Markierung**
+  - [ ] Flag bei manuell gesendeten Test-Nachrichten
+  - [ ] Separate Warteschlange für Test-Nachrichten
+  - [ ] Dry-Run-Modus mit Vorschau statt Senden
 
-- [ ] **Template-Review und -Anpassung**
-  - [ ] Übersicht generierter Template-Vorschläge
-  - [ ] Drag-and-Drop Anpassung von Filterregeln
-  - [ ] Test mit echten Nachrichten aus Lernphase
-  - [ ] Bulk-Aktivierung von Templates
+### Phase 4: Erweiterte Features
 
-- [ ] **Template-Pool-Verwaltung**
-  - [ ] Übersicht aller Templates mit Matching-Statistik
-  - [ ] Prioritäts-Management
-  - [ ] Template-Versionierung
-  - [ ] A/B-Testing für Templates
+- [ ] **Selektive Weiterleitung**
+  - [ ] Nur bestimmte Nachrichtentypen blockieren
+  - [ ] Zeitbasierte Regeln (z.B. nachts keine Status-Updates)
+  - [ ] Rate-Limiting pro Gateway
 
-### Phase 5: Migration und Rückwärtskompatibilität
-
-- [ ] **Migration bestehender Konfigurationen**
-  - [ ] Konvertierung hart kodierter Logik in Filterregeln
-  - [ ] Migration von Gateway-Templates zu Template-Pools
-  - [ ] Beibehaltung der Funktionalität während Migration
-
-- [ ] **Monitoring und Optimierung**
-  - [ ] Logging welches Template für welche Nachricht gewählt wurde
-  - [ ] Statistiken über Template-Nutzung
-  - [ ] Automatische Vorschläge für neue Templates bei ungematchten Nachrichten
-  - [ ] Performance-Optimierung des Matching-Prozesses
+- [ ] **Audit-Log**
+  - [ ] Protokoll aller blockierten Nachrichten
+  - [ ] Export-Funktion für Analyse
+  - [ ] Nachträgliches Senden blockierter Nachrichten
 
 ### Implementierungsplan
 
-| Sprint | Deliverable                           | Owner   | Priorität |
-|--------|---------------------------------------|---------|-----------|
-| 1      | Learning-System Backend               | BE Team | Höchst    |
-| 1      | Erweiterte Filterregeln               | BE Team | Höchst    |
-| 2      | Template-Matching-Engine              | BE Team | Höchst    |
-| 2      | Einlern-Dashboard UI                  | FE Team | Hoch      |
-| 3      | Automatische Template-Generierung     | BE Team | Hoch      |
-| 3      | Template-Pool-Verwaltung UI           | FE Team | Hoch      |
-| 4      | Migration bestehender Systeme         | BE Team | Mittel    |
-| 4      | Monitoring und Optimierung            | QA Team | Mittel    |
+| Sprint | Deliverable                          | Owner   | Priorität |
+|--------|--------------------------------------|---------|-----------|
+| 1      | Gateway-Model & Basic UI             | BE+FE   | Höchst    |
+| 1      | Integration in Message Processor     | BE      | Höchst    |
+| 2      | Automatische Lern-Blockierung        | BE      | Höchst    |
+| 2      | Visuelles Feedback                   | FE      | Hoch      |
+| 3      | Globaler Test-Modus                  | BE+FE   | Hoch      |
+| 4      | Erweiterte Features                  | BE+FE   | Mittel    |
 
-### Erwartete Vorteile
-
-- **Intelligenz**: System lernt automatisch neue Gerätetypen
-- **Flexibilität**: Verschiedene Templates für verschiedene Nachrichtentypen eines Gateways
-- **Benutzerfreundlichkeit**: Keine technischen Kenntnisse für Template-Erstellung nötig
-- **Genauigkeit**: Templates basieren auf echten Daten
-- **Skalierbarkeit**: Neue Geräte = automatisches Lernen, keine Code-Änderungen
-- **Wartbarkeit**: Keine hart kodierten Template-Zuordnungen mehr im Code
-
-### Beispiel-Workflow
-
-1. **Erstes Gateway eines Typs**
-   - Admin aktiviert "Einlern-Modus"
-   - System sammelt 24-48 Stunden alle Nachrichten
-   - System erkennt: 3 Panic-Alarme, 576 Temperatur-Updates, 48 Status-Meldungen
-   - Admin erstellt Template-Gruppe "Roombanker Panic System"
-   - Gruppe wird für zukünftige Verwendung gespeichert
-
-2. **Alle weiteren Gateways desselben Typs**
-   - Admin wählt "Template-Gruppe verwenden"
-   - Wählt "Roombanker Panic System" aus
-   - Gateway ist sofort einsatzbereit - kein Einlernen nötig!
-
-3. **Automatische Analyse (nur beim ersten Mal)**
-   - System erkennt Nachrichtenmuster
-   - Generiert Template-Vorschläge mit passenden Filterregeln
-   - Admin gruppiert diese zu wiederverwendbarer Template-Gruppe
-
-4. **Produktivbetrieb**
-   - Jede Nachricht wird gegen alle Templates der Gruppe geprüft
-   - Bestes Match wird automatisch gewählt
-   - Ungematchte Nachrichten werden geloggt für weitere Optimierung
-
-5. **Template-Gruppen-Sharing (optional)**
-   - Exportiere erfolgreiche Template-Gruppen
-   - Teile mit Community oder anderen Installationen
-   - Importiere bewährte Gruppen von anderen Nutzern
-
-## 21. Cloudflare-Integration und Sicherheitshärtung (HÖCHSTE PRIORITÄT)
+## 22. Cloudflare-Integration und Sicherheitshärtung (HÖCHSTE PRIORITÄT)
 
 Nach dem MongoDB-Ransomware-Angriff vom 26.05.2025 ist die Implementierung zusätzlicher Sicherheitsmaßnahmen kritisch. Die Integration von Cloudflare oder ähnlichen Diensten bietet mehrschichtige Sicherheit und Schutz vor verschiedenen Angriffsarten.
 

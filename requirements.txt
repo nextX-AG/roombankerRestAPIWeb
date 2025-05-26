@@ -18,4 +18,5 @@ itsdangerous==2.2.0
 click==8.1.8
 
 # Development
-pytest==8.1.0 
+pytest==8.1.0
+numpy==1.24.3 

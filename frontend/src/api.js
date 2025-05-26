@@ -617,6 +617,46 @@ export const deviceApi = {
   }
 };
 
+// Learning API
+export const learningApi = {
+  // Liste aller Lernsessions
+  list: async () => {
+    return fetchApi(getApiUrl('learning', ''));
+  },
+  
+  // Lernmodus starten
+  start: async (gateway_id, duration_hours = 48) => {
+    return fetchApi(getApiUrl('learning', 'start'), {
+      method: 'POST',
+      body: JSON.stringify({ gateway_id, duration_hours })
+    });
+  },
+  
+  // Lernmodus stoppen
+  stop: async (gateway_id) => {
+    return fetchApi(getApiUrl('learning', `stop/${gateway_id}`), {
+      method: 'POST'
+    });
+  },
+  
+  // Status einer Lernsession
+  getStatus: async (gateway_id) => {
+    return fetchApi(getApiUrl('learning', `status/${gateway_id}`));
+  },
+  
+  // Nachrichtenmuster abrufen
+  getPatterns: async (gateway_id) => {
+    return fetchApi(getApiUrl('learning', `patterns/${gateway_id}`));
+  },
+  
+  // Templates generieren
+  generateTemplates: async (gateway_id) => {
+    return fetchApi(getApiUrl('learning', `generate-templates/${gateway_id}`), {
+      method: 'POST'
+    });
+  }
+};
+
 // Exportiere alle APIs
 export const api = {
   auth: authApi,
@@ -627,4 +667,5 @@ export const api = {
   message: messageApi,
   template: templateApi,
   logs: logsApi,
+  learning: learningApi,
 }; 
