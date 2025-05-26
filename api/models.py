@@ -256,7 +256,7 @@ class Gateway:
     def find_all(cls):
         """Liefert alle Gateways zurück"""
         gateways = []
-        for doc in cls.collection.find():
+        for doc in db[cls.collection].find({}):
             # Setze Standardwerte für neue Felder
             if 'forwarding_enabled' not in doc:
                 doc['forwarding_enabled'] = True
