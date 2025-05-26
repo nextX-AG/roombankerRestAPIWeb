@@ -190,7 +190,7 @@ class Gateway:
                 'updated_at': datetime.utcnow()
             }
             
-            result = cls.collection.insert_one(gateway_doc)
+            result = db[cls.collection].insert_one(gateway_doc)
             gateway_doc['_id'] = result.inserted_id
             return cls(gateway_doc)
         except Exception as e:
@@ -209,7 +209,7 @@ class Gateway:
             Gateway-Instanz oder None
         """
         try:
-            gateway_doc = cls.collection.find_one({'uuid': uuid})
+            gateway_doc = db[cls.collection].find_one({'uuid': uuid})
             if gateway_doc:
                 # Setze Standardwerte für neue Felder falls nicht vorhanden
                 if 'forwarding_enabled' not in gateway_doc:
@@ -242,7 +242,7 @@ class Gateway:
         """Findet alle Gateways eines Kunden"""
         customer_oid = ObjectId(customer_id) if isinstance(customer_id, str) else customer_id
         gateways = []
-        for doc in cls.collection.find({"customer_id": customer_oid}):
+        for doc in db[cls.collection].find({"customer_id": customer_oid}):
             # Setze Standardwerte für neue Felder
             if 'forwarding_enabled' not in doc:
                 doc['forwarding_enabled'] = True
@@ -297,7 +297,7 @@ class Gateway:
                 update_doc['updated_at'] = datetime.utcnow()
                 self.updated_at = update_doc['updated_at']
                 
-                result = self.collection.update_one(
+                result = db[self.collection].update_one(
                     {'_id': self._id},
                     {'$set': update_doc}
                 )
