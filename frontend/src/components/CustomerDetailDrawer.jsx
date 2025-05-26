@@ -44,6 +44,7 @@ const CustomerDetailDrawer = () => {
             evalarm_username: customerResponse.data.evalarm_username || '',
             evalarm_password: customerResponse.data.evalarm_password || '',
             evalarm_namespace: customerResponse.data.evalarm_namespace || '',
+            evalarm_url: customerResponse.data.evalarm_url || '',
             status: customerResponse.data.status || 'active',
             immediate_forwarding: customerResponse.data.immediate_forwarding !== false
           });
@@ -231,6 +232,11 @@ const CustomerDetailDrawer = () => {
             </div>
             
             <div className="mb-3">
+              <div className="small text-muted mb-1">API URL</div>
+              <div>{customer.evalarm_url || '-'}</div>
+            </div>
+            
+            <div className="mb-3">
               <div className="small text-muted mb-1">Benutzername</div>
               <div>{customer.evalarm_username || '-'}</div>
             </div>
@@ -396,6 +402,24 @@ const CustomerDetailDrawer = () => {
                     onChange={handleChange}
                     placeholder="Unverändert lassen für altes Passwort"
                   />
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col>
+                <Form.Group className="mb-3">
+                  <Form.Label>API URL</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="evalarm_url"
+                    value={formData.evalarm_url}
+                    onChange={handleChange}
+                    placeholder="https://tas01.evalarm.de"
+                  />
+                  <Form.Text className="text-muted">
+                    Standard: https://tas01.evalarm.de
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>
