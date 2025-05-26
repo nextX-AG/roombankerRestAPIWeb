@@ -7,7 +7,7 @@
             {
                 "message": "Alarm Knopf",
                 "address": "0",
-                "namespace": "{{ customer_config.api_config.namespace }}",
+                "namespace": "{{ customer_config.evalarm_namespace if customer_config else 'default' }}",
                 "id": "{{ timestamp }}_{{ uuid }}",
                 "device_id": "{% if message.subdeviceid is defined %}{{ message.subdeviceid }}{% elif message.subdevicelist is defined and message.subdevicelist|length > 0 %}{{ message.subdevicelist[0].id }}{% else %}unknown{% endif %}"
             }

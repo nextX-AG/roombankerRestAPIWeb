@@ -1,11 +1,14 @@
 {
-  "events": [
-    {
-      "message": "{% if alarm_status == 'alarm' %}ALARM{% else %}Status{% endif %}: {{ device_id }} - {{ gateway_id }}",
-      "address": "0",
-      "namespace": "{{ namespace }}",
-      "id": "{{ uuid }}",
-      "device_id": "{{ device_id }}"
-    }
-  ]
+  "transform": {
+    "events": [
+      {
+        "message": "Alarm von Gateway {{ gateway_id }}",
+        "namespace": "{{ customer_config.evalarm_namespace if customer_config else 'default' }}",
+        "id": "{{ uuid }}",
+        "timestamp": "{{ timestamp }}",
+        "gateway_id": "{{ gateway_id }}",
+        "raw_message": "{{ message }}"
+      }
+    ]
+  }
 }
