@@ -117,6 +117,29 @@ ENDPOINTS = {
         'delete': '/<id>'
     },
     
+    'flows': {
+        'base': f'{API_BASE}/flows',
+        'list': '',
+        'detail': '/<flow_id>',
+        'create': '',
+        'update': '/<flow_id>',
+        'delete': '/<flow_id>',
+        'test': '/<flow_id>/test',
+        'by_type': '/type/<flow_type>'
+    },
+    
+    'flow-groups': {
+        'base': f'{API_BASE}/flow-groups',
+        'list': '',
+        'detail': '/<group_id>',
+        'create': '',
+        'update': '/<group_id>',
+        'delete': '/<group_id>',
+        'add_flow': '/<group_id>/flows',
+        'remove_flow': '/<group_id>/flows/<flow_id>',
+        'by_type': '/type/<group_type>'
+    },
+    
     'system': {
         'base': f'{API_BASE}/system',
         'health': '/health',
@@ -206,6 +229,8 @@ def _get_service_for_category(category):
         'messages': 'processor',
         'templates': 'processor',
         'template-groups': 'processor',
+        'flows': 'processor',
+        'flow-groups': 'processor',
         'system': 'processor',
         'learning': 'processor'  # Learning läuft auf dem Processor-Service
     }

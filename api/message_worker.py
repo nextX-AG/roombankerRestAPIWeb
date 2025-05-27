@@ -712,6 +712,32 @@ def list_worker_endpoints():
         {'path': get_route('templates', 'test'), 'method': 'POST', 'description': 'Template-Transformation testen'},
         {'path': get_route('templates', 'generate'), 'method': 'POST', 'description': 'Template aus Nachricht generieren'},
         {'path': get_route('templates', 'test-code'), 'method': 'POST', 'description': 'Template-Code ohne Speichern testen'},
+        {'path': get_route('template-groups', 'list'), 'method': 'GET', 'description': 'Template-Gruppen auflisten'},
+        {'path': get_route('template-groups', 'detail'), 'method': 'GET', 'description': 'Template-Gruppen-Details abrufen'},
+        {'path': get_route('template-groups', 'create'), 'method': 'POST', 'description': 'Template-Gruppe erstellen'},
+        {'path': get_route('template-groups', 'update'), 'method': 'PUT', 'description': 'Template-Gruppe aktualisieren'},
+        {'path': get_route('template-groups', 'delete'), 'method': 'DELETE', 'description': 'Template-Gruppe löschen'},
+        {'path': get_route('flows', 'list'), 'method': 'GET', 'description': 'Flows auflisten'},
+        {'path': get_route('flows', 'detail'), 'method': 'GET', 'description': 'Flow-Details abrufen'},
+        {'path': get_route('flows', 'create'), 'method': 'POST', 'description': 'Flow erstellen'},
+        {'path': get_route('flows', 'update'), 'method': 'PUT', 'description': 'Flow aktualisieren'},
+        {'path': get_route('flows', 'delete'), 'method': 'DELETE', 'description': 'Flow löschen'},
+        {'path': get_route('flows', 'test'), 'method': 'POST', 'description': 'Flow testen'},
+        {'path': get_route('flows', 'by_type'), 'method': 'GET', 'description': 'Flows nach Typ auflisten'},
+        {'path': get_route('flow-groups', 'list'), 'method': 'GET', 'description': 'Flow-Gruppen auflisten'},
+        {'path': get_route('flow-groups', 'detail'), 'method': 'GET', 'description': 'Flow-Gruppen-Details abrufen'},
+        {'path': get_route('flow-groups', 'create'), 'method': 'POST', 'description': 'Flow-Gruppe erstellen'},
+        {'path': get_route('flow-groups', 'update'), 'method': 'PUT', 'description': 'Flow-Gruppe aktualisieren'},
+        {'path': get_route('flow-groups', 'delete'), 'method': 'DELETE', 'description': 'Flow-Gruppe löschen'},
+        {'path': get_route('flow-groups', 'add_flow'), 'method': 'POST', 'description': 'Flow zu Gruppe hinzufügen'},
+        {'path': get_route('flow-groups', 'remove_flow'), 'method': 'DELETE', 'description': 'Flow aus Gruppe entfernen'},
+        {'path': get_route('flow-groups', 'by_type'), 'method': 'GET', 'description': 'Flow-Gruppen nach Typ auflisten'},
+        {'path': get_route('learning', 'list'), 'method': 'GET', 'description': 'Lernsessions auflisten'},
+        {'path': get_route('learning', 'start'), 'method': 'POST', 'description': 'Lernmodus starten'},
+        {'path': get_route('learning', 'stop'), 'method': 'POST', 'description': 'Lernmodus stoppen'},
+        {'path': get_route('learning', 'status'), 'method': 'GET', 'description': 'Lernstatus abrufen'},
+        {'path': get_route('learning', 'patterns'), 'method': 'GET', 'description': 'Nachrichtenmuster abrufen'},
+        {'path': get_route('learning', 'generate-templates'), 'method': 'POST', 'description': 'Templates aus Mustern generieren'},
         {'path': '/api/endpoints', 'method': 'GET', 'description': 'API-Endpunkte auflisten'}
     ]
     
@@ -918,25 +944,6 @@ def delete_template_group(id):
             'error': {'message': str(e)}
         }), 500
 
-# Endpunkt für fehlgeschlagene Verarbeitungen
-@app.route(get_route('messages', 'failed'), methods=['GET'])
-@require_auth
-def get_failed_messages():
-    """Gibt fehlgeschlagene Nachrichten zurück"""
-    try:
-        # In der Zukunft würden wir fehlgeschlagene Nachrichten aus einer DB oder Queue holen
-        # Für jetzt geben wir eine leere Liste zurück
-        return jsonify({
-            'status': 'success',
-            'data': []
-        })
-    except Exception as e:
-        logger.error(f"Fehler beim Abrufen fehlgeschlagener Nachrichten: {e}")
-        return jsonify({
-            'status': 'error',
-            'error': {'message': str(e)}
-        }), 500
-
 # ==================== TEMPLATE LERNSYSTEM API ENDPUNKTE ====================
 
 from utils.template_learning import TemplateLearningEngine
@@ -1086,6 +1093,474 @@ def generate_templates_from_learning(gateway_id):
         })
     except Exception as e:
         logger.error(f"Fehler beim Generieren der Templates: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# ==================== FLOW API ENDPUNKTE ====================
+
+from api.models import Flow, FlowGroup
+from utils.flow_engine import FlowEngine
+from utils.flow_selector import FlowSelector
+
+# Liste aller Flows
+@app.route(get_route('flows', 'list'), methods=['GET'])
+@require_auth
+def list_flows():
+    """Liste aller Flows"""
+    try:
+        flows = Flow.find_all()
+        
+        # Optionaler Filter nach Typ
+        flow_type = request.args.get('type')
+        if flow_type:
+            flows = [f for f in flows if f.type == flow_type]
+        
+        # Konvertiere zu Dict-Format
+        flows_list = [flow.to_dict() for flow in flows]
+        
+        return jsonify({
+            'status': 'success',
+            'data': flows_list
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Flows: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Details eines Flows
+@app.route(get_route('flows', 'detail'), methods=['GET'])
+@require_auth
+def get_flow(flow_id):
+    """Details eines Flows"""
+    try:
+        flow = Flow.find_by_id(flow_id)
+        
+        if not flow:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Flow nicht gefunden'}
+            }), 404
+        
+        return jsonify({
+            'status': 'success',
+            'data': flow.to_dict()
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen des Flows: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Flow erstellen
+@app.route(get_route('flows', 'create'), methods=['POST'])
+@require_auth
+def create_flow():
+    """Erstellt einen neuen Flow"""
+    try:
+        data = request.json
+        
+        # Validierung
+        required_fields = ['name', 'type', 'steps']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'status': 'error',
+                    'error': {'message': f'{field} ist erforderlich'}
+                }), 400
+        
+        # Flow erstellen
+        flow = Flow.create(
+            name=data['name'],
+            type=data['type'],
+            description=data.get('description', ''),
+            version=data.get('version', '1.0.0'),
+            steps=data['steps'],
+            error_handling=data.get('error_handling', {})
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'data': flow.to_dict()
+        }), 201
+    except Exception as e:
+        logger.error(f"Fehler beim Erstellen des Flows: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Flow aktualisieren
+@app.route(get_route('flows', 'update'), methods=['PUT'])
+@require_auth
+def update_flow(flow_id):
+    """Aktualisiert einen Flow"""
+    try:
+        data = request.json
+        
+        # Prüfen ob Flow existiert
+        flow = Flow.find_by_id(flow_id)
+        if not flow:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Flow nicht gefunden'}
+            }), 404
+        
+        # Aktualisieren
+        flow.update(**data)
+        
+        return jsonify({
+            'status': 'success',
+            'data': flow.to_dict()
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Aktualisieren des Flows: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Flow löschen
+@app.route(get_route('flows', 'delete'), methods=['DELETE'])
+@require_auth
+def delete_flow(flow_id):
+    """Löscht einen Flow"""
+    try:
+        # Prüfen ob Flow existiert
+        flow = Flow.find_by_id(flow_id)
+        if not flow:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Flow nicht gefunden'}
+            }), 404
+        
+        # Löschen
+        flow.delete()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {'message': 'Flow erfolgreich gelöscht'}
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Löschen des Flows: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Flow testen
+@app.route(get_route('flows', 'test'), methods=['POST'])
+@require_auth
+def test_flow(flow_id):
+    """Testet einen Flow mit Beispiel-Daten"""
+    try:
+        data = request.json
+        test_message = data.get('message')
+        
+        if not test_message:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Test-Nachricht ist erforderlich'}
+            }), 400
+        
+        # Flow holen
+        flow = Flow.find_by_id(flow_id)
+        if not flow:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Flow nicht gefunden'}
+            }), 404
+        
+        # Flow Engine initialisieren
+        engine = FlowEngine()
+        
+        # Flow ausführen
+        result = engine.execute_flow(flow_id, test_message)
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'flow_id': flow_id,
+                'flow_name': flow.name,
+                'original_message': test_message,
+                'result': result.to_dict()
+            }
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Testen des Flows: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Flows nach Typ auflisten
+@app.route(get_route('flows', 'by_type'), methods=['GET'])
+@require_auth
+def get_flows_by_type(flow_type):
+    """Listet Flows eines bestimmten Typs auf"""
+    try:
+        flows = Flow.find_by_type(flow_type)
+        
+        # Konvertiere zu Dict-Format
+        flows_list = [flow.to_dict() for flow in flows]
+        
+        return jsonify({
+            'status': 'success',
+            'data': flows_list
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Flows nach Typ: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# ==================== FLOW GROUPS API ENDPUNKTE ====================
+
+# Liste aller Flow-Gruppen
+@app.route(get_route('flow-groups', 'list'), methods=['GET'])
+@require_auth
+def list_flow_groups():
+    """Liste aller Flow-Gruppen"""
+    try:
+        groups = FlowGroup.find_all()
+        
+        # Optionaler Filter nach Typ
+        group_type = request.args.get('type')
+        if group_type:
+            groups = [g for g in groups if g.type == group_type]
+        
+        # Konvertiere zu Dict-Format
+        groups_list = [group.to_dict() for group in groups]
+        
+        return jsonify({
+            'status': 'success',
+            'data': groups_list
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Flow-Gruppen: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Details einer Flow-Gruppe
+@app.route(get_route('flow-groups', 'detail'), methods=['GET'])
+@require_auth
+def get_flow_group(group_id):
+    """Details einer Flow-Gruppe"""
+    try:
+        group = FlowGroup.find_by_id(group_id)
+        
+        if not group:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Flow-Gruppe nicht gefunden'}
+            }), 404
+        
+        return jsonify({
+            'status': 'success',
+            'data': group.to_dict()
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Flow-Gruppe: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Flow-Gruppe erstellen
+@app.route(get_route('flow-groups', 'create'), methods=['POST'])
+@require_auth
+def create_flow_group():
+    """Erstellt eine neue Flow-Gruppe"""
+    try:
+        data = request.json
+        
+        # Validierung
+        required_fields = ['name', 'type']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'status': 'error',
+                    'error': {'message': f'{field} ist erforderlich'}
+                }), 400
+        
+        # Flow-Gruppe erstellen
+        group = FlowGroup.create(
+            name=data['name'],
+            type=data['type'],
+            description=data.get('description', ''),
+            flows=data.get('flows', [])
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'data': group.to_dict()
+        }), 201
+    except Exception as e:
+        logger.error(f"Fehler beim Erstellen der Flow-Gruppe: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Flow-Gruppe aktualisieren
+@app.route(get_route('flow-groups', 'update'), methods=['PUT'])
+@require_auth
+def update_flow_group(group_id):
+    """Aktualisiert eine Flow-Gruppe"""
+    try:
+        data = request.json
+        
+        # Prüfen ob Gruppe existiert
+        group = FlowGroup.find_by_id(group_id)
+        if not group:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Flow-Gruppe nicht gefunden'}
+            }), 404
+        
+        # Aktualisieren
+        group.update(**data)
+        
+        return jsonify({
+            'status': 'success',
+            'data': group.to_dict()
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Aktualisieren der Flow-Gruppe: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Flow-Gruppe löschen
+@app.route(get_route('flow-groups', 'delete'), methods=['DELETE'])
+@require_auth
+def delete_flow_group(group_id):
+    """Löscht eine Flow-Gruppe"""
+    try:
+        # Prüfen ob Gruppe existiert
+        group = FlowGroup.find_by_id(group_id)
+        if not group:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Flow-Gruppe nicht gefunden'}
+            }), 404
+        
+        # Löschen
+        group.delete()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {'message': 'Flow-Gruppe erfolgreich gelöscht'}
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Löschen der Flow-Gruppe: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Flow zu Gruppe hinzufügen
+@app.route(get_route('flow-groups', 'add_flow'), methods=['POST'])
+@require_auth
+def add_flow_to_group(group_id):
+    """Fügt einen Flow zu einer Gruppe hinzu"""
+    try:
+        data = request.json
+        
+        # Validierung
+        if not data.get('flow_id'):
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'flow_id ist erforderlich'}
+            }), 400
+        
+        # Gruppe holen
+        group = FlowGroup.find_by_id(group_id)
+        if not group:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Flow-Gruppe nicht gefunden'}
+            }), 404
+        
+        # Flow prüfen
+        flow = Flow.find_by_id(data['flow_id'])
+        if not flow:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Flow nicht gefunden'}
+            }), 404
+        
+        # Flow hinzufügen
+        group.add_flow(
+            flow_id=data['flow_id'],
+            flow_name=flow.name,
+            priority=data.get('priority', 50)
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'data': group.to_dict()
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Hinzufügen des Flows zur Gruppe: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Flow aus Gruppe entfernen
+@app.route(get_route('flow-groups', 'remove_flow'), methods=['DELETE'])
+@require_auth
+def remove_flow_from_group(group_id, flow_id):
+    """Entfernt einen Flow aus einer Gruppe"""
+    try:
+        # Gruppe holen
+        group = FlowGroup.find_by_id(group_id)
+        if not group:
+            return jsonify({
+                'status': 'error',
+                'error': {'message': 'Flow-Gruppe nicht gefunden'}
+            }), 404
+        
+        # Flow entfernen
+        group.remove_flow(flow_id)
+        
+        return jsonify({
+            'status': 'success',
+            'data': group.to_dict()
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Entfernen des Flows aus der Gruppe: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': {'message': str(e)}
+        }), 500
+
+# Flow-Gruppen nach Typ auflisten
+@app.route(get_route('flow-groups', 'by_type'), methods=['GET'])
+@require_auth
+def get_flow_groups_by_type(group_type):
+    """Listet Flow-Gruppen eines bestimmten Typs auf"""
+    try:
+        groups = FlowGroup.find_by_type(group_type)
+        
+        # Konvertiere zu Dict-Format
+        groups_list = [group.to_dict() for group in groups]
+        
+        return jsonify({
+            'status': 'success',
+            'data': groups_list
+        })
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Flow-Gruppen nach Typ: {e}")
         return jsonify({
             'status': 'error',
             'error': {'message': str(e)}

@@ -2090,11 +2090,11 @@ Nachricht empfangen
   - [x] Legacy-Template-Support
   - [x] Automatische Migration von Templates zu Flows
 
-- [ ] **API-Endpunkte für Flows**
-  - [ ] CRUD für Flows (/api/v1/flows)
-  - [ ] CRUD für Flow-Gruppen (/api/v1/flow-groups)
-  - [ ] Flow-Zuordnung zu Gateways/Devices
-  - [ ] Flow-Test-Endpunkt
+- [x] **API-Endpunkte für Flows**
+  - [x] CRUD für Flows (/api/v1/flows)
+  - [x] CRUD für Flow-Gruppen (/api/v1/flow-groups)
+  - [x] Flow-Zuordnung zu Gateways/Devices
+  - [x] Flow-Test-Endpunkt
   - [ ] Migration-Endpunkte
 
 - [ ] **Frontend-Komponenten**
@@ -2218,7 +2218,7 @@ Nachricht empfangen
 | 1 | Flow-Datenmodelle erstellen | BE Team | Höchst | ✅ Erledigt |
 | 2 | Flow Engine implementieren | BE Team | Höchst | ✅ Erledigt |
 | 3 | Flow Selector implementieren | BE Team | Höchst | ✅ Erledigt |
-| 4 | API-Endpunkte für Flows | BE Team | Höchst | ⏳ In Arbeit |
+| 4 | API-Endpunkte für Flows | BE Team | Höchst | ✅ Erledigt |
 | 5 | Template-zu-Flow Migration | BE Team | Hoch | ⏳ Ausstehend |
 | 6 | Flow-UI Grundlagen | FE Team | Hoch | ⏳ Ausstehend |
 | 7 | Gateway-Flow-UI | FE Team | Hoch | ⏳ Ausstehend |
