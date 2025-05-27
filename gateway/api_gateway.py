@@ -206,6 +206,8 @@ def determine_target_service(path):
         'templates': 'processor', 
         'template-groups': 'processor',  # NEU: Template-Gruppen werden auch vom Processor verarbeitet
         'learning': 'processor',  # NEU: Template-Lernsystem wird auch vom Processor verarbeitet
+        'flows': 'processor',     # NEU: Flow-Endpunkte werden vom Processor verarbeitet
+        'flow-groups': 'processor', # NEU: Flow-Gruppen werden auch vom Processor verarbeitet
         'system': 'processor',    
         'health': 'api',          # Health-Status für API-Service
         'iot-status': 'processor',
