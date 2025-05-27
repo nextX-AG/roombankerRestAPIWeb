@@ -54,7 +54,7 @@ const Gateways = () => {
     
     // Polling für Live-Updates alle 10 Sekunden
     const interval = setInterval(() => {
-      fetchGatewayLatestData();
+      fetchData();
     }, 10000);
     
     return () => clearInterval(interval);
