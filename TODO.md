@@ -45,6 +45,64 @@
   - ✅ Speicherung blockierter Nachrichten in /data/blocked_messages/
   - ✅ UI-Integration mit Toggle-Switch und Modus-Auswahl
 
+## 🚨 KRITISCH: Multi-Tenancy Implementierung (HÖCHSTE PRIORITÄT - SICHERHEITSKRITISCH)
+
+Das System ist aktuell **NICHT multi-tenant-fähig**. Jeder authentifizierte Benutzer kann alle Kundendaten sehen. Dies ist ein **kritisches Sicherheitsproblem** für den Produktivbetrieb.
+
+### Sofortmaßnahmen (Sprint 0 - SOFORT)
+
+- [ ] **Phase 1: Benutzer-Kunden-Zuordnung** (Tag 1-2)
+  - [ ] Erweitere User-Modell um `customer_id` Feld
+  - [ ] Migrationsskript für bestehende Benutzer
+  - [ ] Admin-Benutzer ohne customer_id = Zugriff auf alle Kunden
+  - [ ] Standard-Benutzer mit customer_id = Zugriff nur auf eigenen Kunden
+
+- [ ] **Phase 2: API-Absicherung** (Tag 3-5)
+  - [ ] Decorator `@require_customer_access` implementieren
+  - [ ] Alle Customer-API-Endpunkte mit `@require_auth` und `@require_customer_access` absichern
+  - [ ] Alle Gateway-API-Endpunkte filtern nach customer_id des Benutzers
+  - [ ] Alle Device-API-Endpunkte über Gateway-Zugehörigkeit filtern
+  - [ ] Template-Gruppen nach customer_id filtern
+
+- [ ] **Phase 3: Frontend-Filterung** (Tag 6-7)
+  - [ ] UserContext erweitern um customer_id Information
+  - [ ] Alle API-Aufrufe automatisch nach Kunden filtern
+  - [ ] Admin-Toggle für "Alle Kunden anzeigen" (nur für Admins)
+  - [ ] Kundennamen prominent in der UI anzeigen
+
+- [ ] **Phase 4: Datenmodell-Erweiterungen** (Tag 8-10)
+  - [ ] Template-Gruppen: `customer_id` Feld hinzufügen
+  - [ ] Filter-Regeln: `customer_id` Feld hinzufügen
+  - [ ] Nachrichten-Logs: Kundenzuordnung sicherstellen
+  - [ ] Audit-Trail für alle Datenzugriffe implementieren
+
+### Technische Implementierung
+
+```python
+# Beispiel für API-Filterung
+@api_bp.route('/api/v1/gateways', methods=['GET'])
+@require_auth
+@require_customer_access
+def get_gateways():
+    user = get_current_user()
+    
+    if user.role == 'admin' and request.args.get('all_customers'):
+        gateways = Gateway.find_all()
+    else:
+        # Nur Gateways des eigenen Kunden
+        gateways = Gateway.find_by_customer(user.customer_id)
+    
+    return success_response([g.to_dict() for g in gateways])
+```
+
+### Sicherheitsüberlegungen
+
+- **Datentrennung**: Strikte Trennung auf Datenbankebene
+- **API-Sicherheit**: Jeder Endpunkt muss Kundenzugehörigkeit prüfen
+- **Keine Datenlecks**: Auch in Fehlermeldungen keine fremden Kundendaten
+- **Audit-Logging**: Alle Zugriffe protokollieren
+- **Performance**: Indices auf customer_id für schnelle Filterung
+
 ## 1. Datenbank-Erweiterung
 
 ### Datenbank-Setup
@@ -1553,3 +1611,150 @@ Nach dem MongoDB-Ransomware-Angriff vom 26.05.2025 ist die Implementierung zusä
   - [x] API-Endpunkte in API-DOKUMENTATION.md
   - [x] Datenmodelle dokumentiert
   - [x] Architektur in ARCHITECTURE.md beschrieben
+
+## 23. Hierarchische Template-Auswahl mit App Store und KI-Integration (HOHE PRIORITÄT)
+
+Das aktuelle Template-System muss zu einer hierarchischen, kundenspezifischen Architektur erweitert werden, die für einen zukünftigen Template App Store und KI-Erweiterungen vorbereitet ist.
+
+### Aktuelle Architektur-Probleme
+
+- **Globale Templates**: Alle Kunden teilen sich die gleichen Templates
+- **Keine Vererbung**: Keine Möglichkeit, Standard-Templates zu überschreiben
+- **Fehlende Metadaten**: Templates haben keine Versionierung, Autoren, oder Beschreibungen
+- **Keine Marktplatz-Vorbereitung**: Struktur unterstützt keinen Template-Austausch
+
+### Neue Hierarchische Architektur
+
+```
+System-Templates (nextX)
+    ↓
+Marketplace-Templates (App Store)
+    ↓
+Kunden-Templates (Customizations)
+    ↓
+Gateway-Spezifische Templates
+```
+
+### Phase 1: Hierarchische Template-Struktur (Sprint 1-2)
+
+- [ ] **Template-Metadaten erweitern**
+  - [ ] `author_id`: Ersteller des Templates (nextX, Partner, Kunde)
+  - [ ] `version`: Semantic Versioning (1.0.0)
+  - [ ] `parent_template_id`: Basis-Template für Vererbung
+  - [ ] `scope`: system|marketplace|customer|gateway
+  - [ ] `tags`: Kategorisierung für App Store
+  - [ ] `pricing_model`: free|paid|subscription (für App Store)
+  - [ ] `ai_enhanced`: Boolean für KI-Features
+
+- [ ] **Template-Vererbungssystem**
+  - [ ] Override-Mechanismus für einzelne Felder
+  - [ ] Merge-Strategie für Template-Hierarchie
+  - [ ] Fallback zu Parent-Template bei Fehlern
+  - [ ] Versionskontrolle für Template-Updates
+
+- [ ] **Kundenspezifische Template-Verwaltung**
+  - [ ] Templates pro customer_id isolieren
+  - [ ] Import/Export für Template-Sharing
+  - [ ] Template-Berechtigungssystem
+  - [ ] Kopierfunktion von System-Templates
+
+### Phase 2: Template App Store Vorbereitung (Sprint 3-4)
+
+- [ ] **Marketplace-Datenmodell**
+  - [ ] `TemplatePackage`: Sammlung von Templates
+  - [ ] `TemplateRating`: Bewertungssystem
+  - [ ] `TemplateSubscription`: Kauf/Abo-Verwaltung
+  - [ ] `TemplateCategory`: Kategorisierung
+  - [ ] `TemplateDependency`: Abhängigkeiten zwischen Templates
+
+- [ ] **Template-Publishing-System**
+  - [ ] Review-Prozess für neue Templates
+  - [ ] Sandbox-Testing vor Veröffentlichung
+  - [ ] Automatische Kompatibilitätsprüfung
+  - [ ] Revenue-Sharing-Modell definieren
+
+- [ ] **Discovery & Installation**
+  - [ ] Template-Suche nach Gerätetyp/Hersteller
+  - [ ] One-Click-Installation aus Marketplace
+  - [ ] Automatische Updates mit Changelog
+  - [ ] Rollback-Funktionalität
+
+### Phase 3: KI-Integration (Sprint 5-6)
+
+- [ ] **KI-gestützte Template-Generierung**
+  - [ ] LLM-Integration für Template-Erstellung
+  - [ ] Training auf bestehenden Templates
+  - [ ] Kontextuelle Vorschläge basierend auf Gerätedaten
+  - [ ] Automatische Optimierung von Transformationen
+
+- [ ] **Intelligente Template-Auswahl**
+  - [ ] ML-Modell für beste Template-Matches
+  - [ ] Lernen aus Nutzungsmustern
+  - [ ] Anomalie-Erkennung in Transformationen
+  - [ ] Automatische Anpassungsvorschläge
+
+- [ ] **KI-Features im Template-Editor**
+  - [ ] Code-Completion für Transformationen
+  - [ ] Fehlervorhersage und -korrektur
+  - [ ] Natürlichsprachliche Template-Beschreibung
+  - [ ] Automatische Dokumentationsgenerierung
+
+### Phase 4: Integration mit bestehendem System (Sprint 7-8)
+
+- [ ] **Migration bestehender Templates**
+  - [ ] Konvertierung zu hierarchischem Format
+  - [ ] Zuweisung zu korrekten Scopes
+  - [ ] Metadaten-Anreicherung
+  - [ ] Backward-Compatibility sicherstellen
+
+- [ ] **API-Erweiterungen**
+  - [ ] `/api/v1/templates/marketplace` - App Store Browse
+  - [ ] `/api/v1/templates/install` - Template Installation
+  - [ ] `/api/v1/templates/rate` - Bewertungssystem
+  - [ ] `/api/v1/templates/ai/suggest` - KI-Vorschläge
+
+- [ ] **UI-Komponenten**
+  - [ ] Template-Marketplace-Browser
+  - [ ] Hierarchie-Visualisierung
+  - [ ] KI-Assistent-Integration
+  - [ ] Template-Versionsverwaltung
+
+### Technische Architektur
+
+```python
+class TemplateHierarchy:
+    def resolve_template(self, gateway_id, message_type):
+        # 1. Gateway-spezifisches Template?
+        template = find_gateway_template(gateway_id, message_type)
+        if template: return template
+        
+        # 2. Kunden-Template?
+        customer_id = get_customer_from_gateway(gateway_id)
+        template = find_customer_template(customer_id, message_type)
+        if template: return template
+        
+        # 3. Marketplace-Template (subscribed)?
+        template = find_marketplace_template(customer_id, message_type)
+        if template: return template
+        
+        # 4. System-Standard-Template
+        return find_system_template(message_type)
+```
+
+### Vorteile der neuen Architektur
+
+- **Skalierbarkeit**: Bereit für tausende Templates im App Store
+- **Monetarisierung**: Revenue-Stream durch Template-Marketplace
+- **Innovation**: Partner können eigene Templates entwickeln
+- **KI-Ready**: Vorbereitet für intelligente Features
+- **Kundenspezifisch**: Volle Kontrolle pro Kunde
+- **Zukunftssicher**: Erweiterbar für neue Anforderungen
+
+### Implementierungsplan
+
+| Sprint | Deliverable                        | Owner   | Priorität |
+|--------|-------------------------------------|---------|-----------|
+| 1-2    | Hierarchische Template-Struktur     | BE Team | Hoch      |
+| 3-4    | Marketplace-Grundlagen              | BE+FE   | Mittel    |
+| 5-6    | KI-Integration                      | AI Team | Mittel    |
+| 7-8    | System-Integration & Migration      | DevOps  | Hoch      |
