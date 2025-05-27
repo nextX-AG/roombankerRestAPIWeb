@@ -9,6 +9,7 @@ import { faSave, faPlay, faPlus, faTrash } from '@fortawesome/free-solid-svg-ico
 import FilterStep from './steps/FilterStep';
 import TransformStep from './steps/TransformStep';
 import ForwardStep from './steps/ForwardStep';
+import ConditionalStep from './steps/ConditionalStep';
 
 // API-Client importieren
 import { flowApi, Flow as ApiFlow, FlowTestResult } from '../../api/flowApi';
@@ -83,6 +84,11 @@ const FlowEditor: React.FC<{ flowId?: string }> = ({ flowId }) => {
                method: 'POST',
                headers: [],
                retry: { enabled: false, maxAttempts: 3, delay: 1000 }
+             } :
+             type === 'conditional' ? {
+               condition: '',
+               true_step: undefined,
+               false_step: undefined
              } : {},
       position: flow.steps.length
     };
@@ -126,6 +132,7 @@ const FlowEditor: React.FC<{ flowId?: string }> = ({ flowId }) => {
     try {
       const apiFlow: ApiFlow = {
         ...flow,
+        type: flow.flow_type,
         steps: flow.steps.map((step, index) => ({
           ...step,
           position: index
@@ -226,6 +233,13 @@ const FlowEditor: React.FC<{ flowId?: string }> = ({ flowId }) => {
             onChange={handleStepUpdate}
           />
         );
+      case 'conditional':
+        return (
+          <ConditionalStep
+            config={selectedStep.config}
+            onChange={handleStepUpdate}
+          />
+        );
       default:
         return <p>Unbekannter Step-Typ</p>;
     }
@@ -318,6 +332,14 @@ const FlowEditor: React.FC<{ flowId?: string }> = ({ flowId }) => {
                         >
                           <FontAwesomeIcon icon={faPlus} className="me-1" />
                           Forward
+                        </Button>
+                        <Button 
+                          variant="outline-primary" 
+                          size="sm"
+                          onClick={() => handleAddStep('conditional')}
+                        >
+                          <FontAwesomeIcon icon={faPlus} className="me-1" />
+                          Conditional
                         </Button>
                       </div>
                     </Card.Header>
