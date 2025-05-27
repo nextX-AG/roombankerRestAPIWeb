@@ -10,10 +10,15 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.5.1",
+    "@fortawesome/free-solid-svg-icons": "^6.5.1",
+    "@fortawesome/react-fontawesome": "^0.2.0",
     "lucide-react": "^0.511.0",
     "react-bootstrap-range-slider": "^3.0.8",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
-    "react-json-view-lite": "^2.4.1"
+    "react-json-view-lite": "^2.4.1",
+    "react-monaco-editor": "^0.55.0",
+    "monaco-editor": "^0.45.0"
   }
 }
