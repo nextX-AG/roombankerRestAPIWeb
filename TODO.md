@@ -1902,11 +1902,13 @@ Das System hat aktuell ein fundamentales Problem: Gerätetypen und deren Eigensc
 
 ### Phase 3: Device Management UI (Woche 2)
 
-- [ ] **Device Registry Browser**
-  - [ ] Übersicht aller registrierten Gerätetypen
-  - [ ] Detailansicht mit allen Eigenschaften
-  - [ ] Such- und Filterfunktionen
-  - [ ] Visualisierung der Nachrichtenstruktur
+- [x] **Device Registry Browser**
+  - [x] Übersicht aller registrierten Gerätetypen
+  - [x] Detailansicht mit allen Eigenschaften
+  - [x] Such- und Filterfunktionen
+  - [x] Visualisierung der Nachrichtenstruktur
+  - [x] Frontend-Komponente `DeviceRegistry.jsx` implementiert
+  - [x] Integration in die Navigation
 
 - [ ] **Device Profile Editor**
   - [ ] Formular zum Erstellen neuer Gerätetypen

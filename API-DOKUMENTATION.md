@@ -165,6 +165,59 @@ Erfolgreiche Antwort ohne Weiterleitung (Gateway keinem Kunden zugeordnet):
 | `/api/v1/devices/<gateway_uuid>/<device_id>/status` | PUT | Gerätestatus aktualisieren |
 | `/api/v1/devices/<gateway_uuid>/<device_id>` | DELETE | Gerät löschen |
 
+### Device Registry API (NEU - 27.01.2025)
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/v1/devices/registry` | GET | Komplette Device Registry mit allen Gerätetypen und Message Codes |
+| `/api/v1/devices/registry/<device_type>` | GET | Details zu einem spezifischen Gerätetyp |
+| `/api/v1/devices/registry` | POST | Neuen benutzerdefinierten Gerätetyp hinzufügen |
+| `/api/v1/devices/registry/<device_type>` | PUT | Benutzerdefinierten Gerätetyp aktualisieren |
+| `/api/v1/devices/registry/validate` | POST | Nachricht gegen einen Gerätetyp validieren |
+
+#### Device Registry Response-Format
+
+```json
+GET /api/v1/devices/registry
+{
+  "status": "success",
+  "data": {
+    "device_types": {
+      "panic_button": {
+        "name": "Panic Button",
+        "description": "Notfall-Taster für Alarmsituationen",
+        "codes": [2030],
+        "identifying_fields": ["alarmtype", "alarmstatus"],
+        "required_fields": ["alarmtype", "alarmstatus"],
+        "optional_fields": ["batterystatus", "onlinestatus"],
+        "value_mappings": {
+          "alarmtype": ["panic", "none"],
+          "alarmstatus": ["alarm", "normal"]
+        },
+        "mqtt_topics": ["alarm/panic", "device/status/panic_button"],
+        "default_template": "evalarm_panic",
+        "icon": "alert-triangle"
+      }
+      // ... weitere Gerätetypen
+    },
+    "message_codes": {
+      "2001": {
+        "name": "Environmental Status",
+        "description": "Reguläre Statusnachricht von Umgebungssensoren",
+        "typical_devices": ["temperature_humidity_sensor"]
+      },
+      "2030": {
+        "name": "Panic Alarm",
+        "description": "Notfall-Alarm von Panic Button",
+        "typical_devices": ["panic_button"],
+        "priority": "critical"
+      }
+      // ... weitere Message Codes
+    }
+  }
+}
+```
+
 ### Template-API
 
 | Endpunkt | Methode | Beschreibung |
@@ -844,6 +897,9 @@ Alle Frontend-Komponenten sollten ausschließlich die folgenden API-Endpunkte ve
 | `gatewayApi.latest(uuid)` | `/api/v1/gateways/{uuid}/latest` | Neueste Telemetriedaten eines Gateways |
 | `gatewayApi.unassigned()` | `/api/v1/gateways/unassigned` | Liste nicht zugeordneter Gateways |
 | `customerApi.list()` | `/api/v1/customers` | Liste aller Kunden |
+| `deviceApi.getRegistry()` | `/api/v1/devices/registry` | Device Registry abrufen |
+| `deviceApi.getDeviceType(type)` | `/api/v1/devices/registry/{type}` | Spezifischen Gerätetyp abrufen |
+| `deviceApi.validateMessage()` | `/api/v1/devices/registry/validate` | Nachricht validieren |
 | `logsApi.getSystemLogs()` | `/api/v1/logs/system` | System-Logs abrufen |
 | `logsApi.getProcessorLogs()` | `/api/v1/logs/processor` | Processor-Logs abrufen |
 | `logsApi.getGatewayLogs()` | `/api/v1/logs/gateway` | Gateway-Logs abrufen | 
