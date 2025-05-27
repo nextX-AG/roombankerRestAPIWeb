@@ -515,6 +515,150 @@ def delete_device(gateway_uuid, device_id):
     logger.info(f"Gerät gelöscht: ID {device_id} für Gateway {gateway_uuid}")
     return success_response(message="Gerät erfolgreich gelöscht")
 
+# ----- Device Registry Endpunkte -----
+
+@api_bp.route('/api/v1/devices/registry', methods=['GET'])
+@api_error_handler
+def get_device_registry():
+    """Gibt die komplette Device Registry zurück"""
+    from utils.device_registry import device_registry
+    
+    registry_data = {
+        "device_types": device_registry.get_all_device_types(),
+        "message_codes": device_registry.get_all_message_codes()
+    }
+    
+    logger.info("Device Registry abgerufen")
+    return success_response(registry_data)
+
+@api_bp.route('/api/v1/devices/registry/<device_type>', methods=['GET'])
+@api_error_handler
+def get_device_type(device_type):
+    """Gibt Details zu einem spezifischen Gerätetyp zurück"""
+    from utils.device_registry import device_registry
+    
+    capabilities = device_registry.get_device_capabilities(device_type)
+    if not capabilities:
+        return not_found_response("device_type", device_type)
+    
+    # Zusätzliche Informationen hinzufügen
+    response_data = {
+        "device_type": device_type,
+        "capabilities": capabilities,
+        "suitable_templates": device_registry.get_suitable_templates(device_type),
+        "mqtt_topics": device_registry.get_mqtt_topics("example-gateway", device_type, "example-device")
+    }
+    
+    return success_response(response_data)
+
+@api_bp.route('/api/v1/devices/registry', methods=['POST'])
+@api_error_handler
+def add_custom_device_type():
+    """Fügt einen neuen benutzerdefinierten Gerätetyp zur Registry hinzu"""
+    from utils.device_registry import device_registry
+    
+    data = request.json
+    
+    # Validierung
+    validation_errors = {}
+    if not data:
+        return validation_error_response({"request": "Keine Daten übermittelt"})
+    
+    if 'device_type_id' not in data:
+        validation_errors['device_type_id'] = "Device Type ID ist erforderlich"
+    
+    if 'name' not in data:
+        validation_errors['name'] = "Name ist erforderlich"
+    
+    if 'identifying_fields' not in data:
+        validation_errors['identifying_fields'] = "Identifizierende Felder sind erforderlich"
+    
+    if 'required_fields' not in data:
+        validation_errors['required_fields'] = "Pflichtfelder sind erforderlich"
+    
+    if validation_errors:
+        return validation_error_response(validation_errors)
+    
+    # Device Type Config erstellen
+    device_config = {
+        "name": data['name'],
+        "description": data.get('description', ''),
+        "codes": data.get('codes', []),
+        "identifying_fields": data['identifying_fields'],
+        "required_fields": data['required_fields'],
+        "optional_fields": data.get('optional_fields', []),
+        "value_mappings": data.get('value_mappings', {}),
+        "value_ranges": data.get('value_ranges', {}),
+        "mqtt_topics": data.get('mqtt_topics', []),
+        "default_template": data.get('default_template', 'evalarm_status'),
+        "icon": data.get('icon', 'help-circle')
+    }
+    
+    # Zur Registry hinzufügen
+    success = device_registry.add_custom_device_type(data['device_type_id'], device_config)
+    
+    if not success:
+        return error_response("Gerätetyp existiert bereits", 409)
+    
+    logger.info(f"Neuer Gerätetyp zur Registry hinzugefügt: {data['device_type_id']}")
+    return success_response(device_config, message="Gerätetyp erfolgreich hinzugefügt", status_code=201)
+
+@api_bp.route('/api/v1/devices/registry/<device_type>', methods=['PUT'])
+@api_error_handler
+def update_device_type(device_type):
+    """Aktualisiert einen benutzerdefinierten Gerätetyp (nur custom device types)"""
+    from utils.device_registry import device_registry
+    
+    # Prüfe ob es ein custom device type ist
+    if device_type not in device_registry._custom_devices:
+        return error_response("Nur benutzerdefinierte Gerätetypen können bearbeitet werden", 403)
+    
+    data = request.json
+    if not data:
+        return validation_error_response({"request": "Keine Daten übermittelt"})
+    
+    # Aktualisiere den Gerätetyp
+    device_registry.device_types[device_type].update(data)
+    device_registry._custom_devices[device_type].update(data)
+    
+    logger.info(f"Gerätetyp aktualisiert: {device_type}")
+    return success_response(device_registry.get_device_capabilities(device_type), 
+                          message="Gerätetyp erfolgreich aktualisiert")
+
+@api_bp.route('/api/v1/devices/registry/validate', methods=['POST'])
+@api_error_handler
+def validate_device_message():
+    """Validiert eine Nachricht gegen einen Gerätetyp"""
+    from utils.device_registry import device_registry
+    
+    data = request.json
+    
+    # Validierung
+    validation_errors = {}
+    if not data:
+        return validation_error_response({"request": "Keine Daten übermittelt"})
+    
+    if 'device_type' not in data:
+        validation_errors['device_type'] = "Gerätetyp ist erforderlich"
+    
+    if 'message' not in data:
+        validation_errors['message'] = "Nachricht ist erforderlich"
+    
+    if validation_errors:
+        return validation_error_response(validation_errors)
+    
+    # Nachricht validieren
+    is_valid, errors = device_registry.validate_device_message(data['device_type'], data['message'])
+    
+    response_data = {
+        "device_type": data['device_type'],
+        "is_valid": is_valid,
+        "errors": errors,
+        "detected_type": device_registry.detect_device_type(data['message'])
+    }
+    
+    return success_response(response_data)
+
 # ----- Hilfsmethode für automatische Geräteerkennung -----
 
 @api_bp.route('/api/v1/process-message', methods=['POST'])

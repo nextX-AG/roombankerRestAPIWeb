@@ -22,6 +22,7 @@ import Login from './pages/Login';
 import Customers from './pages/Customers';
 import Gateways from './pages/Gateways';
 import Devices from './pages/Devices';
+import DeviceRegistry from './pages/DeviceRegistry';
 import Debugger from './pages/Debugger';
 import TemplateGroups from './pages/TemplateGroups';
 import TemplateLearning from './pages/TemplateLearning';
@@ -78,6 +79,11 @@ function AppContent() {
             {/* Verschachtelte Route für Geräte-Detail als Drawer */}
             <Route path=":gatewayUuid/:deviceId" element={<DeviceDetailDrawer />} />
           </Route>
+          <Route path="/device-registry" element={
+            <ProtectedRoute>
+              <DeviceRegistry />
+            </ProtectedRoute>
+          } />
           <Route path="/messages" element={<Messages />}>
             {/* Verschachtelte Route für Nachrichten-Detail als Drawer */}
             <Route path=":messageId" element={<MessageDetailDrawer />} />

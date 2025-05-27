@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faHome, faBell, faGear, faList, faCode, faUser, 
-  faSignOutAlt, faBuilding, faNetworkWired, faDesktop, faBug, faEnvelope, faFileText, faLayers
+  faSignOutAlt, faBuilding, faNetworkWired, faDesktop, faBug, faEnvelope, faFileText, faLayers, faCpu
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
 
@@ -39,6 +39,9 @@ const AppNavbar = () => {
                 </Nav.Link>
                 <Nav.Link as={Link} to="/devices" active={location.pathname === '/devices'}>
                   <FontAwesomeIcon icon={faDesktop} className="me-1" /> Geräte
+                </Nav.Link>
+                <Nav.Link as={Link} to="/device-registry" active={location.pathname === '/device-registry'}>
+                  <FontAwesomeIcon icon={faCpu} className="me-1" /> Device Registry
                 </Nav.Link>
                 <Nav.Link 
                   as={Link} 

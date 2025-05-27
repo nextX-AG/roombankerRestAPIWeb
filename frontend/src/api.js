@@ -614,6 +614,36 @@ export const deviceApi = {
     return fetchApi(getApiUrl('devices', `${gatewayUuid}/${deviceId}`), {
       method: 'DELETE'
     });
+  },
+  
+  // Device Registry API
+  getRegistry: async () => {
+    return fetchApi(getApiUrl('devices', 'registry'));
+  },
+  
+  getDeviceType: async (deviceType) => {
+    return fetchApi(getApiUrl('devices', `registry/${deviceType}`));
+  },
+  
+  addCustomDeviceType: async (deviceType) => {
+    return fetchApi(getApiUrl('devices', 'registry'), {
+      method: 'POST',
+      body: JSON.stringify(deviceType)
+    });
+  },
+  
+  updateDeviceType: async (deviceTypeId, deviceType) => {
+    return fetchApi(getApiUrl('devices', `registry/${deviceTypeId}`), {
+      method: 'PUT',
+      body: JSON.stringify(deviceType)
+    });
+  },
+  
+  validateMessage: async (deviceType, message) => {
+    return fetchApi(getApiUrl('devices', 'registry/validate'), {
+      method: 'POST',
+      body: JSON.stringify({ device_type: deviceType, message })
+    });
   }
 };
 
