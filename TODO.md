@@ -1758,3 +1758,257 @@ class TemplateHierarchy:
 | 3-4    | Marketplace-Grundlagen              | BE+FE   | Mittel    |
 | 5-6    | KI-Integration                      | AI Team | Mittel    |
 | 7-8    | System-Integration & Migration      | DevOps  | Hoch      |
+
+## 24. Zentrales Device Management System (HÖCHSTE PRIORITÄT - GRUNDLAGE FÜR ALLES)
+
+Das System hat aktuell ein fundamentales Problem: Gerätetypen und deren Eigenschaften sind an mehreren Stellen hart codiert mit inkonsistenten Definitionen. Dies führt zu:
+- Unterschiedlichen Gerätetyp-Namen je nach Code-Pfad (`temperature_sensor` vs `temperature_humidity_sensor`)
+- Fehlerhafter Template-Auswahl
+- Keine zentrale Dokumentation der Nachrichtencodes (2001, 2030, etc.)
+- Schwierige Erweiterbarkeit für neue Gerätetypen
+- Inkonsistente Datenverarbeitung
+
+### Identifizierte Probleme im Detail
+
+1. **Doppelte Gerätetyp-Definitionen**:
+   - `api/models.py`: `determine_device_type()` mit eigenen Definitionen
+   - `utils/message_normalizer.py`: `_determine_device_type()` mit anderen Definitionen
+   - Keine gemeinsame Quelle der Wahrheit
+
+2. **Undokumentierte Nachrichtencodes**:
+   - Code 2030 = Panic Button (nur im Code erkennbar)
+   - Code 2001 = Status Update (aus Tests abgeleitet)
+   - Weitere Codes unbekannt und nirgends zentral dokumentiert
+
+3. **Fehlende Gerätespezifikationen**:
+   - Welche Felder sendet welches Gerät?
+   - Welche Wertebereiche sind gültig?
+   - Welche Templates sind für welchen Gerätetyp geeignet?
+
+### Phase 1: Device Registry - Zentrale Gerätedefinitionen (Woche 1)
+
+- [ ] **Erstelle `utils/device_registry.py`**
+  ```python
+  DEVICE_TYPES = {
+      "panic_button": {
+          "name": "Panic Button",
+          "description": "Notfall-Taster für Alarmsituationen",
+          "codes": [2030],
+          "identifying_fields": ["alarmtype", "alarmstatus"],
+          "required_fields": ["alarmtype", "alarmstatus"],
+          "optional_fields": ["batterystatus", "onlinestatus"],
+          "value_mappings": {
+              "alarmtype": ["panic", "none"],
+              "alarmstatus": ["alarm", "normal"],
+              "batterystatus": ["connected", "low", "critical"],
+              "onlinestatus": ["online", "offline"]
+          },
+          "mqtt_topics": ["alarm/panic", "device/status/panic_button"],
+          "default_template": "evalarm_panic",
+          "icon": "alert-triangle"
+      },
+      "temperature_humidity_sensor": {
+          "name": "Temperatur- und Feuchtigkeitssensor",
+          "description": "Umgebungssensor für Temperatur und Luftfeuchtigkeit",
+          "codes": [2001, 2002],
+          "identifying_fields": ["temperature", "humidity"],
+          "required_fields": ["temperature", "humidity"],
+          "optional_fields": ["batterylevel", "batterystatus", "onlinestatus"],
+          "value_ranges": {
+              "temperature": {"min": -40, "max": 80, "unit": "°C"},
+              "humidity": {"min": 0, "max": 100, "unit": "%"},
+              "batterylevel": {"min": 0, "max": 100, "unit": "%"}
+          },
+          "mqtt_topics": ["telemetry/environment", "sensor/temperature", "sensor/humidity"],
+          "default_template": "evalarm_status",
+          "icon": "thermometer"
+      }
+  }
+  
+  MESSAGE_CODES = {
+      2001: {
+          "name": "Status Update",
+          "description": "Reguläre Statusmeldung von Geräten",
+          "typical_devices": ["temperature_humidity_sensor", "door_sensor", "motion_sensor"]
+      },
+      2030: {
+          "name": "Panic Alarm",
+          "description": "Notfall-Alarm von Panic Button",
+          "typical_devices": ["panic_button"],
+          "priority": "high"
+      }
+  }
+  ```
+
+- [ ] **Device Discovery Funktionen**
+  - [ ] `detect_device_type(message_data)` - Einheitliche Geräteerkennung
+  - [ ] `get_device_capabilities(device_type)` - Geräteeigenschaften abrufen
+  - [ ] `validate_device_message(device_type, message)` - Nachrichtenvalidierung
+  - [ ] `get_suitable_templates(device_type)` - Passende Templates vorschlagen
+
+- [ ] **Integration in bestehende Komponenten**
+  - [ ] `api/models.py` umstellen auf zentrale Registry
+  - [ ] `utils/message_normalizer.py` umstellen auf zentrale Registry
+  - [ ] Alle hart codierten Gerätetyp-Checks ersetzen
+  - [ ] Unit-Tests für konsistente Geräteerkennung
+
+### Phase 2: Device Learning System - Automatische Erweiterung (Woche 1-2)
+
+- [ ] **Erweiterung des Template-Lernsystems für Device Discovery**
+  - [ ] Während der Lernphase: Sammeln aller einzigartigen Feldkombinationen
+  - [ ] Analyse der Wertebereiche für numerische Felder
+  - [ ] Erkennung von Enum-Werten für kategorische Felder
+  - [ ] Häufigkeitsanalyse der Nachrichtencodes
+
+- [ ] **Automatische Gerätetyp-Generierung**
+  ```python
+  def analyze_learned_device(learning_data):
+      return {
+          "suggested_type": "custom_sensor_12345",
+          "detected_fields": ["temperature", "pressure", "valve_status"],
+          "message_codes": [3001, 3002],
+          "value_patterns": {
+              "temperature": {"type": "numeric", "range": [15.2, 28.7]},
+              "pressure": {"type": "numeric", "range": [980, 1050]},
+              "valve_status": {"type": "enum", "values": ["open", "closed"]}
+          },
+          "message_frequency": "every 5 minutes",
+          "suggested_templates": ["generic_sensor", "custom_valve_sensor"]
+      }
+  ```
+
+- [ ] **Device Profile Generator**
+  - [ ] UI zum Reviewen der erkannten Gerätetypen
+  - [ ] Möglichkeit zur manuellen Anpassung
+  - [ ] Export als Device-Definition für Registry
+  - [ ] Automatisches Hinzufügen zur Runtime-Registry
+
+### Phase 3: Device Management UI (Woche 2)
+
+- [ ] **Device Registry Browser**
+  - [ ] Übersicht aller registrierten Gerätetypen
+  - [ ] Detailansicht mit allen Eigenschaften
+  - [ ] Such- und Filterfunktionen
+  - [ ] Visualisierung der Nachrichtenstruktur
+
+- [ ] **Device Profile Editor**
+  - [ ] Formular zum Erstellen neuer Gerätetypen
+  - [ ] Validierung der Feldkonfiguration
+  - [ ] Import/Export von Device-Definitionen
+  - [ ] Versionierung von Geräteprofilen
+
+- [ ] **Integration in Gateway-Verwaltung**
+  - [ ] Anzeige der erkannten Gerätetypen pro Gateway
+  - [ ] Statistiken über Nachrichtentypen
+  - [ ] Warnungen bei unbekannten Gerätetypen
+  - [ ] Quick-Action: "Neuen Gerätetyp lernen"
+
+### Phase 4: MQTT-Vorbereitung mit Device Registry (Woche 2-3)
+
+- [ ] **MQTT Topic Schema basierend auf Device Registry**
+  ```python
+  def generate_mqtt_topics(gateway_id, device_type, device_id):
+      device_config = DEVICE_TYPES[device_type]
+      return {
+          "telemetry": f"gateways/{gateway_id}/devices/{device_id}/telemetry",
+          "alarm": f"gateways/{gateway_id}/devices/{device_id}/alarm",
+          "status": f"gateways/{gateway_id}/devices/{device_id}/status",
+          "command": f"gateways/{gateway_id}/devices/{device_id}/command"
+      }
+  ```
+
+- [ ] **Device Security Integration**
+  - [ ] Device-spezifische Access Tokens
+  - [ ] Capability-basierte Berechtigungen
+  - [ ] Rate-Limiting pro Gerätetyp
+  - [ ] Anomalie-Erkennung basierend auf Device Profile
+
+- [ ] **MQTT Message Validation**
+  - [ ] Eingehende Nachrichten gegen Device Profile validieren
+  - [ ] Automatische Rejection ungültiger Nachrichten
+  - [ ] Logging und Alerting bei Anomalien
+  - [ ] Graceful Degradation für unbekannte Felder
+
+### Phase 5: Template-System Integration (Woche 3)
+
+- [ ] **Device-aware Template Selection**
+  ```python
+  def select_template_for_device(device_type, message_type, customer_config):
+      device = DEVICE_TYPES.get(device_type)
+      if not device:
+          return fallback_template()
+      
+      # Priorität 1: Kundenspezifisches Template für Gerätetyp
+      # Priorität 2: Default-Template für Gerätetyp
+      # Priorität 3: Generisches Template basierend auf Message-Code
+      # Priorität 4: Fallback-Template
+  ```
+
+- [ ] **Template-Vorschläge basierend auf Device Capabilities**
+  - [ ] Automatische Template-Generierung aus Device Profile
+  - [ ] Mapping von Device-Feldern zu Template-Variablen
+  - [ ] Validierung dass Template alle Required Fields nutzt
+  - [ ] Warnung bei ungenutzten Device-Feldern
+
+- [ ] **Template Testing Framework**
+  - [ ] Generiere Test-Nachrichten basierend auf Device Profile
+  - [ ] Validiere Template-Output gegen evAlarm-Schema
+  - [ ] Performance-Tests mit realistischen Datenmengen
+  - [ ] Regression-Tests bei Device Profile Updates
+
+### Phase 6: Migration und Rollout (Woche 3)
+
+- [ ] **Daten-Migration**
+  - [ ] Skript zum Migrieren bestehender Geräte zu neuen Typen
+  - [ ] Mapping-Tabelle alte → neue Gerätetypen
+  - [ ] Validierung aller migrierten Daten
+  - [ ] Rollback-Plan bei Problemen
+
+- [ ] **Schrittweise Aktivierung**
+  - [ ] Feature-Flag für Device Registry
+  - [ ] Parallel-Betrieb: Alte und neue Logik
+  - [ ] A/B-Testing mit ausgewählten Gateways
+  - [ ] Monitoring der Erkennungsgenauigkeit
+
+- [ ] **Dokumentation und Schulung**
+  - [ ] Technische Dokumentation der Device Registry
+  - [ ] Admin-Handbuch für Device Management
+  - [ ] API-Dokumentation für Device-Endpunkte
+  - [ ] Video-Tutorials für häufige Aufgaben
+
+### Erwartete Vorteile
+
+1. **Konsistenz**: Eine einzige Quelle der Wahrheit für alle Gerätetypen
+2. **Erweiterbarkeit**: Neue Geräte ohne Code-Änderungen hinzufügen
+3. **Wartbarkeit**: Zentrale Verwaltung statt verteilter Logik
+4. **MQTT-Ready**: Vorbereitet für die kommende MQTT-Migration
+5. **Self-Service**: Kunden können eigene Gerätetypen definieren
+6. **Skalierbarkeit**: Unterstützt beliebig viele Gerätetypen
+7. **Qualität**: Validierung und Konsistenz-Checks eingebaut
+
+### Implementierungsplan
+
+| Woche | Deliverable                          | Owner   | Abhängigkeiten |
+|-------|--------------------------------------|---------|----------------|
+| 1     | Device Registry Core                 | BE Team | -              |
+| 1     | Integration in bestehende Systeme    | BE Team | Registry Core  |
+| 1-2   | Device Learning System               | BE Team | Registry Core  |
+| 2     | Device Management UI                 | FE Team | Registry Core  |
+| 2-3   | MQTT-Vorbereitung                   | BE Team | Registry Core  |
+| 3     | Template-Integration                 | BE Team | Alle Phasen    |
+| 3     | Migration und Rollout               | DevOps  | Alle Phasen    |
+
+### Risiken und Mitigation
+
+1. **Breaking Changes**: Schrittweise Migration mit Feature-Flags
+2. **Performance**: Caching der Device Registry für schnelle Lookups
+3. **Komplexität**: Einfache UI für nicht-technische Nutzer
+4. **Datenqualität**: Validierung und Cleanup während Migration
+
+### Metriken für Erfolg
+
+- [ ] 100% der Gerätetyp-Erkennungen über zentrale Registry
+- [ ] 0 Inkonsistenzen zwischen verschiedenen Code-Pfaden
+- [ ] < 100ms Lookup-Zeit für Device-Informationen
+- [ ] 90%+ automatische Erkennungsrate neuer Gerätetypen
+- [ ] Reduzierung der Support-Tickets für Geräteprobleme um 50%
