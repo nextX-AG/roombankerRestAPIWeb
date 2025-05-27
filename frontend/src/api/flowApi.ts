@@ -3,8 +3,7 @@ import { api, ApiResponse } from './api';
 export interface Flow {
   id?: string;
   name: string;
-  type?: string;  // For API compatibility
-  flow_type: 'gateway_flow' | 'device_flow';  // For frontend use
+  flow_type: 'gateway_flow' | 'device_flow';
   version: number;
   steps: Array<{
     id: string;

@@ -687,6 +687,66 @@ export const learningApi = {
   }
 };
 
+// Flow-API-Endpunkte
+export const flowApi = {
+  list: async () => {
+    return fetchApi(getApiUrl('flows', ''));
+  },
+  
+  detail: async (id) => {
+    return fetchApi(getApiUrl('flows', id));
+  },
+  
+  create: async (flow) => {
+    return fetchApi(getApiUrl('flows', ''), {
+      method: 'POST',
+      body: JSON.stringify(flow)
+    });
+  },
+  
+  update: async (id, flow) => {
+    return fetchApi(getApiUrl('flows', id), {
+      method: 'PUT',
+      body: JSON.stringify(flow)
+    });
+  },
+  
+  delete: async (id) => {
+    return fetchApi(getApiUrl('flows', id), {
+      method: 'DELETE'
+    });
+  },
+
+  // Flow-Gruppen
+  listGroups: async () => {
+    return fetchApi(getApiUrl('flow-groups', ''));
+  },
+  
+  getGroup: async (id) => {
+    return fetchApi(getApiUrl('flow-groups', id));
+  },
+  
+  createGroup: async (data) => {
+    return fetchApi(getApiUrl('flow-groups', ''), {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+  
+  updateGroup: async (id, data) => {
+    return fetchApi(getApiUrl('flow-groups', id), {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+  
+  deleteGroup: async (id) => {
+    return fetchApi(getApiUrl('flow-groups', id), {
+      method: 'DELETE'
+    });
+  }
+};
+
 // Exportiere alle APIs
 export const api = {
   auth: authApi,
@@ -698,6 +758,7 @@ export const api = {
   template: templateApi,
   logs: logsApi,
   learning: learningApi,
+  flow: flowApi,
 }; 
 
 // Default export für Kompatibilität mit DeviceRegistry

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Button, Alert } from 'react-bootstrap';
 import { GitMerge, Plus, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { flowApi } from '../api/flowApi';
+import { flowApi } from '../api';
 import BasicTable from '../components/BasicTable';
 
 const FlowGroups = () => {
