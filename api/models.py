@@ -7,6 +7,11 @@ import os  # Für Umgebungsvariablen
 import logging
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+import sys
+
+# Import the new device registry
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.device_registry import device_registry, detect_device_type as registry_detect_device_type
 
 # Logging konfigurieren
 logging.basicConfig(level=logging.INFO)
@@ -602,20 +607,14 @@ class TemplateGroup:
 
 # Helfer-Funktionen für die Geräteerkennung
 def determine_device_type(values):
-    """Bestimmt den Gerätetyp anhand der empfangenen Werte"""
-    if not values:
-        return "unknown"
+    """
+    Bestimmt den Gerätetyp anhand der empfangenen Werte
     
-    if "alarmtype" in values and values.get("alarmtype") == "panic":
-        return "panic_button"
-    
-    if "currenttemperature" in values and "currenthumidity" in values:
-        return "temperature_sensor"
-    
-    if "alarmstatus" in values:
-        return "security_sensor"
-    
-    return "unknown"
+    DEPRECATED: Diese Funktion nutzt jetzt die zentrale Device Registry
+    """
+    # Create a message format that the registry understands
+    message_data = {"value": values} if isinstance(values, dict) else {"value": {"data": values}}
+    return registry_detect_device_type(message_data)
 
 def register_device_from_message(gateway_uuid, device_data):
     """
@@ -691,9 +690,16 @@ def register_device_from_message(gateway_uuid, device_data):
         device.update_status(values)
         return device
     else:
-        # Neues Gerät anlegen
-        device_type = determine_device_type(values)
-        logger.info(f"Neues Gerät vom Typ {device_type} für Gateway {gateway_uuid} wird angelegt")
+        # Neues Gerät anlegen - nutze die zentrale Registry für Typerkennung
+        device_type = registry_detect_device_type(device_data)
+        logger.info(f"Neues Gerät vom Typ {device_type} für Gateway {gateway_uuid} wird angelegt (erkannt durch zentrale Registry)")
+        
+        # Validiere die Nachricht gegen die Device-Anforderungen
+        is_valid, errors = device_registry.validate_device_message(device_type, device_data)
+        if not is_valid:
+            logger.warning(f"Gerätedaten für Typ {device_type} nicht vollständig valide: {', '.join(errors)}")
+            # Trotzdem fortfahren, aber warnen
+        
         try:
             new_device = Device.create(
                 gateway_uuid=gateway_uuid,

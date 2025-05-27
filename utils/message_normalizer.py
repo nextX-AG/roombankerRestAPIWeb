@@ -12,6 +12,9 @@ import time
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Union, Tuple
 
+# Import the central device registry
+from utils.device_registry import device_registry
+
 # Logging konfigurieren
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('message-normalizer')
@@ -400,43 +403,21 @@ class MessageNormalizer:
         """
         Bestimmt den Gerätetyp basierend auf den Gerätedaten.
         
+        Nutzt jetzt die zentrale Device Registry für konsistente Typerkennung.
+        
         Args:
             device_data: Die Gerätedaten
             
         Returns:
-            Der vermutete Gerätetyp
+            Der erkannte Gerätetyp
         """
-        # Wenn ein expliziter Typ angegeben ist, diesen verwenden
-        if 'type' in device_data:
-            return str(device_data['type'])
+        # Nutze die zentrale Registry für Geräteerkennung
+        device_type = device_registry.detect_device_type(device_data)
         
-        # Werte extrahieren
-        values = {}
-        if 'value' in device_data and isinstance(device_data['value'], dict):
-            values = device_data['value']
+        # Log die Erkennung für Debugging
+        logger.info(f"Device type '{device_type}' erkannt durch zentrale Registry für Daten: {json.dumps(device_data, default=str)[:200]}")
         
-        # Panic Button erkennen
-        if ('alarmtype' in values and values['alarmtype'] == 'panic') or ('panic' in values):
-            return 'panic_button'
-        
-        # Temperatur-/Feuchtigkeitssensor erkennen
-        if 'temperature' in values or 'currenttemperature' in values or 'humidity' in values or 'currenthumidity' in values:
-            return 'temperature_humidity_sensor'
-        
-        # Tür-/Fenstersensor erkennen
-        if 'open' in values or 'closed' in values or 'contactstate' in values:
-            return 'door_window_sensor'
-        
-        # Bewegungsmelder erkennen
-        if 'motion' in values or 'motiondetected' in values:
-            return 'motion_sensor'
-        
-        # Rauchmelder erkennen
-        if 'smoke' in values or 'smokedetected' in values:
-            return 'smoke_detector'
-        
-        # Fallback: Unbekannter Typ
-        return 'unknown'
+        return device_type
 
 # Beispielverwendung
 if __name__ == "__main__":
