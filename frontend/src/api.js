@@ -699,3 +699,6 @@ export const api = {
   logs: logsApi,
   learning: learningApi,
 }; 
+
+// Default export für Kompatibilität mit DeviceRegistry
+export default api; 

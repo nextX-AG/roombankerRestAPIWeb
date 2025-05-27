@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Badge, Button, Tab, Tabs, Alert, Form, InputGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCpu, faPlus, faSearch, faCode, faList, faCheckCircle, faExclamationTriangle, faBolt, faThermometerHalf, faDoorOpen, faWalking, faFire, faShieldAlt, faQuestion } from '@fortawesome/free-solid-svg-icons';
+import { faDesktop, faPlus, faSearch, faCode, faList, faCheckCircle, faExclamationTriangle, faBolt, faThermometerHalf, faDoorOpen, faWalking, faFire, faShieldAlt, faQuestion } from '@fortawesome/free-solid-svg-icons';
 import api from '../api';
 import BasicTable from '../components/BasicTable';
 
@@ -360,7 +360,7 @@ const DeviceRegistry = () => {
       <Row className="mb-4">
         <Col>
           <h2>
-            <FontAwesomeIcon icon={faCpu} className="me-2" />
+            <FontAwesomeIcon icon={faDesktop} className="me-2" />
             Device Registry
           </h2>
           <p className="text-muted">
@@ -444,7 +444,7 @@ const DeviceRegistry = () => {
         <Tab eventKey="learning" title="Learning Mode" disabled>
           <Card>
             <Card.Body className="text-center p-5">
-              <FontAwesomeIcon icon={faCpu} size="3x" className="text-muted mb-3" />
+              <FontAwesomeIcon icon={faDesktop} size="3x" className="text-muted mb-3" />
               <h5>Learning Mode Integration</h5>
               <p className="text-muted">
                 Die Integration mit dem Learning System wird in der nächsten Phase implementiert.
