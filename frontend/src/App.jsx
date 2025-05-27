@@ -27,6 +27,9 @@ import Debugger from './pages/Debugger';
 import TemplateGroups from './pages/TemplateGroups';
 import TemplateLearning from './pages/TemplateLearning';
 import VisualTemplateGenerator from './pages/VisualTemplateGenerator';
+import Flows from './pages/Flows';
+import FlowGroups from './pages/FlowGroups';
+import FlowEditor from './components/flows/FlowEditor';
 
 // Auth Context
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -107,6 +110,12 @@ function AppContent() {
             </ProtectedRoute>
           } />
           <Route path="/debugger" element={<Debugger />} />
+          {/* Flow-Routen */}
+          <Route path="/flows" element={<Flows />}>
+            <Route path=":flowId" element={<FlowEditor />} />
+            <Route path="new" element={<FlowEditor />} />
+          </Route>
+          <Route path="/flow-groups" element={<FlowGroups />} />
           {/* Umleitung von alten Pfaden */}
           <Route path="/message-debugger" element={<Navigate to="/debugger" />} />
           <Route path="/settings" element={<Settings />} />
