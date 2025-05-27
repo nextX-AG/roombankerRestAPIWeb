@@ -1,3 +1,15 @@
+from pymongo import MongoClient
+from bson.objectid import ObjectId
+from datetime import datetime, timezone
+import os
+import uuid
+
+# MongoDB connection
+def get_db():
+    """Get MongoDB database connection"""
+    mongo_client = MongoClient(os.environ.get('MONGODB_URI', 'mongodb://mongo:27017/'))
+    return mongo_client[os.environ.get('MONGODB_DB', 'evalarm_iot')]
+
 class Template:
     # ... existing Template class code ...
 
@@ -15,8 +27,8 @@ class TemplateGroup:
             'description': data.get('description', ''),
             'templates': data.get('templates', []),  # [{template_id, priority}, ...]
             'usage_count': 0,
-            'created_at': datetime.utcnow(),
-            'updated_at': datetime.utcnow()
+            'created_at': datetime.now(timezone.utc),
+            'updated_at': datetime.now(timezone.utc)
         }
         
         result = self.collection.insert_one(template_group)
@@ -34,7 +46,7 @@ class TemplateGroup:
     
     def update(self, group_id, data):
         """Aktualisiere eine Template-Gruppe"""
-        data['updated_at'] = datetime.utcnow()
+        data['updated_at'] = datetime.now(timezone.utc)
         
         # Entferne id aus den Update-Daten
         if 'id' in data:

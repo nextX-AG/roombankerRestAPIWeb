@@ -9,7 +9,7 @@ Zeitraum sammelt, Muster erkennt und automatisch Templates generiert.
 import logging
 import hashlib
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict, Counter
 from typing import Dict, List, Any, Optional, Tuple
 import numpy as np
@@ -75,12 +75,12 @@ class TemplateLearningEngine:
         # Erstelle neue Lernsession
         session = {
             'gateway_id': gateway_id,
-            'start_time': datetime.utcnow(),
-            'end_time': datetime.utcnow() + timedelta(hours=duration),
+            'start_time': datetime.now(timezone.utc),
+            'end_time': datetime.now(timezone.utc) + timedelta(hours=duration),
             'status': 'learning',
             'message_count': 0,
             'patterns': [],
-            'created_at': datetime.utcnow()
+            'created_at': datetime.now(timezone.utc)
         }
         
         result = self.learning_collection.insert_one(session)
@@ -121,7 +121,7 @@ class TemplateLearningEngine:
             logger.error(f"Fehler beim Zurücksetzen des Gateway-Modus: {str(e)}")
         
         session['status'] = 'completed'
-        session['end_time'] = datetime.now()
+        session['end_time'] = datetime.now(timezone.utc)
         
         # Muster analysieren
         self._analyze_patterns(gateway_id)
@@ -143,7 +143,7 @@ class TemplateLearningEngine:
             return False
         
         # Prüfe ob Session noch aktiv ist
-        if datetime.utcnow() > session['end_time']:
+        if datetime.now(timezone.utc) > session['end_time']:
             # Session automatisch beenden
             self._complete_session(session['_id'])
             return False
@@ -153,7 +153,7 @@ class TemplateLearningEngine:
             'session_id': session['_id'],
             'gateway_id': gateway_id,
             'message': message,
-            'timestamp': datetime.utcnow(),
+            'timestamp': datetime.now(timezone.utc),
             'pattern_hash': self._calculate_pattern_hash(message)
         }
         
@@ -180,7 +180,7 @@ class TemplateLearningEngine:
             # Berechne Fortschritt
             if session['status'] == 'learning':
                 total_duration = (session['end_time'] - session['start_time']).total_seconds()
-                elapsed = (datetime.utcnow() - session['start_time']).total_seconds()
+                elapsed = (datetime.now(timezone.utc) - session['start_time']).total_seconds()
                 progress = min(100, int((elapsed / total_duration) * 100))
             else:
                 progress = 100 if session['status'] == 'completed' else 0
@@ -375,7 +375,7 @@ class TemplateLearningEngine:
             return 'Selten'
         
         # Berechne durchschnittliche Zeit zwischen Nachrichten
-        duration_hours = (session.get('end_time', datetime.utcnow()) - session['start_time']).total_seconds() / 3600
+        duration_hours = (session.get('end_time', datetime.now(timezone.utc)) - session['start_time']).total_seconds() / 3600
         messages_per_hour = len(messages) / duration_hours
         
         if messages_per_hour >= 60:
@@ -491,7 +491,7 @@ class TemplateLearningEngine:
             {
                 '$set': {
                     'status': 'completed',
-                    'completed_at': datetime.utcnow()
+                    'completed_at': datetime.now(timezone.utc)
                 }
             }
         )

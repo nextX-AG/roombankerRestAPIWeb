@@ -2,7 +2,7 @@
 Datenmodelle für das evAlarm-IoT Gateway Management System
 """
 
-import datetime
+from datetime import datetime, timezone
 import os  # Für Umgebungsvariablen
 import logging
 from pymongo import MongoClient
@@ -87,7 +87,7 @@ class Customer:
         self.evalarm_url = evalarm_url or "https://tas.dev.evalarm.de/api/v1/espa"  # Standardwert als Fallback
         self.status = status  # active, inactive
         self.immediate_forwarding = immediate_forwarding
-        self.created_at = created_at or datetime.datetime.now()
+        self.created_at = created_at or datetime.now(timezone.utc)
         self.updated_at = updated_at or self.created_at
     
     @classmethod
@@ -112,7 +112,7 @@ class Customer:
     
     def update(self, **kwargs):
         """Aktualisiert die Kundeninformationen"""
-        kwargs['updated_at'] = datetime.datetime.now()
+        kwargs['updated_at'] = datetime.now(timezone.utc)
         db[self.collection].update_one(
             {"_id": self._id},
             {"$set": kwargs}
@@ -147,8 +147,8 @@ class Gateway:
         self.template_id = template_id  # Behalten für Rückwärtskompatibilität
         self.template_group_id = template_group_id  # Neu für Template-Gruppen
         self.status = status  # online, offline, unknown, maintenance
-        self.last_contact = last_contact or datetime.datetime.now()
-        self.created_at = created_at or datetime.datetime.now()
+        self.last_contact = last_contact or datetime.now(timezone.utc)
+        self.created_at = created_at or datetime.now(timezone.utc)
         self.updated_at = updated_at or self.created_at
         self.forwarding_enabled = forwarding_enabled
         self.forwarding_mode = forwarding_mode
@@ -185,9 +185,9 @@ class Gateway:
                 'status': status,
                 'forwarding_enabled': forwarding_enabled,
                 'forwarding_mode': forwarding_mode,
-                'last_contact': datetime.utcnow(),
-                'created_at': datetime.utcnow(),
-                'updated_at': datetime.utcnow()
+                'last_contact': datetime.now(timezone.utc),
+                'created_at': datetime.now(timezone.utc),
+                'updated_at': datetime.now(timezone.utc)
             }
             
             result = db[cls.collection].insert_one(gateway_doc)
@@ -363,7 +363,7 @@ class Gateway:
                     setattr(self, field, value)
             
             if update_doc:
-                update_doc['updated_at'] = datetime.utcnow()
+                update_doc['updated_at'] = datetime.now(timezone.utc)
                 self.updated_at = update_doc['updated_at']
                 
                 result = db[self.collection].update_one(
@@ -407,7 +407,7 @@ class Gateway:
     
     def update_status(self, status="online"):
         """Aktualisiert den Status und den Zeitpunkt des letzten Kontakts"""
-        now = datetime.datetime.now()
+        now = datetime.now(timezone.utc)
         self.update(status=status, last_contact=now)
     
     def delete(self):
@@ -453,8 +453,8 @@ class Device:
         self.name = name or f"Device {device_id[-8:]}"
         self.description = description
         self.status = status or {}
-        self.last_update = last_update or datetime.datetime.now()
-        self.created_at = created_at or datetime.datetime.now()
+        self.last_update = last_update or datetime.now(timezone.utc)
+        self.created_at = created_at or datetime.now(timezone.utc)
         self.updated_at = updated_at or self.created_at
     
     @classmethod
@@ -487,7 +487,7 @@ class Device:
     
     def update(self, **kwargs):
         """Aktualisiert die Geräteinformationen"""
-        kwargs['updated_at'] = datetime.datetime.now()
+        kwargs['updated_at'] = datetime.now(timezone.utc)
         db[self.collection].update_one(
             {"_id": self._id},
             {"$set": kwargs}
@@ -497,7 +497,7 @@ class Device:
     
     def update_status(self, status_data):
         """Aktualisiert den Status und den Zeitpunkt des letzten Updates"""
-        now = datetime.datetime.now()
+        now = datetime.now(timezone.utc)
         self.update(status=status_data, last_update=now)
     
     def delete(self):
@@ -523,7 +523,7 @@ class TemplateGroup:
         self.description = description
         self.templates = templates or []  # [{template_id: str, priority: int}, ...]
         self.usage_count = usage_count
-        self.created_at = created_at or datetime.datetime.now()
+        self.created_at = created_at or datetime.now(timezone.utc)
         self.updated_at = updated_at or self.created_at
     
     @classmethod
@@ -548,7 +548,7 @@ class TemplateGroup:
     
     def update(self, **kwargs):
         """Aktualisiert die Template-Gruppen-Informationen"""
-        kwargs['updated_at'] = datetime.datetime.now()
+        kwargs['updated_at'] = datetime.now(timezone.utc)
         
         # Entferne die _id aus den Update-Daten, falls vorhanden
         if '_id' in kwargs:
@@ -710,7 +710,7 @@ def register_device_from_message(gateway_uuid, device_data):
 
 def update_all_devices_for_gateway(gateway_uuid):
     """Aktualisiert den Zeitstempel aller Geräte eines Gateways"""
-    now = datetime.datetime.now()
+    now = datetime.now(timezone.utc)
     devices = Device.find_by_gateway(gateway_uuid)
     
     for device in devices:
@@ -735,7 +735,7 @@ def is_gateway_offline(last_contact, timeout_minutes=15):
     if not last_contact:
         return True
     
-    now = datetime.datetime.now()
+    now = datetime.now(timezone.utc)
     timeout = datetime.timedelta(minutes=timeout_minutes)
     
     return (now - last_contact) > timeout
