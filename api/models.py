@@ -192,7 +192,22 @@ class Gateway:
             
             result = db[cls.collection].insert_one(gateway_doc)
             gateway_doc['_id'] = result.inserted_id
-            return cls(gateway_doc)
+            # Erstelle Gateway-Objekt mit korrekten Parametern
+            return cls(
+                uuid=gateway_doc['uuid'],
+                customer_id=gateway_doc.get('customer_id'),
+                name=gateway_doc.get('name'),
+                description=gateway_doc.get('description'),
+                template_id=gateway_doc.get('template_id'),
+                template_group_id=gateway_doc.get('template_group_id'),
+                status=gateway_doc.get('status', 'online'),
+                last_contact=gateway_doc.get('last_contact'),
+                _id=gateway_doc['_id'],
+                created_at=gateway_doc.get('created_at'),
+                updated_at=gateway_doc.get('updated_at'),
+                forwarding_enabled=gateway_doc.get('forwarding_enabled', True),
+                forwarding_mode=gateway_doc.get('forwarding_mode', 'production')
+            )
         except Exception as e:
             logger.error(f"Fehler beim Erstellen des Gateways: {str(e)}")
             raise
@@ -248,7 +263,22 @@ class Gateway:
                 doc['forwarding_enabled'] = True
             if 'forwarding_mode' not in doc:
                 doc['forwarding_mode'] = 'production'
-            gateway = cls(**doc)
+            # Erstelle Gateway-Objekt mit korrekten Parametern
+            gateway = cls(
+                uuid=doc['uuid'],
+                customer_id=doc.get('customer_id'),
+                name=doc.get('name'),
+                description=doc.get('description'),
+                template_id=doc.get('template_id'),
+                template_group_id=doc.get('template_group_id'),
+                status=doc.get('status', 'unknown'),
+                last_contact=doc.get('last_contact'),
+                _id=doc['_id'],
+                created_at=doc.get('created_at'),
+                updated_at=doc.get('updated_at'),
+                forwarding_enabled=doc.get('forwarding_enabled', True),
+                forwarding_mode=doc.get('forwarding_mode', 'production')
+            )
             gateways.append(gateway)
         return gateways
     
@@ -262,14 +292,53 @@ class Gateway:
                 doc['forwarding_enabled'] = True
             if 'forwarding_mode' not in doc:
                 doc['forwarding_mode'] = 'production'
-            gateway = cls(**doc)
+            # Erstelle Gateway-Objekt mit korrekten Parametern
+            gateway = cls(
+                uuid=doc['uuid'],
+                customer_id=doc.get('customer_id'),
+                name=doc.get('name'),
+                description=doc.get('description'),
+                template_id=doc.get('template_id'),
+                template_group_id=doc.get('template_group_id'),
+                status=doc.get('status', 'unknown'),
+                last_contact=doc.get('last_contact'),
+                _id=doc['_id'],
+                created_at=doc.get('created_at'),
+                updated_at=doc.get('updated_at'),
+                forwarding_enabled=doc.get('forwarding_enabled', True),
+                forwarding_mode=doc.get('forwarding_mode', 'production')
+            )
             gateways.append(gateway)
         return gateways
     
     @classmethod
     def find_unassigned(cls):
         """Findet alle Gateways ohne Kundenzuordnung"""
-        return [cls(**data) for data in db[cls.collection].find({"customer_id": None})]
+        gateways = []
+        for doc in db[cls.collection].find({"customer_id": None}):
+            # Setze Standardwerte für neue Felder
+            if 'forwarding_enabled' not in doc:
+                doc['forwarding_enabled'] = True
+            if 'forwarding_mode' not in doc:
+                doc['forwarding_mode'] = 'production'
+            # Erstelle Gateway-Objekt mit korrekten Parametern
+            gateway = cls(
+                uuid=doc['uuid'],
+                customer_id=doc.get('customer_id'),
+                name=doc.get('name'),
+                description=doc.get('description'),
+                template_id=doc.get('template_id'),
+                template_group_id=doc.get('template_group_id'),
+                status=doc.get('status', 'unknown'),
+                last_contact=doc.get('last_contact'),
+                _id=doc['_id'],
+                created_at=doc.get('created_at'),
+                updated_at=doc.get('updated_at'),
+                forwarding_enabled=doc.get('forwarding_enabled', True),
+                forwarding_mode=doc.get('forwarding_mode', 'production')
+            )
+            gateways.append(gateway)
+        return gateways
     
     def update(self, **kwargs):
         """
