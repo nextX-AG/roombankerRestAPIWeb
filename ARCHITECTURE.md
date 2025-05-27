@@ -1541,3 +1541,176 @@ onChange={(e) => {
 - **User Feedback**: Visuelle Hinweise bei eingeschränkter Weiterleitung
 
 Diese Integration stellt sicher, dass Benutzer die volle Kontrolle über die Nachrichtenweiterleitung haben, ohne die Kommandozeile oder API-Aufrufe verwenden zu müssen. 
+
+## 17. Zentrales Device Registry System (NEU - 27.01.2025)
+
+Das zentrale Device Registry System wurde implementiert, um das fundamentale Problem der inkonsistenten Gerätetyp-Definitionen zu lösen. Zuvor waren Gerätetypen an mehreren Stellen im Code mit unterschiedlichen Namen und Eigenschaften definiert, was zu Fehlern und Wartungsproblemen führte.
+
+### 17.1 Motivation und gelöste Probleme
+
+#### Identifizierte Probleme:
+- **Inkonsistente Namensgebung**: `temperature_sensor` vs `temperature_humidity_sensor` je nach Code-Pfad
+- **Verteilte Definitionen**: Gerätetyp-Logik in `api/models.py` und `utils/message_normalizer.py` mit unterschiedlichen Implementierungen
+- **Undokumentierte Message Codes**: Codes wie 2001, 2030 waren nur im Code erkennbar, ohne zentrale Dokumentation
+- **Fehlende Validierung**: Keine zentrale Stelle zur Validierung von Gerätedaten
+- **Schwierige Erweiterbarkeit**: Neue Gerätetypen erforderten Änderungen an mehreren Stellen
+
+### 17.2 Architektur der Device Registry
+
+Die Device Registry (`utils/device_registry.py`) fungiert als zentrale Quelle der Wahrheit für alle Gerätedefinitionen:
+
+```python
+class DeviceRegistry:
+    def __init__(self):
+        self.device_types = DEVICE_TYPES.copy()
+        self.message_codes = MESSAGE_CODES.copy()
+        self._custom_devices = {}
+    
+    def detect_device_type(self, message_data: Dict[str, Any]) -> str
+    def get_device_capabilities(self, device_type: str) -> Optional[Dict[str, Any]]
+    def validate_device_message(self, device_type: str, message: Dict[str, Any]) -> Tuple[bool, List[str]]
+    def get_suitable_templates(self, device_type: str) -> List[str]
+    def get_mqtt_topics(self, gateway_id: str, device_type: str, device_id: str) -> Dict[str, str]
+```
+
+### 17.3 Gerätetyp-Definitionen
+
+Jeder Gerätetyp wird umfassend definiert mit:
+
+```python
+"panic_button": {
+    "name": "Panic Button",
+    "description": "Emergency button for alarm situations",
+    "codes": [2030],  # Zugeordnete Message Codes
+    "identifying_fields": ["alarmtype", "alarmstatus"],  # Felder zur Identifikation
+    "required_fields": ["alarmtype", "alarmstatus"],  # Pflichtfelder
+    "optional_fields": ["batterystatus", "onlinestatus"],  # Optionale Felder
+    "value_mappings": {  # Erlaubte Werte pro Feld
+        "alarmtype": ["panic", "none"],
+        "alarmstatus": ["alarm", "normal"]
+    },
+    "mqtt_topics": ["alarm/panic", "device/status/panic_button"],  # MQTT-Vorbereitung
+    "default_template": "evalarm_panic",  # Standard-Template
+    "icon": "alert-triangle"  # UI-Icon
+}
+```
+
+### 17.4 Registrierte Gerätetypen
+
+Die Registry enthält aktuell 7 vordefinierte Gerätetypen:
+
+1. **panic_button**: Notfall-Taster für Alarmsituationen
+2. **temperature_humidity_sensor**: Umgebungssensor für Temperatur und Luftfeuchtigkeit
+3. **door_window_sensor**: Kontaktsensor für Türen und Fenster
+4. **motion_sensor**: PIR-Bewegungsmelder
+5. **smoke_detector**: Rauch- und Feuermelder
+6. **security_sensor**: Generischer Sicherheitssensor
+7. **unknown**: Fallback für unerkannte Geräte
+
+### 17.5 Message Code Definitionen
+
+Alle Message Codes sind zentral dokumentiert:
+
+```python
+MESSAGE_CODES = {
+    2001: {"name": "Environmental Status", "typical_devices": ["temperature_humidity_sensor"]},
+    2002: {"name": "Environmental Alert", "typical_devices": ["temperature_humidity_sensor"]},
+    2010: {"name": "Contact Status", "typical_devices": ["door_window_sensor"]},
+    2020: {"name": "Motion Status", "typical_devices": ["motion_sensor"]},
+    2030: {"name": "Panic Alarm", "typical_devices": ["panic_button"], "priority": "critical"},
+    2040: {"name": "Smoke Status", "typical_devices": ["smoke_detector"]},
+    // ... weitere Codes
+}
+```
+
+### 17.6 Integration in bestehende Komponenten
+
+#### api/models.py
+Die `determine_device_type()` Funktion nutzt jetzt die zentrale Registry:
+
+```python
+from utils.device_registry import device_registry, detect_device_type as registry_detect_device_type
+
+def determine_device_type(values):
+    """DEPRECATED: Diese Funktion nutzt jetzt die zentrale Device Registry"""
+    message_data = {"value": values} if isinstance(values, dict) else {"value": {"data": values}}
+    return registry_detect_device_type(message_data)
+```
+
+#### utils/message_normalizer.py
+Der Message Normalizer verwendet ebenfalls die zentrale Registry:
+
+```python
+def _determine_device_type(self, device_data: Dict[str, Any]) -> str:
+    # Nutze die zentrale Registry für Geräteerkennung
+    device_type = device_registry.detect_device_type(device_data)
+    logger.info(f"Device type '{device_type}' erkannt durch zentrale Registry")
+    return device_type
+```
+
+### 17.7 Erweiterte Funktionalität
+
+#### Alternative Feldnamen
+Die Registry unterstützt alternative Feldnamen für Rückwärtskompatibilität:
+- `temperature` und `currenttemperature` werden beide erkannt
+- `humidity` und `currenthumidity` werden beide unterstützt
+
+#### Nachrichtenvalidierung
+```python
+is_valid, errors = device_registry.validate_device_message("panic_button", message)
+if not is_valid:
+    logger.warning(f"Validierungsfehler: {', '.join(errors)}")
+```
+
+#### MQTT-Topic-Generierung
+```python
+topics = device_registry.get_mqtt_topics("gateway-123", "panic_button", "device-456")
+# Ergebnis:
+# {
+#   "telemetry": "gateways/gateway-123/devices/device-456/telemetry",
+#   "status": "gateways/gateway-123/devices/device-456/status",
+#   "command": "gateways/gateway-123/devices/device-456/command",
+#   "legacy": ["alarm/panic", "device/status/panic_button"]
+# }
+```
+
+#### Template-Vorschläge
+```python
+templates = device_registry.get_suitable_templates("panic_button")
+# Ergebnis: ["evalarm_panic_v2", "evalarm_panic"]
+```
+
+### 17.8 Test-Framework
+
+Eine umfassende Test-Suite (`tests/test_device_registry.py`) wurde implementiert:
+
+- **Gerätetyp-Erkennung**: Tests für alle Nachrichtenformate
+- **Nachrichtenvalidierung**: Prüfung von Pflichtfeldern und Wertebereichen
+- **Template-Vorschläge**: Verifizierung der Template-Zuordnung
+- **MQTT-Topics**: Korrekte Topic-Generierung
+- **Message Codes**: Dokumentation und Zuordnung
+
+#### Docker Test Runner
+Ein spezielles Skript (`test_in_docker.sh`) ermöglicht die einfache Ausführung von Tests im Docker-Container:
+
+```bash
+./test_in_docker.sh tests/test_device_registry.py
+```
+
+### 17.9 Vorteile der zentralen Registry
+
+1. **Konsistenz**: Eine einzige Quelle der Wahrheit für alle Gerätetypen
+2. **Wartbarkeit**: Änderungen an einem zentralen Ort statt verteilt im Code
+3. **Erweiterbarkeit**: Neue Gerätetypen können ohne Code-Änderungen hinzugefügt werden
+4. **Dokumentation**: Alle Gerätetypen und Message Codes sind zentral dokumentiert
+5. **Validierung**: Eingebaute Validierung für eingehende Nachrichten
+6. **MQTT-Vorbereitung**: Grundlage für die kommende MQTT-Migration
+7. **Testbarkeit**: Einfache Unit-Tests durch klare Schnittstellen
+
+### 17.10 Zukünftige Erweiterungen
+
+- **Device Learning System**: Automatische Erkennung neuer Gerätetypen
+- **UI-Integration**: Verwaltungsoberfläche für Device Registry
+- **Custom Devices**: Runtime-Erweiterung der Registry durch Benutzer
+- **Export/Import**: Device-Definitionen zwischen Installationen teilen
+- **Versionierung**: Änderungsverlauf für Gerätedefinitionen 
