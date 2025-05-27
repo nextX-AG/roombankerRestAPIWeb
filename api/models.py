@@ -143,14 +143,17 @@ class Gateway:
     
     def __init__(self, uuid, customer_id, name=None, description=None, 
                  template_id=None, template_group_id=None, status="unknown", last_contact=None, _id=None,
-                 created_at=None, updated_at=None, forwarding_enabled=True, forwarding_mode='production'):
+                 created_at=None, updated_at=None, forwarding_enabled=True, forwarding_mode='production',
+                 flow_id=None, flow_group_id=None):
         self._id = _id or ObjectId()
         self.uuid = uuid
         self.customer_id = ObjectId(customer_id) if isinstance(customer_id, str) and customer_id else customer_id
         self.name = name or f"Gateway {uuid[-8:]}"
         self.description = description
-        self.template_id = template_id  # Behalten für Rückwärtskompatibilität
-        self.template_group_id = template_group_id  # Neu für Template-Gruppen
+        self.template_id = template_id  # DEPRECATED - behalten für Rückwärtskompatibilität
+        self.template_group_id = template_group_id  # DEPRECATED - wird zu flow_group_id
+        self.flow_id = flow_id  # NEU: Einzelner Gateway-Flow (optional)
+        self.flow_group_id = flow_group_id  # NEU: Gateway-Flow-Gruppe (bevorzugt)
         self.status = status  # online, offline, unknown, maintenance
         self.last_contact = last_contact or datetime.now(timezone.utc)
         self.created_at = created_at or datetime.now(timezone.utc)
@@ -161,7 +164,8 @@ class Gateway:
     @classmethod
     def create(cls, uuid, customer_id=None, name=None, description=None, 
                template_id=None, template_group_id=None, status='online',
-               forwarding_enabled=True, forwarding_mode='production'):
+               forwarding_enabled=True, forwarding_mode='production',
+               flow_id=None, flow_group_id=None):
         """
         Erstellt ein neues Gateway
         
@@ -170,8 +174,10 @@ class Gateway:
             customer_id: Zugehöriger Kunde (ObjectId oder None)
             name: Gateway-Name
             description: Beschreibung
-            template_id: Template-ID (Legacy)
-            template_group_id: Template-Gruppen-ID für intelligente Template-Auswahl
+            template_id: Template-ID (DEPRECATED)
+            template_group_id: Template-Gruppen-ID (DEPRECATED)
+            flow_id: Flow-ID für Gateway-spezifische Flows
+            flow_group_id: Flow-Gruppen-ID für Gateway-spezifische Flows
             status: Gateway-Status
             forwarding_enabled: Ob Nachrichten weitergeleitet werden sollen
             forwarding_mode: Modus der Weiterleitung (production, test, learning)
@@ -187,6 +193,8 @@ class Gateway:
                 'description': description or '',
                 'template_id': template_id,
                 'template_group_id': template_group_id,
+                'flow_id': flow_id,
+                'flow_group_id': flow_group_id,
                 'status': status,
                 'forwarding_enabled': forwarding_enabled,
                 'forwarding_mode': forwarding_mode,
@@ -205,6 +213,8 @@ class Gateway:
                 description=gateway_doc.get('description'),
                 template_id=gateway_doc.get('template_id'),
                 template_group_id=gateway_doc.get('template_group_id'),
+                flow_id=gateway_doc.get('flow_id'),
+                flow_group_id=gateway_doc.get('flow_group_id'),
                 status=gateway_doc.get('status', 'online'),
                 last_contact=gateway_doc.get('last_contact'),
                 _id=gateway_doc['_id'],
@@ -231,11 +241,14 @@ class Gateway:
         try:
             gateway_doc = db[cls.collection].find_one({'uuid': uuid})
             if gateway_doc:
-                # Setze Standardwerte für neue Felder falls nicht vorhanden
                 if 'forwarding_enabled' not in gateway_doc:
                     gateway_doc['forwarding_enabled'] = True
                 if 'forwarding_mode' not in gateway_doc:
                     gateway_doc['forwarding_mode'] = 'production'
+                if 'flow_id' not in gateway_doc:
+                    gateway_doc['flow_id'] = None
+                if 'flow_group_id' not in gateway_doc:
+                    gateway_doc['flow_group_id'] = None
                     
                 return cls(
                     uuid=gateway_doc['uuid'],
@@ -244,6 +257,8 @@ class Gateway:
                     description=gateway_doc.get('description'),
                     template_id=gateway_doc.get('template_id'),
                     template_group_id=gateway_doc.get('template_group_id'),
+                    flow_id=gateway_doc.get('flow_id'),
+                    flow_group_id=gateway_doc.get('flow_group_id'),
                     status=gateway_doc.get('status', 'unknown'),
                     last_contact=gateway_doc.get('last_contact'),
                     _id=gateway_doc['_id'],
@@ -268,6 +283,10 @@ class Gateway:
                 doc['forwarding_enabled'] = True
             if 'forwarding_mode' not in doc:
                 doc['forwarding_mode'] = 'production'
+            if 'flow_id' not in doc:
+                doc['flow_id'] = None
+            if 'flow_group_id' not in doc:
+                doc['flow_group_id'] = None
             # Erstelle Gateway-Objekt mit korrekten Parametern
             gateway = cls(
                 uuid=doc['uuid'],
@@ -276,6 +295,8 @@ class Gateway:
                 description=doc.get('description'),
                 template_id=doc.get('template_id'),
                 template_group_id=doc.get('template_group_id'),
+                flow_id=doc.get('flow_id'),
+                flow_group_id=doc.get('flow_group_id'),
                 status=doc.get('status', 'unknown'),
                 last_contact=doc.get('last_contact'),
                 _id=doc['_id'],
@@ -297,6 +318,10 @@ class Gateway:
                 doc['forwarding_enabled'] = True
             if 'forwarding_mode' not in doc:
                 doc['forwarding_mode'] = 'production'
+            if 'flow_id' not in doc:
+                doc['flow_id'] = None
+            if 'flow_group_id' not in doc:
+                doc['flow_group_id'] = None
             # Erstelle Gateway-Objekt mit korrekten Parametern
             gateway = cls(
                 uuid=doc['uuid'],
@@ -305,6 +330,8 @@ class Gateway:
                 description=doc.get('description'),
                 template_id=doc.get('template_id'),
                 template_group_id=doc.get('template_group_id'),
+                flow_id=doc.get('flow_id'),
+                flow_group_id=doc.get('flow_group_id'),
                 status=doc.get('status', 'unknown'),
                 last_contact=doc.get('last_contact'),
                 _id=doc['_id'],
@@ -326,6 +353,10 @@ class Gateway:
                 doc['forwarding_enabled'] = True
             if 'forwarding_mode' not in doc:
                 doc['forwarding_mode'] = 'production'
+            if 'flow_id' not in doc:
+                doc['flow_id'] = None
+            if 'flow_group_id' not in doc:
+                doc['flow_group_id'] = None
             # Erstelle Gateway-Objekt mit korrekten Parametern
             gateway = cls(
                 uuid=doc['uuid'],
@@ -334,6 +365,8 @@ class Gateway:
                 description=doc.get('description'),
                 template_id=doc.get('template_id'),
                 template_group_id=doc.get('template_group_id'),
+                flow_id=doc.get('flow_id'),
+                flow_group_id=doc.get('flow_group_id'),
                 status=doc.get('status', 'unknown'),
                 last_contact=doc.get('last_contact'),
                 _id=doc['_id'],
@@ -358,8 +391,8 @@ class Gateway:
         try:
             # Erlaubte Felder für Update
             allowed_fields = ['name', 'description', 'customer_id', 'template_id', 
-                            'template_group_id', 'status', 'forwarding_enabled', 
-                            'forwarding_mode', 'last_contact']
+                            'template_group_id', 'flow_id', 'flow_group_id', 'status', 
+                            'forwarding_enabled', 'forwarding_mode', 'last_contact']
             
             update_doc = {}
             for field, value in kwargs.items():
@@ -450,7 +483,8 @@ class Device:
     
     def __init__(self, gateway_uuid, device_id, device_type=None, name=None, 
                  description=None, status=None, last_update=None, _id=None,
-                 created_at=None, updated_at=None):
+                 created_at=None, updated_at=None, template_id=None, template_group_id=None,
+                 flow_id=None, flow_group_id=None):
         self._id = _id or ObjectId()
         self.gateway_uuid = gateway_uuid
         self.device_id = device_id
@@ -461,6 +495,10 @@ class Device:
         self.last_update = last_update or datetime.now(timezone.utc)
         self.created_at = created_at or datetime.now(timezone.utc)
         self.updated_at = updated_at or self.created_at
+        self.template_id = template_id  # DEPRECATED - wird zu flow_id
+        self.template_group_id = template_group_id  # DEPRECATED - wird zu flow_group_id
+        self.flow_id = flow_id  # NEU: Einzelner Device-Flow (optional)
+        self.flow_group_id = flow_group_id  # NEU: Device-Flow-Gruppe (bevorzugt)
     
     @classmethod
     def create(cls, **kwargs):
@@ -604,6 +642,293 @@ class TemplateGroup:
         result = self.__dict__.copy()
         result['id'] = str(result.pop('_id'))
         return result
+
+# Flow-Modell (NEU)
+class Flow:
+    """Repräsentiert einen Flow für die Nachrichtenverarbeitung"""
+    
+    collection = "flows"
+    
+    def __init__(self, name, description=None, flow_type="device_flow", version="1.0.0",
+                 steps=None, error_handling=None, _id=None, created_at=None, updated_at=None):
+        self._id = _id or ObjectId()
+        self.name = name
+        self.description = description
+        self.flow_type = flow_type  # "gateway_flow" oder "device_flow"
+        self.version = version  # Semantic Versioning
+        self.steps = steps or []  # Array von Step-Objekten
+        self.error_handling = error_handling or {
+            "retry_count": 3,
+            "retry_delay": 1000,  # in Millisekunden
+            "fallback_flow_id": None
+        }
+        self.created_at = created_at or datetime.now(timezone.utc)
+        self.updated_at = updated_at or self.created_at
+    
+    @classmethod
+    def create(cls, **kwargs):
+        """Erstellt einen neuen Flow in der Datenbank"""
+        flow = cls(**kwargs)
+        db[cls.collection].insert_one(flow.__dict__)
+        return flow
+    
+    @classmethod
+    def find_by_id(cls, flow_id):
+        """Findet einen Flow anhand seiner ID"""
+        try:
+            data = db[cls.collection].find_one({"_id": ObjectId(flow_id)})
+            if data:
+                return cls(**data)
+        except:
+            # Falls flow_id keine gültige ObjectId ist, versuche nach name zu suchen
+            data = db[cls.collection].find_one({"name": flow_id})
+            if data:
+                return cls(**data)
+        return None
+    
+    @classmethod
+    def find_by_type(cls, flow_type):
+        """Findet alle Flows eines bestimmten Typs"""
+        return [cls(**data) for data in db[cls.collection].find({"flow_type": flow_type})]
+    
+    @classmethod
+    def find_all(cls):
+        """Liefert alle Flows zurück"""
+        return [cls(**data) for data in db[cls.collection].find()]
+    
+    def add_step(self, step_type, config, position=None):
+        """Fügt einen Schritt zum Flow hinzu"""
+        step = {
+            "type": step_type,  # "filter", "transform", "forward", "conditional"
+            "config": config
+        }
+        
+        if position is not None and 0 <= position <= len(self.steps):
+            self.steps.insert(position, step)
+        else:
+            self.steps.append(step)
+        
+        self.update(steps=self.steps)
+    
+    def remove_step(self, position):
+        """Entfernt einen Schritt aus dem Flow"""
+        if 0 <= position < len(self.steps):
+            self.steps.pop(position)
+            self.update(steps=self.steps)
+            return True
+        return False
+    
+    def update(self, **kwargs):
+        """Aktualisiert die Flow-Informationen"""
+        kwargs['updated_at'] = datetime.now(timezone.utc)
+        db[self.collection].update_one(
+            {"_id": self._id},
+            {"$set": kwargs}
+        )
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+    
+    def delete(self):
+        """Löscht den Flow aus der Datenbank"""
+        db[self.collection].delete_one({"_id": self._id})
+    
+    def to_dict(self):
+        """Konvertiert das Objekt in ein Dictionary"""
+        result = self.__dict__.copy()
+        result['id'] = str(result.pop('_id'))
+        return result
+
+# FlowGroup-Modell (NEU)
+class FlowGroup:
+    """Repräsentiert eine Flow-Gruppe für Gateway- oder Device-spezifische Verarbeitung"""
+    
+    collection = "flow_groups"
+    
+    def __init__(self, name, description=None, group_type="device_flows", flows=None,
+                 usage_count=0, _id=None, created_at=None, updated_at=None):
+        self._id = _id or ObjectId()
+        self.name = name
+        self.description = description
+        self.group_type = group_type  # "gateway_flows" oder "device_flows"
+        self.flows = flows or []  # Array von {flow_id, flow_name, priority}
+        self.usage_count = usage_count
+        self.created_at = created_at or datetime.now(timezone.utc)
+        self.updated_at = updated_at or self.created_at
+    
+    @classmethod
+    def create(cls, **kwargs):
+        """Erstellt eine neue Flow-Gruppe in der Datenbank"""
+        flow_group = cls(**kwargs)
+        db[cls.collection].insert_one(flow_group.__dict__)
+        return flow_group
+    
+    @classmethod
+    def find_by_id(cls, group_id):
+        """Findet eine Flow-Gruppe anhand ihrer ID"""
+        try:
+            data = db[cls.collection].find_one({"_id": ObjectId(group_id)})
+            if data:
+                return cls(**data)
+        except:
+            pass
+        return None
+    
+    @classmethod
+    def find_by_type(cls, group_type):
+        """Findet alle Flow-Gruppen eines bestimmten Typs"""
+        return [cls(**data) for data in db[cls.collection].find({"group_type": group_type})]
+    
+    @classmethod
+    def find_all(cls):
+        """Liefert alle Flow-Gruppen zurück"""
+        return [cls(**data) for data in db[cls.collection].find()]
+    
+    def add_flow(self, flow_id, flow_name=None, priority=50):
+        """Fügt einen Flow zur Gruppe hinzu"""
+        # Prüfe ob Flow bereits in Gruppe
+        for flow in self.flows:
+            if flow.get('flow_id') == str(flow_id):
+                return False
+        
+        # Flow zur Gruppe hinzufügen
+        flow_config = {
+            'flow_id': str(flow_id),
+            'flow_name': flow_name or str(flow_id),
+            'priority': priority
+        }
+        
+        self.flows.append(flow_config)
+        
+        # Nach Priorität sortieren (höchste zuerst)
+        self.flows.sort(key=lambda x: x.get('priority', 0), reverse=True)
+        
+        self.update(flows=self.flows)
+        return True
+    
+    def remove_flow(self, flow_id):
+        """Entfernt einen Flow aus der Gruppe"""
+        original_length = len(self.flows)
+        self.flows = [f for f in self.flows if f.get('flow_id') != str(flow_id)]
+        
+        if len(self.flows) < original_length:
+            self.update(flows=self.flows)
+            return True
+        return False
+    
+    def update_flow_priority(self, flow_id, new_priority):
+        """Aktualisiert die Priorität eines Flows in der Gruppe"""
+        for flow in self.flows:
+            if flow.get('flow_id') == str(flow_id):
+                flow['priority'] = new_priority
+                # Nach Priorität neu sortieren
+                self.flows.sort(key=lambda x: x.get('priority', 0), reverse=True)
+                self.update(flows=self.flows)
+                return True
+        return False
+    
+    def increment_usage(self):
+        """Erhöht den Verwendungszähler"""
+        self.usage_count += 1
+        self.update(usage_count=self.usage_count)
+    
+    def update(self, **kwargs):
+        """Aktualisiert die Flow-Gruppen-Informationen"""
+        kwargs['updated_at'] = datetime.now(timezone.utc)
+        db[self.collection].update_one(
+            {"_id": self._id},
+            {"$set": kwargs}
+        )
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+    
+    def delete(self):
+        """Löscht die Flow-Gruppe aus der Datenbank"""
+        db[self.collection].delete_one({"_id": self._id})
+    
+    def to_dict(self):
+        """Konvertiert das Objekt in ein Dictionary"""
+        result = self.__dict__.copy()
+        result['id'] = str(result.pop('_id'))
+        return result
+
+# Hilfsfunktion zur Migration von Templates zu Flows
+def migrate_template_to_flow(template_id, template_name=None):
+    """
+    Konvertiert ein Template zu einem Flow
+    
+    Args:
+        template_id: ID des Templates
+        template_name: Optionaler Name für den Flow
+        
+    Returns:
+        Flow-Objekt oder None
+    """
+    try:
+        # Erstelle einen neuen Flow basierend auf dem Template
+        flow = Flow.create(
+            name=f"{template_name or template_id}_flow",
+            description=f"Automatisch migriert von Template {template_id}",
+            flow_type="device_flow",  # Standard für migrierte Templates
+            version="1.0.0",
+            steps=[
+                {
+                    "type": "transform",
+                    "config": {
+                        "template": template_id
+                    }
+                },
+                {
+                    "type": "forward",
+                    "config": {
+                        "targets": [{"type": "evalarm"}]
+                    }
+                }
+            ]
+        )
+        return flow
+    except Exception as e:
+        logger.error(f"Fehler bei der Migration von Template zu Flow: {str(e)}")
+        return None
+
+# Hilfsfunktion zur Migration von Template-Gruppen zu Flow-Gruppen
+def migrate_template_group_to_flow_group(template_group_id):
+    """
+    Konvertiert eine Template-Gruppe zu einer Flow-Gruppe
+    
+    Args:
+        template_group_id: ID der Template-Gruppe
+        
+    Returns:
+        FlowGroup-Objekt oder None
+    """
+    try:
+        # Hole die Template-Gruppe
+        template_group = TemplateGroup.find_by_id(template_group_id)
+        if not template_group:
+            return None
+        
+        # Erstelle eine neue Flow-Gruppe
+        flow_group = FlowGroup.create(
+            name=f"{template_group.name} (Flows)",
+            description=template_group.description,
+            group_type="device_flows"
+        )
+        
+        # Migriere alle Templates zu Flows
+        for template_config in template_group.templates:
+            template_id = template_config.get('template_id')
+            template_name = template_config.get('template_name')
+            priority = template_config.get('priority', 50)
+            
+            # Erstelle Flow aus Template
+            flow = migrate_template_to_flow(template_id, template_name)
+            if flow:
+                flow_group.add_flow(flow._id, flow.name, priority)
+        
+        return flow_group
+    except Exception as e:
+        logger.error(f"Fehler bei der Migration von Template-Gruppe zu Flow-Gruppe: {str(e)}")
+        return None
 
 # Helfer-Funktionen für die Geräteerkennung
 def determine_device_type(values):

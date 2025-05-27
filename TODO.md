@@ -1914,9 +1914,9 @@ Kunde
 │   └── Gateway-Flow 3: "Status Report" (für Aggregationen)
 └── Geräte
     └── Device (mit Device-Flow-Gruppe)
-        ├── Device-Flow 1: "Panic Alarm" (Priorität 100, wenn alarmstatus=alarm)
-        ├── Device-Flow 2: "Battery Warning" (Priorität 90, wenn battery=low)
-        └── Device-Flow 3: "Status Update" (Priorität 10, default)
+        ├── Device-Flow 1: "Panic Alarm" (Priorität 100)
+        ├── Device-Flow 2: "Battery Warning" (Priorität 90)
+        └── Device-Flow 3: "Status Update" (Priorität 10)
 ```
 
 #### Was ist ein Flow?
@@ -1929,7 +1929,7 @@ Ein Flow definiert den kompletten Verarbeitungspfad einer Nachricht:
 
 #### Datenmodell-Änderungen
 
-- [ ] **Flow-Modell erstellen**
+- [x] **Flow-Modell erstellt**
   ```python
   {
       "_id": ObjectId,
@@ -1953,7 +1953,7 @@ Ein Flow definiert den kompletten Verarbeitungspfad einer Nachricht:
   }
   ```
 
-- [ ] **Flow-Gruppe-Modell (ersetzt Template-Gruppe)**
+- [x] **Flow-Gruppe-Modell (ersetzt Template-Gruppe)**
   ```python
   {
       "_id": ObjectId,
@@ -1973,7 +1973,7 @@ Ein Flow definiert den kompletten Verarbeitungspfad einer Nachricht:
   }
   ```
 
-- [ ] **Device-Modell erweitern**
+- [x] **Device-Modell erweitert**
   ```python
   {
       # ... bestehende Felder ...
@@ -1984,7 +1984,7 @@ Ein Flow definiert den kompletten Verarbeitungspfad einer Nachricht:
   }
   ```
 
-- [ ] **Gateway-Modell beibehalten und erweitern**
+- [x] **Gateway-Modell erweitert**
   ```python
   {
       # ... bestehende Felder ...
@@ -2011,7 +2011,7 @@ Nachricht empfangen
 
 #### Backend-Implementierung
 
-- [ ] **Flow Engine erstellen**
+- [x] **Flow Engine erstellt**
   ```python
   class FlowEngine:
       def execute_flow(self, flow_id: str, message: Dict) -> FlowResult:
@@ -2038,7 +2038,7 @@ Nachricht empfangen
           return result.success()
   ```
 
-- [ ] **Flow Selector (ersetzt Template Selector)**
+- [x] **Flow Selector (ersetzt Template Selector)**
   ```python
   def select_flow_for_message(gateway_id: str, message: Dict) -> str:
       # 1. Prüfen ob es eine Gateway-Nachricht ist
@@ -2068,35 +2068,46 @@ Nachricht empfangen
   - [ ] Logging für Flow-Ausführung
   - [ ] Performance-Monitoring für Flows
 
-- [ ] **API-Endpunkte implementieren**
-  - [ ] CRUD für Flows: `/api/v1/flows`
-  - [ ] CRUD für Flow-Gruppen: `/api/v1/flow-groups`
-  - [ ] Flow-Zuweisung: `/api/v1/gateways/<uuid>/flow`
-  - [ ] Flow-Zuweisung: `/api/v1/devices/<gateway_uuid>/<device_id>/flow`
-  - [ ] Flow-Test: `/api/v1/flows/<id>/test`
+#### Implementierung (Status)
 
-#### Frontend-Implementierung
+- [x] **Flow-Datenmodelle**
+  - [x] Flow-Modell mit Steps, Error-Handling, Versionierung
+  - [x] FlowGroup-Modell für Prioritäts-basierte Auswahl
+  - [x] Gateway & Device erweitert mit flow_id und flow_group_id
+  - [x] Migrations-Funktionen von Templates zu Flows
 
-- [ ] **Flow-Editor erstellen**
-  - [ ] Visueller Flow-Builder (später mit React Flow)
-  - [ ] Step-basierte Konfiguration
-  - [ ] Drag-and-Drop für Flow-Steps
-  - [ ] Live-Vorschau der Flow-Ausführung
+- [x] **Flow Engine** 
+  - [x] Step-basierte Ausführung (Filter, Transform, Forward, Conditional)
+  - [x] Error-Handling mit Retry und Fallback
+  - [x] Performance-Tracking
+  - [x] Flow-Validierung
+  - [x] Test-Suite für Flow Engine
 
-- [ ] **Flow-Gruppen-Verwaltung**
-  - [ ] UI analog zu Template-Gruppen
-  - [ ] Prioritäts-Management
-  - [ ] Flow-Gruppen-Zuweisung
+- [x] **Flow Selector**
+  - [x] Gateway-Message-Erkennung
+  - [x] Device-basierte Flow-Auswahl
+  - [x] Prioritäts-basierte Auswahl aus Flow-Gruppen
+  - [x] Legacy-Template-Support
+  - [x] Automatische Migration von Templates zu Flows
 
-- [ ] **Gateway-UI erweitern**
-  - [ ] Flow-Auswahl für Gateway-Nachrichten
-  - [ ] Anzeige aktiver Gateway-Flows
-  - [ ] Test-Funktion für Gateway-Flows
+- [ ] **API-Endpunkte für Flows**
+  - [ ] CRUD für Flows (/api/v1/flows)
+  - [ ] CRUD für Flow-Gruppen (/api/v1/flow-groups)
+  - [ ] Flow-Zuordnung zu Gateways/Devices
+  - [ ] Flow-Test-Endpunkt
+  - [ ] Migration-Endpunkte
 
-- [ ] **Device-UI erweitern**
-  - [ ] Flow-Auswahl für Device-Nachrichten
-  - [ ] Anzeige aktiver Device-Flows
-  - [ ] Test-Funktion für Device-Flows
+- [ ] **Frontend-Komponenten**
+  - [ ] Flow-Editor (Visual Flow Builder)
+  - [ ] Flow-Gruppen-Verwaltung
+  - [ ] Device-Flow-Zuordnung
+  - [ ] Gateway-Flow-Zuordnung
+  - [ ] Flow-Test-Interface
+
+- [ ] **Integration in Message Processor**
+  - [ ] Flow Engine in Nachrichtenverarbeitung einbinden
+  - [ ] Template Selector durch Flow Selector ersetzen
+  - [ ] Performance-Monitoring implementieren
 
 #### Beispiel-Flow-Definition
 
@@ -2163,7 +2174,7 @@ Nachricht empfangen
 
 #### Migration von Templates zu Flows
 
-- [ ] **Automatische Template-zu-Flow-Konvertierung**
+- [x] **Automatische Template-zu-Flow-Konvertierung**
   ```python
   def convert_template_to_flow(template):
       return {
@@ -2202,18 +2213,18 @@ Nachricht empfangen
 
 #### Implementierungsplan
 
-| Schritt | Aufgabe | Owner | Priorität |
-|---------|---------|-------|-----------|
-| 1 | Flow-Datenmodelle erstellen | BE Team | Höchst |
-| 2 | Flow Engine implementieren | BE Team | Höchst |
-| 3 | Flow Selector implementieren | BE Team | Höchst |
-| 4 | API-Endpunkte für Flows | BE Team | Höchst |
-| 5 | Template-zu-Flow Migration | BE Team | Hoch |
-| 6 | Flow-UI Grundlagen | FE Team | Hoch |
-| 7 | Gateway-Flow-UI | FE Team | Hoch |
-| 8 | Device-Flow-UI | FE Team | Hoch |
-| 9 | Visueller Flow-Editor | FE Team | Mittel |
-| 10 | Dokumentation | Docs | Mittel |
+| Schritt | Aufgabe | Owner | Priorität | Status |
+|---------|---------|-------|-----------|--------|
+| 1 | Flow-Datenmodelle erstellen | BE Team | Höchst | ✅ Erledigt |
+| 2 | Flow Engine implementieren | BE Team | Höchst | ✅ Erledigt |
+| 3 | Flow Selector implementieren | BE Team | Höchst | ✅ Erledigt |
+| 4 | API-Endpunkte für Flows | BE Team | Höchst | ⏳ In Arbeit |
+| 5 | Template-zu-Flow Migration | BE Team | Hoch | ⏳ Ausstehend |
+| 6 | Flow-UI Grundlagen | FE Team | Hoch | ⏳ Ausstehend |
+| 7 | Gateway-Flow-UI | FE Team | Hoch | ⏳ Ausstehend |
+| 8 | Device-Flow-UI | FE Team | Hoch | ⏳ Ausstehend |
+| 9 | Visueller Flow-Editor | FE Team | Mittel | ⏳ Ausstehend |
+| 10 | Dokumentation | Docs | Mittel | ⏳ Ausstehend |
 
 ### Phase 4: Device Management UI (Woche 2)
 

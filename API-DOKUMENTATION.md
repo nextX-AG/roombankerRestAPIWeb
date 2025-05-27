@@ -903,3 +903,321 @@ Alle Frontend-Komponenten sollten ausschließlich die folgenden API-Endpunkte ve
 | `logsApi.getSystemLogs()` | `/api/v1/logs/system` | System-Logs abrufen |
 | `logsApi.getProcessorLogs()` | `/api/v1/logs/processor` | Processor-Logs abrufen |
 | `logsApi.getGatewayLogs()` | `/api/v1/logs/gateway` | Gateway-Logs abrufen | 
+
+## Flow-API (NEU)
+
+### Flow-Verwaltung
+
+#### Alle Flows abrufen
+```
+GET /api/v1/flows
+```
+
+Antwort:
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": "60a5e2e4b3f6a2001c4d5e7f",
+      "name": "panic_alarm_flow",
+      "description": "Flow für Panic-Button-Alarme",
+      "flow_type": "device_flow",
+      "version": "1.0.0",
+      "steps": [
+        {
+          "type": "filter",
+          "config": {
+            "rules": ["panic_alarm_rule"]
+          }
+        },
+        {
+          "type": "transform",
+          "config": {
+            "template": "evalarm_panic_v2"
+          }
+        },
+        {
+          "type": "forward",
+          "config": {
+            "targets": [{"type": "evalarm"}]
+          }
+        }
+      ],
+      "error_handling": {
+        "retry_count": 3,
+        "retry_delay": 1000,
+        "fallback_flow_id": null
+      },
+      "created_at": "2023-05-15T10:00:00.000Z",
+      "updated_at": "2023-05-15T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### Flow erstellen
+```
+POST /api/v1/flows
+```
+
+Body:
+```json
+{
+  "name": "temperature_alert_flow",
+  "description": "Flow für Temperatur-Alarme",
+  "flow_type": "device_flow",
+  "version": "1.0.0",
+  "steps": [
+    {
+      "type": "filter",
+      "config": {
+        "rules": [
+          {
+            "field": "devices[0].values.temperature",
+            "operator": "greater_than",
+            "value": 30
+          }
+        ]
+      }
+    },
+    {
+      "type": "transform",
+      "config": {
+        "template": "evalarm_temperature_alert"
+      }
+    },
+    {
+      "type": "forward",
+      "config": {
+        "targets": [
+          {"type": "evalarm", "endpoint": "alert"},
+          {"type": "log", "level": "warning"}
+        ]
+      }
+    }
+  ]
+}
+```
+
+#### Flow aktualisieren
+```
+PUT /api/v1/flows/<flow_id>
+```
+
+#### Flow löschen
+```
+DELETE /api/v1/flows/<flow_id>
+```
+
+### Flow-Gruppen-Verwaltung
+
+#### Alle Flow-Gruppen abrufen
+```
+GET /api/v1/flow-groups
+```
+
+Antwort:
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": "60a5e2e4b3f6a2001c4d5e80",
+      "name": "Panic Button Device Flows",
+      "description": "Flows für Panic-Button-Geräte",
+      "group_type": "device_flows",
+      "flows": [
+        {
+          "flow_id": "60a5e2e4b3f6a2001c4d5e7f",
+          "flow_name": "Panic Alarm",
+          "priority": 100
+        },
+        {
+          "flow_id": "60a5e2e4b3f6a2001c4d5e81",
+          "flow_name": "Battery Warning",
+          "priority": 90
+        }
+      ],
+      "usage_count": 25,
+      "created_at": "2023-05-15T10:00:00.000Z",
+      "updated_at": "2023-05-15T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### Flow-Gruppe erstellen
+```
+POST /api/v1/flow-groups
+```
+
+Body:
+```json
+{
+  "name": "Temperature Sensor Flows",
+  "description": "Flows für Temperatur-Sensoren",
+  "group_type": "device_flows",
+  "flows": [
+    {
+      "flow_id": "60a5e2e4b3f6a2001c4d5e82",
+      "flow_name": "High Temperature Alert",
+      "priority": 100
+    },
+    {
+      "flow_id": "60a5e2e4b3f6a2001c4d5e83",
+      "flow_name": "Normal Status Update",
+      "priority": 10
+    }
+  ]
+}
+```
+
+#### Flow zu Gruppe hinzufügen
+```
+POST /api/v1/flow-groups/<group_id>/flows
+```
+
+Body:
+```json
+{
+  "flow_id": "60a5e2e4b3f6a2001c4d5e84",
+  "flow_name": "Low Temperature Alert",
+  "priority": 90
+}
+```
+
+#### Flow aus Gruppe entfernen
+```
+DELETE /api/v1/flow-groups/<group_id>/flows/<flow_id>
+```
+
+### Gateway-Flow-Zuordnung
+
+#### Gateway-Flow zuweisen
+```
+PUT /api/v1/gateways/<gateway_uuid>/flow
+```
+
+Body:
+```json
+{
+  "flow_id": "60a5e2e4b3f6a2001c4d5e85",
+  "flow_group_id": null
+}
+```
+
+oder für Flow-Gruppe:
+```json
+{
+  "flow_id": null,
+  "flow_group_id": "60a5e2e4b3f6a2001c4d5e86"
+}
+```
+
+### Device-Flow-Zuordnung
+
+#### Device-Flow zuweisen
+```
+PUT /api/v1/devices/<gateway_uuid>/<device_id>/flow
+```
+
+Body:
+```json
+{
+  "flow_id": null,
+  "flow_group_id": "60a5e2e4b3f6a2001c4d5e80"
+}
+```
+
+### Flow-Test
+
+#### Flow testen
+```
+POST /api/v1/flows/<flow_id>/test
+```
+
+Body:
+```json
+{
+  "test_message": {
+    "gateway": {
+      "id": "gw-test-123",
+      "type": "roombanker_gateway"
+    },
+    "devices": [
+      {
+        "id": "12345",
+        "type": "panic_button",
+        "values": {
+          "alarmtype": "panic",
+          "alarmstatus": "alarm"
+        }
+      }
+    ]
+  }
+}
+```
+
+Antwort:
+```json
+{
+  "status": "success",
+  "data": {
+    "flow_result": "success",
+    "steps_executed": [
+      {
+        "step": 1,
+        "type": "filter",
+        "result": "passed"
+      },
+      {
+        "step": 2,
+        "type": "transform",
+        "result": "success",
+        "output": {
+          "events": [
+            {
+              "message": "Panic Alarm",
+              "device_id": "12345"
+            }
+          ]
+        }
+      },
+      {
+        "step": 3,
+        "type": "forward",
+        "result": "simulated",
+        "targets": ["evalarm"]
+      }
+    ],
+    "execution_time_ms": 45
+  }
+}
+```
+
+### Template-zu-Flow-Migration
+
+#### Template zu Flow migrieren
+```
+POST /api/v1/templates/<template_id>/migrate-to-flow
+```
+
+Antwort:
+```json
+{
+  "status": "success",
+  "data": {
+    "flow_id": "60a5e2e4b3f6a2001c4d5e87",
+    "flow_name": "evalarm_panic_flow",
+    "message": "Template erfolgreich zu Flow migriert"
+  }
+}
+```
+
+#### Template-Gruppe zu Flow-Gruppe migrieren
+```
+POST /api/v1/template-groups/<group_id>/migrate-to-flow-group
+```
+
+## Device Registry API 
