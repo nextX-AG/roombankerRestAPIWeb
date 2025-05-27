@@ -61,6 +61,16 @@ except ImportError as e:
     TEMPLATE_SELECTOR_AVAILABLE = False
     select_template_for_message = None
 
+# Importiere die neue Flow-Auswahl-Funktion
+try:
+    from utils.flow_selector import select_flow_for_message
+    FLOW_SELECTOR_AVAILABLE = True
+    logger.info("Flow Selector erfolgreich importiert")
+except ImportError as e:
+    logger.warning(f"Flow Selector konnte nicht importiert werden: {str(e)}")
+    FLOW_SELECTOR_AVAILABLE = False
+    select_flow_for_message = None
+
 # Initialisiere Flask-App
 app = Flask(__name__)
 CORS(app)
@@ -350,41 +360,54 @@ def process_message():
             return validation_error_response({"gateway_id": "Gateway ist keinem Kunden zugeordnet, und die Nachricht konnte nicht gespeichert werden."})
     
     # Template automatisch auswählen basierend auf dem Nachrichtentyp
-    if TEMPLATE_SELECTOR_AVAILABLE:
-        # Hole das Gateway-Objekt für die Template-Auswahl
-        try:
-            gateway = Gateway.find_by_uuid(gateway_id)
-        except:
-            gateway = None
-        
-        template_name = select_template_for_message(gateway, message)
-        logger.info(f"Template durch neue Logik ausgewählt: {template_name}")
-    else:
-        # Fallback auf alte Logik
-        # Prüfen auf Panic-Alarm
-        is_panic = False
-        if isinstance(message, dict):
-            # Format 1: Prüfung für subdevicelist
-            if 'subdevicelist' in message:
-                for device in message.get('subdevicelist', []):
-                    if isinstance(device, dict) and 'value' in device:
-                        value = device.get('value', {})
-                        if value.get('alarmstatus') == 'alarm' and value.get('alarmtype') == 'panic':
-                            is_panic = True
-                            break
-            # Format 2: Direkte Code-Prüfung
-            elif 'code' in message and message['code'] == 2030:
-                is_panic = True
-            # Format 3: Prüfung auf subdeviceid mit alarmtype
-            elif 'subdeviceid' in message and 'alarmtype' in message and message['alarmtype'] == 'panic':
-                is_panic = True
-        
-        # Template auswählen
-        if is_panic:
-            template_name = 'evalarm_panic'
+    flow_id = None
+    template_name = None  # Für Legacy-Unterstützung
+    
+    if FLOW_SELECTOR_AVAILABLE:
+        # Verwende die neue Flow-Auswahl
+        flow_id = select_flow_for_message(gateway_id, message)
+        if flow_id:
+            logger.info(f"Flow durch neue Logik ausgewählt: {flow_id}")
         else:
-            template_name = 'evalarm'  # Fallback
-        logger.info(f"Template durch alte Logik ausgewählt: {template_name}")
+            logger.warning(f"Kein Flow für Gateway {gateway_id} gefunden, verwende Template-Fallback")
+    
+    # Fallback auf Template-Auswahl wenn kein Flow gefunden wurde
+    if not flow_id:
+        if TEMPLATE_SELECTOR_AVAILABLE:
+            # Hole das Gateway-Objekt für die Template-Auswahl
+            try:
+                gateway = Gateway.find_by_uuid(gateway_id)
+            except:
+                gateway = None
+            
+            template_name = select_template_for_message(gateway, message)
+            logger.info(f"Template durch neue Logik ausgewählt: {template_name}")
+        else:
+            # Fallback auf alte Logik
+            # Prüfen auf Panic-Alarm
+            is_panic = False
+            if isinstance(message, dict):
+                # Format 1: Prüfung für subdevicelist
+                if 'subdevicelist' in message:
+                    for device in message.get('subdevicelist', []):
+                        if isinstance(device, dict) and 'value' in device:
+                            value = device.get('value', {})
+                            if value.get('alarmstatus') == 'alarm' and value.get('alarmtype') == 'panic':
+                                is_panic = True
+                                break
+                # Format 2: Direkte Code-Prüfung
+                elif 'code' in message and message['code'] == 2030:
+                    is_panic = True
+                # Format 3: Prüfung auf subdeviceid mit alarmtype
+                elif 'subdeviceid' in message and 'alarmtype' in message and message['alarmtype'] == 'panic':
+                    is_panic = True
+            
+            # Template auswählen
+            if is_panic:
+                template_name = 'evalarm_panic'
+            else:
+                template_name = 'evalarm'  # Fallback
+            logger.info(f"Template durch alte Logik ausgewählt: {template_name}")
     
     # Nachricht zum Lernsystem hinzufügen (wenn aktiv)
     if LEARNING_SYSTEM_AVAILABLE and learning_engine:
@@ -419,12 +442,16 @@ def process_message():
         message_id = queue.enqueue_message(
             message=message,
             template_name=template_name,
+            flow_id=flow_id,  # Neu: Flow-ID hinzufügen
             endpoint_name='auto',  # Verwende 'auto' statt 'evalarm' für dynamische Endpunktauswahl
             customer_config=customer_config,
             gateway_id=gateway_id
         )
         
-        logger.info(f"Nachricht in Queue eingefügt: ID {message_id}, Template {template_name}, Kunde {customer_config['name']}")
+        if flow_id:
+            logger.info(f"Nachricht in Queue eingefügt: ID {message_id}, Flow {flow_id}, Kunde {customer_config['name']}")
+        else:
+            logger.info(f"Nachricht in Queue eingefügt: ID {message_id}, Template {template_name}, Kunde {customer_config['name']}")
         
         # Erstelle Antwort mit Message-ID
         return success_response({
@@ -449,6 +476,7 @@ def process_message():
                     'timestamp': datetime.now().isoformat(),
                     'gateway_id': gateway_id,
                     'reason': blocked_reason,
+                    'flow_id': flow_id,
                     'template': template_name,
                     'message': message,
                     'customer': customer_config['name'] if customer_config else None

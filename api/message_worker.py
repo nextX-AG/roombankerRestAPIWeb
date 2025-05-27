@@ -31,6 +31,15 @@ from utils.auth_middleware import require_auth
 # Importiere Models
 from api.models import TemplateGroup
 
+# Importiere Flow Engine
+try:
+    from utils.flow_engine import FlowEngine
+    FLOW_ENGINE_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Flow Engine konnte nicht importiert werden: {str(e)}")
+    FLOW_ENGINE_AVAILABLE = False
+    FlowEngine = None
+
 # Konfiguriere Logging
 logging.basicConfig(
     level=logging.INFO,
@@ -83,6 +92,14 @@ class MessageWorker:
         self.message_forwarder = MessageForwarder()
         self.message_forwarder.template_engine = self.template_engine  # Verbinde MessageForwarder mit TemplateEngine
         
+        # Initialisiere Flow Engine
+        if FLOW_ENGINE_AVAILABLE:
+            self.flow_engine = FlowEngine()
+            logger.info("Flow Engine initialisiert")
+        else:
+            self.flow_engine = None
+            logger.warning("Flow Engine nicht verfügbar - verwende Template-Fallback")
+        
         # Signal Handler für graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -130,7 +147,8 @@ class MessageWorker:
         """
         try:
             message = job['message']
-            template_name = job['template']
+            flow_id = job.get('flow_id')
+            template_name = job.get('template')  # Fallback auf Template
             customer_config = job.get('customer_config')
             
             # Gateway-ID aus der Job-Daten extrahieren
@@ -169,16 +187,45 @@ class MessageWorker:
                     logger.error(f"Fehler beim Protokollieren der blockierten Nachricht: {str(e)}")
                 return
             
-            # Transformiere Nachricht mit dem Template und Kundenkonfiguration
-            transformed_message = self.template_engine.transform_message(
-                message, 
-                template_name,
-                customer_config=customer_config,
-                gateway_id=gateway_id
-            )
+            # Verwende Flow Engine wenn verfügbar und flow_id vorhanden
+            transformed_message = None
+            
+            if flow_id and self.flow_engine:
+                try:
+                    logger.info(f"Verarbeite Nachricht mit Flow: {flow_id}")
+                    result = self.flow_engine.execute_flow(flow_id, message)
+                    
+                    if result.success:
+                        transformed_message = result.transformed_message
+                        logger.info(f"Flow {flow_id} erfolgreich ausgeführt")
+                    else:
+                        error_msg = f'Fehler bei der Flow-Ausführung: {result.error}'
+                        logger.error(error_msg)
+                        self.queue.mark_as_failed(job['id'], error_msg)
+                        return
+                except Exception as e:
+                    logger.error(f"Fehler bei der Flow-Ausführung: {str(e)}")
+                    # Fallback auf Template wenn Flow fehlschlägt
+                    logger.info("Fallback auf Template-Verarbeitung")
+            
+            # Fallback auf Template-Verarbeitung
+            if not transformed_message and template_name:
+                # Transformiere Nachricht mit dem Template und Kundenkonfiguration
+                transformed_message = self.template_engine.transform_message(
+                    message, 
+                    template_name,
+                    customer_config=customer_config,
+                    gateway_id=gateway_id
+                )
+                
+                if not transformed_message:
+                    error_msg = f'Fehler bei der Transformation mit Template "{template_name}"'
+                    logger.error(error_msg)
+                    self.queue.mark_as_failed(job['id'], error_msg)
+                    return
             
             if not transformed_message:
-                error_msg = f'Fehler bei der Transformation mit Template "{template_name}"'
+                error_msg = 'Weder Flow noch Template konnten die Nachricht verarbeiten'
                 logger.error(error_msg)
                 self.queue.mark_as_failed(job['id'], error_msg)
                 return
@@ -218,6 +265,7 @@ class MessageWorker:
                 'customer': customer_config['name'],
                 'response_status': response.status_code,
                 'response_text': response.text,
+                'flow_used': flow_id,
                 'template_used': template_name
             }
             

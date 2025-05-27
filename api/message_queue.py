@@ -54,13 +54,14 @@ class RedisMessageQueue:
         
         logger.info(f"Redis Message Queue initialisiert: {host}:{port}, DB: {db}")
     
-    def enqueue_message(self, message: Dict[str, Any], template_name: str, endpoint_name: str, customer_config: Dict[str, Any] = None, gateway_id: str = None) -> str:
+    def enqueue_message(self, message: Dict[str, Any], template_name: str = None, flow_id: str = None, endpoint_name: str = 'auto', customer_config: Dict[str, Any] = None, gateway_id: str = None) -> str:
         """
         Füge eine Nachricht in die Queue ein
         
         Args:
             message: Die zu verarbeitende Nachricht
-            template_name: Name des zu verwendenden Templates
+            template_name: Name des zu verwendenden Templates (optional, deprecated)
+            flow_id: ID des zu verwendenden Flows (optional, bevorzugt)
             endpoint_name: Name des Ziel-Endpunkts
             customer_config: Optionale Kundenkonfiguration
             gateway_id: Gateway-ID
@@ -75,11 +76,16 @@ class RedisMessageQueue:
         job_data = {
             'id': message_id,
             'message': message,
-            'template': template_name,
             'endpoint': endpoint_name,
             'created_at': int(time.time()),
             'status': 'pending'
         }
+        
+        # Füge Flow-ID oder Template hinzu
+        if flow_id:
+            job_data['flow_id'] = flow_id
+        if template_name:
+            job_data['template'] = template_name
         
         # Füge Kundenkonfiguration hinzu, wenn vorhanden
         if customer_config:
@@ -98,7 +104,7 @@ class RedisMessageQueue:
         # Aktualisiere Statistiken
         self.redis_client.hincrby(self.stats_key, 'total_enqueued', 1)
         
-        logger.info(f"Nachricht {message_id} in Queue eingefügt")
+        logger.info(f"Nachricht {message_id} in Queue eingefügt (Flow: {flow_id}, Template: {template_name})")
         return message_id
     
     def get_next_message(self) -> Optional[Dict[str, Any]]:

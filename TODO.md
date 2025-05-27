@@ -2105,8 +2105,8 @@ Nachricht empfangen
   - [ ] Flow-Test-Interface
 
 - [ ] **Integration in Message Processor**
-  - [ ] Flow Engine in Nachrichtenverarbeitung einbinden
-  - [ ] Template Selector durch Flow Selector ersetzen
+  - [x] Flow Engine in Nachrichtenverarbeitung einbinden
+  - [x] Template Selector durch Flow Selector ersetzen
   - [ ] Performance-Monitoring implementieren
 
 #### Beispiel-Flow-Definition
