@@ -244,19 +244,29 @@ const FlowEditor: React.FC<{ flowId?: string }> = ({ flowId }) => {
           <Card.Header className="d-flex justify-content-between align-items-center">
             <div>
               <h5 className="mb-0">Flow Editor</h5>
-              <Form.Control
-                type="text"
-                value={flow.name}
-                onChange={(e) => setFlow(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Flow-Name"
-                className="mt-2"
-              />
+              <div className="d-flex gap-2 mt-2">
+                <Form.Control
+                  type="text"
+                  value={flow.name}
+                  onChange={(e) => setFlow(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Flow-Name"
+                />
+                <Form.Select
+                  value={flow.flow_type}
+                  onChange={(e) => setFlow(prev => ({ ...prev, flow_type: e.target.value as 'gateway_flow' | 'device_flow' }))}
+                  style={{ width: 'auto' }}
+                >
+                  <option value="gateway_flow">Gateway Flow</option>
+                  <option value="device_flow">Device Flow</option>
+                </Form.Select>
+              </div>
             </div>
             <div>
               <Button 
                 variant="primary" 
                 className="me-2"
                 onClick={handleSaveFlow}
+                disabled={!flow.name || !flow.flow_type}
               >
                 <FontAwesomeIcon icon={faSave} className="me-2" />
                 Speichern
