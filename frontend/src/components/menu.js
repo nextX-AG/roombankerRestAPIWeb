@@ -11,7 +11,8 @@ import {
   FileCode,
   Zap,
   Layers,
-  Brain
+  Brain,
+  Database
 } from 'lucide-react';
 
 export const menu = [
@@ -28,7 +29,8 @@ export const menu = [
     items: [
       { label: 'Kunden', icon: Building, to: '/customers' },
       { label: 'Gateways', icon: Router, to: '/gateways' },
-      { label: 'Geräte', icon: Cpu, to: '/devices' }
+      { label: 'Geräte', icon: Cpu, to: '/devices' },
+      { label: 'Device Registry', icon: Database, to: '/device-registry' }
     ]
   },
   { label: 'Nachrichten', icon: Inbox, to: '/messages' },
