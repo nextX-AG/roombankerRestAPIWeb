@@ -1453,7 +1453,7 @@ Das System benötigt die Möglichkeit, die Nachrichtenübermittlung an evAlarm z
 | 3      | Globaler Test-Modus                  | BE+FE   | Hoch      |
 | 4      | Erweiterte Features                  | BE+FE   | Mittel    |
 
-## 22. Cloudflare-Integration und Sicherheitshärtung (HÖCHSTE PRIORITÄT)
+## 22. Cloudflare-Integration und Sicherheitshärtung (HÖCHSTE PRIORITÄT) ✅ ERLEDIGT
 
 Nach dem MongoDB-Ransomware-Angriff vom 26.05.2025 ist die Implementierung zusätzlicher Sicherheitsmaßnahmen kritisch. Die Integration von Cloudflare oder ähnlichen Diensten bietet mehrschichtige Sicherheit und Schutz vor verschiedenen Angriffsarten.
 
@@ -1464,91 +1464,91 @@ Nach dem MongoDB-Ransomware-Angriff vom 26.05.2025 ist die Implementierung zusä
 - **Fehlender DDoS-Schutz**: Keine Absicherung gegen Überlastungsangriffe
 - **Keine Bot-Filterung**: Automatisierte Scanner können Services entdecken
 
-### Phase 1: Cloudflare Free Plan Setup (Sofort)
+### Phase 1: Cloudflare Free Plan Setup (Sofort) ✅
 
-- [ ] **Domain-Registrierung bei Cloudflare**
-  - [ ] evalarm.nextxiot.com bei Cloudflare registrieren
-  - [ ] DNS-Records auf Cloudflare übertragen
-  - [ ] A-Record für evalarm.nextxiot.com → 23.88.59.133
-  - [ ] Proxy-Status aktivieren (Orange Wolke) für IP-Verschleierung
+- [x] **Domain-Registrierung bei Cloudflare**
+  - [x] evalarm.nextxiot.com bei Cloudflare registrieren
+  - [x] DNS-Records auf Cloudflare übertragen
+  - [x] A-Record für evalarm.nextxiot.com → 23.88.59.133
+  - [x] Proxy-Status aktivieren (Orange Wolke) für IP-Verschleierung
 
-- [ ] **Basis-Sicherheitskonfiguration**
-  - [ ] SSL/TLS-Modus auf "Full (strict)" setzen
-  - [ ] Automatische HTTPS-Umleitung aktivieren
-  - [ ] Minimum TLS-Version auf 1.2 setzen
-  - [ ] HSTS (HTTP Strict Transport Security) aktivieren
+- [x] **Basis-Sicherheitskonfiguration**
+  - [x] SSL/TLS-Modus auf "Full (strict)" setzen
+  - [x] Automatische HTTPS-Umleitung aktivieren
+  - [x] Minimum TLS-Version auf 1.2 setzen
+  - [x] HSTS (HTTP Strict Transport Security) aktivieren
 
-- [ ] **Firewall-Regeln konfigurieren**
-  - [ ] Bot-Fight-Mode aktivieren
-  - [ ] Security Level auf "Medium" oder "High" setzen
-  - [ ] Challenge Passage auf 30 Minuten setzen
-  - [ ] Browser Integrity Check aktivieren
+- [x] **Firewall-Regeln konfigurieren**
+  - [x] Bot-Fight-Mode aktivieren
+  - [x] Security Level auf "Medium" oder "High" setzen
+  - [x] Challenge Passage auf 30 Minuten setzen
+  - [x] Browser Integrity Check aktivieren
 
-### Phase 2: Server-Firewall anpassen (Sprint 1)
+### Phase 2: Server-Firewall anpassen (Sprint 1) ✅
 
-- [ ] **Hetzner Firewall-Konfiguration**
-  - [ ] Firewall-Regel erstellen: Nur Cloudflare-IPs erlauben (https://www.cloudflare.com/ips/)
-  - [ ] Automatisches Update-Skript für Cloudflare-IP-Listen
-  - [ ] Alle anderen IPs für Port 80/443 blockieren
-  - [ ] SSH-Zugang auf spezifische IPs beschränken
+- [x] **Hetzner Firewall-Konfiguration**
+  - [x] Firewall-Regel erstellen: Nur Cloudflare-IPs erlauben (https://www.cloudflare.com/ips/)
+  - [x] Automatisches Update-Skript für Cloudflare-IP-Listen
+  - [x] Alle anderen IPs für Port 80/443 blockieren
+  - [x] SSH-Zugang auf spezifische IPs beschränken
 
-- [ ] **Docker-Sicherheit**
-  - [ ] Sicherstellen, dass keine Ports direkt exposed sind
-  - [ ] Nur notwendige Ports über Reverse-Proxy zugänglich
-  - [ ] Docker-Socket nicht nach außen exponieren
-  - [ ] Container-Isolation überprüfen
+- [x] **Docker-Sicherheit**
+  - [x] Sicherstellen, dass keine Ports direkt exposed sind
+  - [x] Nur notwendige Ports über Reverse-Proxy zugänglich
+  - [x] Docker-Socket nicht nach außen exponieren
+  - [x] Container-Isolation überprüfen
 
-### Phase 3: Erweiterte Cloudflare-Features (Sprint 2)
+### Phase 3: Erweiterte Cloudflare-Features (Sprint 2) ✅
 
-- [ ] **Page Rules einrichten (3 kostenlos)**
-  - [ ] API-Endpunkte mit Cache-Bypass
-  - [ ] Statische Assets mit langem Cache
-  - [ ] Admin-Bereiche mit zusätzlicher Sicherheit
+- [x] **Page Rules einrichten (3 kostenlos)**
+  - [x] API-Endpunkte mit Cache-Bypass
+  - [x] Statische Assets mit langem Cache
+  - [x] Admin-Bereiche mit zusätzlicher Sicherheit
 
-- [ ] **Firewall-Rules (5 kostenlos)**
-  - [ ] Rate-Limiting für API-Endpunkte
-  - [ ] Geo-Blocking für nicht benötigte Regionen
-  - [ ] User-Agent-Blocking für bekannte Scanner
-  - [ ] Path-basierte Zugriffsbeschränkungen
+- [x] **Firewall-Rules (5 kostenlos)**
+  - [x] Rate-Limiting für API-Endpunkte
+  - [x] Geo-Blocking für nicht benötigte Regionen
+  - [x] User-Agent-Blocking für bekannte Scanner
+  - [x] Path-basierte Zugriffsbeschränkungen
 
-- [ ] **Zero Trust Access (optional)**
-  - [ ] Cloudflare Access für Admin-Bereiche evaluieren
-  - [ ] 2FA für kritische Endpunkte
-  - [ ] Service-Token für API-Zugriffe
+- [x] **Zero Trust Access (optional)**
+  - [x] Cloudflare Access für Admin-Bereiche evaluieren
+  - [x] 2FA für kritische Endpunkte
+  - [x] Service-Token für API-Zugriffe
 
-### Phase 4: Monitoring und Alerting (Sprint 3)
+### Phase 4: Monitoring und Alerting (Sprint 3) ✅
 
-- [ ] **Cloudflare Analytics nutzen**
-  - [ ] Dashboard für Traffic-Überwachung einrichten
-  - [ ] Threat-Analytics regelmäßig überprüfen
-  - [ ] Bot-Traffic-Analyse
-  - [ ] Performance-Metriken überwachen
+- [x] **Cloudflare Analytics nutzen**
+  - [x] Dashboard für Traffic-Überwachung einrichten
+  - [x] Threat-Analytics regelmäßig überprüfen
+  - [x] Bot-Traffic-Analyse
+  - [x] Performance-Metriken überwachen
 
-- [ ] **Alerting konfigurieren**
-  - [ ] DDoS-Angriff-Benachrichtigungen
-  - [ ] Ungewöhnliche Traffic-Muster
-  - [ ] SSL-Zertifikat-Ablauf
-  - [ ] Origin-Server-Erreichbarkeit
+- [x] **Alerting konfigurieren**
+  - [x] DDoS-Angriff-Benachrichtigungen
+  - [x] Ungewöhnliche Traffic-Muster
+  - [x] SSL-Zertifikat-Ablauf
+  - [x] Origin-Server-Erreichbarkeit
 
-- [ ] **Incident Response Plan**
-  - [ ] Dokumentation für DDoS-Mitigation
-  - [ ] Rollback-Strategien
-  - [ ] Kontakt-Eskalation definieren
-  - [ ] Backup-Zugangswege dokumentieren
+- [x] **Incident Response Plan**
+  - [x] Dokumentation für DDoS-Mitigation
+  - [x] Rollback-Strategien
+  - [x] Kontakt-Eskalation definieren
+  - [x] Backup-Zugangswege dokumentieren
 
-### Phase 5: Alternative Lösungen evaluieren
+### Phase 5: Alternative Lösungen evaluieren ✅
 
-- [ ] **Andere CDN/WAF-Anbieter prüfen**
-  - [ ] AWS CloudFront + WAF (teurer, aber mächtiger)
-  - [ ] Fastly (entwicklerfreundlich)
-  - [ ] Bunny CDN (kostengünstig)
-  - [ ] Sucuri (spezialisiert auf Sicherheit)
+- [x] **Andere CDN/WAF-Anbieter prüfen**
+  - [x] AWS CloudFront + WAF (teurer, aber mächtiger)
+  - [x] Fastly (entwicklerfreundlich)
+  - [x] Bunny CDN (kostengünstig)
+  - [x] Sucuri (spezialisiert auf Sicherheit)
 
-- [ ] **Self-Hosted Alternativen**
-  - [ ] ModSecurity WAF evaluieren
-  - [ ] Fail2ban für Brute-Force-Schutz
-  - [ ] CrowdSec für kollaborative Sicherheit
-  - [ ] WireGuard VPN für Admin-Zugriff
+- [x] **Self-Hosted Alternativen**
+  - [x] ModSecurity WAF evaluieren
+  - [x] Fail2ban für Brute-Force-Schutz
+  - [x] CrowdSec für kollaborative Sicherheit
+  - [x] WireGuard VPN für Admin-Zugriff
 
 ### Implementierungsplan
 
@@ -1900,7 +1900,322 @@ Das System hat aktuell ein fundamentales Problem: Gerätetypen und deren Eigensc
   - [ ] Export als Device-Definition für Registry
   - [ ] Automatisches Hinzufügen zur Runtime-Registry
 
-### Phase 3: Device Management UI (Woche 2)
+### Phase 3: Flow-basierte Nachrichtenverarbeitung (HÖCHSTE PRIORITÄT - ARCHITEKTUR-ÄNDERUNG)
+
+Das bisherige Template-System wird zu einem Flow-System erweitert, das sowohl Gateway- als auch Device-spezifische Nachrichtenverarbeitung ermöglicht. Ein "Flow" ist mehr als nur eine Transformation - es ist ein kompletter Verarbeitungspfad mit Bedingungen, Transformationen und Weiterleitungen.
+
+#### Neue Flow-Architektur
+
+```
+Kunde
+├── Gateway (mit Gateway-Flow-Gruppe)
+│   ├── Gateway-Flow 1: "Heartbeat" (für Keep-Alive)
+│   ├── Gateway-Flow 2: "Connection Error" (für Fehler)
+│   └── Gateway-Flow 3: "Status Report" (für Aggregationen)
+└── Geräte
+    └── Device (mit Device-Flow-Gruppe)
+        ├── Device-Flow 1: "Panic Alarm" (Priorität 100, wenn alarmstatus=alarm)
+        ├── Device-Flow 2: "Battery Warning" (Priorität 90, wenn battery=low)
+        └── Device-Flow 3: "Status Update" (Priorität 10, default)
+```
+
+#### Was ist ein Flow?
+
+Ein Flow definiert den kompletten Verarbeitungspfad einer Nachricht:
+- **Eingangsbedingungen** (Filterregeln)
+- **Transformationsschritte** (können mehrere sein)
+- **Ausgangsziele** (evAlarm, andere Systeme, Logging)
+- **Fehlerbehandlung** (Retry-Logik, Fallbacks)
+
+#### Datenmodell-Änderungen
+
+- [ ] **Flow-Modell erstellen**
+  ```python
+  {
+      "_id": ObjectId,
+      "name": String,  # z.B. "panic_alarm_flow"
+      "description": String,
+      "type": String,  # "gateway_flow" oder "device_flow"
+      "version": String,  # Semantic Versioning
+      "steps": [
+          {
+              "type": String,  # "filter", "transform", "forward", "conditional"
+              "config": Object  # Step-spezifische Konfiguration
+          }
+      ],
+      "error_handling": {
+          "retry_count": Number,
+          "retry_delay": Number,
+          "fallback_flow_id": String
+      },
+      "created_at": DateTime,
+      "updated_at": DateTime
+  }
+  ```
+
+- [ ] **Flow-Gruppe-Modell (ersetzt Template-Gruppe)**
+  ```python
+  {
+      "_id": ObjectId,
+      "name": String,  # z.B. "Panic Button Flows"
+      "description": String,
+      "type": String,  # "gateway_flows" oder "device_flows"
+      "flows": [
+          {
+              "flow_id": String,
+              "flow_name": String,  # Für UI-Anzeige
+              "priority": Number  # Höhere Zahlen = höhere Priorität
+          }
+      ],
+      "usage_count": Number,
+      "created_at": DateTime,
+      "updated_at": DateTime
+  }
+  ```
+
+- [ ] **Device-Modell erweitern**
+  ```python
+  {
+      # ... bestehende Felder ...
+      "template_id": String,  # DEPRECATED - wird zu flow_id
+      "template_group_id": String,  # DEPRECATED - wird zu flow_group_id
+      "flow_id": String,  # Einzelner Flow (optional)
+      "flow_group_id": String,  # Flow-Gruppe (bevorzugt)
+  }
+  ```
+
+- [ ] **Gateway-Modell beibehalten und erweitern**
+  ```python
+  {
+      # ... bestehende Felder ...
+      "template_id": String,  # DEPRECATED - wird zu flow_id
+      "template_group_id": String,  # DEPRECATED - wird zu flow_group_id
+      "flow_id": String,  # Einzelner Gateway-Flow (optional)
+      "flow_group_id": String,  # Gateway-Flow-Gruppe (bevorzugt)
+  }
+  ```
+
+#### Flow-Auswahl-Logik
+
+```
+Nachricht empfangen
+→ Gateway identifizieren
+→ Ist es eine Gateway-Nachricht?
+   JA → Gateway-Flow-Gruppe verwenden
+   NEIN → Device identifizieren → Device-Flow-Gruppe verwenden
+→ Filterregeln aller Flows prüfen
+→ Flow mit höchster Priorität wählen
+→ Flow-Steps ausführen
+→ Bei Fehler: Error-Handling ausführen
+```
+
+#### Backend-Implementierung
+
+- [ ] **Flow Engine erstellen**
+  ```python
+  class FlowEngine:
+      def execute_flow(self, flow_id: str, message: Dict) -> FlowResult:
+          flow = Flow.find_by_id(flow_id)
+          result = FlowResult()
+          
+          for step in flow.steps:
+              if step.type == "filter":
+                  if not self._check_filter(step.config, message):
+                      return result.skip()
+              
+              elif step.type == "transform":
+                  message = self._transform(step.config, message)
+              
+              elif step.type == "forward":
+                  self._forward(step.config, message)
+              
+              elif step.type == "conditional":
+                  # Bedingte Verzweigung
+                  next_flow = self._evaluate_condition(step.config, message)
+                  if next_flow:
+                      return self.execute_flow(next_flow, message)
+          
+          return result.success()
+  ```
+
+- [ ] **Flow Selector (ersetzt Template Selector)**
+  ```python
+  def select_flow_for_message(gateway_id: str, message: Dict) -> str:
+      # 1. Prüfen ob es eine Gateway-Nachricht ist
+      if is_gateway_message(message):
+          gateway = Gateway.find_by_uuid(gateway_id)
+          if gateway.flow_group_id:
+              return select_from_flow_group(gateway.flow_group_id, message)
+          elif gateway.flow_id:
+              return gateway.flow_id
+      
+      # 2. Device-Nachricht verarbeiten
+      device_id = extract_device_id(message)
+      if device_id:
+          device = Device.find_by_gateway_and_id(gateway_id, device_id)
+          if device and device.flow_group_id:
+              return select_from_flow_group(device.flow_group_id, message)
+          elif device and device.flow_id:
+              return device.flow_id
+      
+      # 3. Legacy-Support für Templates
+      return legacy_template_to_flow(select_template_for_message(gateway_id, device_id, message))
+  ```
+
+- [ ] **Message Processor anpassen**
+  - [ ] Flow Engine integrieren
+  - [ ] Flow-basierte Verarbeitung implementieren
+  - [ ] Logging für Flow-Ausführung
+  - [ ] Performance-Monitoring für Flows
+
+- [ ] **API-Endpunkte implementieren**
+  - [ ] CRUD für Flows: `/api/v1/flows`
+  - [ ] CRUD für Flow-Gruppen: `/api/v1/flow-groups`
+  - [ ] Flow-Zuweisung: `/api/v1/gateways/<uuid>/flow`
+  - [ ] Flow-Zuweisung: `/api/v1/devices/<gateway_uuid>/<device_id>/flow`
+  - [ ] Flow-Test: `/api/v1/flows/<id>/test`
+
+#### Frontend-Implementierung
+
+- [ ] **Flow-Editor erstellen**
+  - [ ] Visueller Flow-Builder (später mit React Flow)
+  - [ ] Step-basierte Konfiguration
+  - [ ] Drag-and-Drop für Flow-Steps
+  - [ ] Live-Vorschau der Flow-Ausführung
+
+- [ ] **Flow-Gruppen-Verwaltung**
+  - [ ] UI analog zu Template-Gruppen
+  - [ ] Prioritäts-Management
+  - [ ] Flow-Gruppen-Zuweisung
+
+- [ ] **Gateway-UI erweitern**
+  - [ ] Flow-Auswahl für Gateway-Nachrichten
+  - [ ] Anzeige aktiver Gateway-Flows
+  - [ ] Test-Funktion für Gateway-Flows
+
+- [ ] **Device-UI erweitern**
+  - [ ] Flow-Auswahl für Device-Nachrichten
+  - [ ] Anzeige aktiver Device-Flows
+  - [ ] Test-Funktion für Device-Flows
+
+#### Beispiel-Flow-Definition
+
+```json
+{
+  "name": "panic_alarm_complete_flow",
+  "type": "device_flow",
+  "description": "Kompletter Flow für Panic-Button-Alarme",
+  "steps": [
+    {
+      "type": "filter",
+      "config": {
+        "rules": [
+          {
+            "field": "devices[0].values.alarmtype",
+            "operator": "equals",
+            "value": "panic"
+          }
+        ]
+      }
+    },
+    {
+      "type": "transform",
+      "config": {
+        "template": "evalarm_panic_v2"
+      }
+    },
+    {
+      "type": "conditional",
+      "config": {
+        "condition": "devices[0].values.batterystatus == 'low'",
+        "true_step": {
+          "type": "transform",
+          "config": {
+            "add_field": "priority",
+            "value": "high"
+          }
+        }
+      }
+    },
+    {
+      "type": "forward",
+      "config": {
+        "targets": [
+          {
+            "type": "evalarm",
+            "endpoint": "panic"
+          },
+          {
+            "type": "internal_log",
+            "level": "critical"
+          }
+        ]
+      }
+    }
+  ],
+  "error_handling": {
+    "retry_count": 3,
+    "retry_delay": 1000,
+    "fallback_flow_id": "error_notification_flow"
+  }
+}
+```
+
+#### Migration von Templates zu Flows
+
+- [ ] **Automatische Template-zu-Flow-Konvertierung**
+  ```python
+  def convert_template_to_flow(template):
+      return {
+          "name": f"{template.name}_flow",
+          "type": "device_flow",  # oder gateway_flow basierend auf Kontext
+          "steps": [
+              {
+                  "type": "transform",
+                  "config": {
+                      "template": template.id
+                  }
+              },
+              {
+                  "type": "forward",
+                  "config": {
+                      "targets": [{"type": "evalarm"}]
+                  }
+              }
+          ]
+      }
+  ```
+
+- [ ] **Migrations-Skript**
+  - [ ] Alle Templates zu Flows konvertieren
+  - [ ] Template-Gruppen zu Flow-Gruppen konvertieren
+  - [ ] Gateway/Device-Zuordnungen migrieren
+  - [ ] Legacy-Support für alte API-Calls
+
+#### Vorteile der Flow-Architektur
+
+1. **Flexibilität**: Gateway- und Device-spezifische Verarbeitung
+2. **Erweiterbarkeit**: Flows können beliebig komplex werden
+3. **Klarheit**: "Flow" beschreibt den Prozess besser als "Template"
+4. **Zukunftssicher**: Vorbereitet für visuelle Flow-Editoren
+5. **Mächtiger**: Bedingte Logik, mehrere Ausgänge, Fehlerbehandlung
+
+#### Implementierungsplan
+
+| Schritt | Aufgabe | Owner | Priorität |
+|---------|---------|-------|-----------|
+| 1 | Flow-Datenmodelle erstellen | BE Team | Höchst |
+| 2 | Flow Engine implementieren | BE Team | Höchst |
+| 3 | Flow Selector implementieren | BE Team | Höchst |
+| 4 | API-Endpunkte für Flows | BE Team | Höchst |
+| 5 | Template-zu-Flow Migration | BE Team | Hoch |
+| 6 | Flow-UI Grundlagen | FE Team | Hoch |
+| 7 | Gateway-Flow-UI | FE Team | Hoch |
+| 8 | Device-Flow-UI | FE Team | Hoch |
+| 9 | Visueller Flow-Editor | FE Team | Mittel |
+| 10 | Dokumentation | Docs | Mittel |
+
+### Phase 4: Device Management UI (Woche 2)
 
 - [x] **Device Registry Browser**
   - [x] Übersicht aller registrierten Gerätetypen
@@ -1921,8 +2236,6 @@ Das System hat aktuell ein fundamentales Problem: Gerätetypen und deren Eigensc
   - [ ] Statistiken über Nachrichtentypen
   - [ ] Warnungen bei unbekannten Gerätetypen
   - [ ] Quick-Action: "Neuen Gerätetyp lernen"
-
-### Phase 4: MQTT-Vorbereitung mit Device Registry (Woche 2-3)
 
 - [ ] **MQTT Topic Schema basierend auf Device Registry**
   ```python
@@ -1947,8 +2260,6 @@ Das System hat aktuell ein fundamentales Problem: Gerätetypen und deren Eigensc
   - [ ] Automatische Rejection ungültiger Nachrichten
   - [ ] Logging und Alerting bei Anomalien
   - [ ] Graceful Degradation für unbekannte Felder
-
-### Phase 5: Template-System Integration (Woche 3)
 
 - [ ] **Device-aware Template Selection**
   ```python
@@ -1975,9 +2286,7 @@ Das System hat aktuell ein fundamentales Problem: Gerätetypen und deren Eigensc
   - [ ] Performance-Tests mit realistischen Datenmengen
   - [ ] Regression-Tests bei Device Profile Updates
 
-### Phase 6: Migration und Rollout (Woche 3)
-
-- [ ] **Daten-Migration**
+- [ ] **Migration und Rollout**
   - [ ] Skript zum Migrieren bestehender Geräte zu neuen Typen
   - [ ] Mapping-Tabelle alte → neue Gerätetypen
   - [ ] Validierung aller migrierten Daten

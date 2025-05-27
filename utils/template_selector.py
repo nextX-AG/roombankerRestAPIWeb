@@ -94,6 +94,17 @@ def _normalize_message(message: Dict[str, Any]) -> Dict[str, Any]:
     Normalisiert eine Nachricht für bessere Filterung
     Extrahiert relevante Daten aus verschiedenen Nachrichtenformaten
     """
+    # Nutze den Message Normalizer wenn verfügbar
+    try:
+        from utils.message_normalizer import MessageNormalizer
+        normalizer = MessageNormalizer()
+        normalized = normalizer.normalize(message)
+        logger.debug(f"Nachricht mit MessageNormalizer normalisiert")
+        return normalized
+    except Exception as e:
+        logger.warning(f"MessageNormalizer nicht verfügbar oder Fehler: {e}")
+    
+    # Fallback auf die alte Implementierung
     normalized = {
         'gateway': {},
         'devices': [],
@@ -237,8 +248,50 @@ def _get_value_by_path(data: Dict[str, Any], path: str) -> Any:
 
 def _fallback_template_selection(message: Dict[str, Any]) -> str:
     """
-    Fallback-Logik für Template-Auswahl (alte Implementierung)
+    Fallback-Logik für Template-Auswahl mit Device Registry Integration
     """
+    # Nutze die Device Registry für intelligente Template-Auswahl
+    try:
+        from utils.device_registry import device_registry
+        from utils.message_normalizer import MessageNormalizer
+        
+        # Normalisiere die Nachricht
+        normalizer = MessageNormalizer()
+        normalized = normalizer.normalize(message)
+        
+        # Erkenne den Device Type aus der normalisierten Nachricht
+        if normalized.get('devices'):
+            for device in normalized['devices']:
+                device_type = device.get('type', 'unknown')
+                if device_type != 'unknown':
+                    # Hole das default_template für diesen Device Type
+                    capabilities = device_registry.get_device_capabilities(device_type)
+                    if capabilities:
+                        default_template = capabilities.get('default_template', 'evalarm_status')
+                        logger.info(f"Device Registry: Device Type '{device_type}' -> Template '{default_template}'")
+                        return default_template
+        
+        # Falls kein Device Type erkannt wurde, verwende die Message Codes
+        if 'code' in message:
+            code = message['code']
+            code_info = device_registry.message_codes.get(code, {})
+            typical_devices = code_info.get('typical_devices', [])
+            
+            # Hole das Template vom ersten typischen Device Type
+            if typical_devices:
+                device_type = typical_devices[0]
+                capabilities = device_registry.get_device_capabilities(device_type)
+                if capabilities:
+                    default_template = capabilities.get('default_template', 'evalarm_status')
+                    logger.info(f"Device Registry: Message Code {code} -> Device Type '{device_type}' -> Template '{default_template}'")
+                    return default_template
+                    
+    except Exception as e:
+        logger.warning(f"Fehler bei Device Registry Integration: {e}")
+    
+    # Absolute Fallback - die alte hart kodierte Logik als letzter Ausweg
+    logger.warning("Device Registry konnte kein Template bestimmen, nutze hart kodierte Fallback-Logik")
+    
     # Prüfen auf Panic-Alarm
     is_panic = False
     

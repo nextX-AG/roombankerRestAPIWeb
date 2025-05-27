@@ -139,7 +139,7 @@ class MessageNormalizer:
         gateway_type = "unknown"
         
         # Verschiedene mögliche Felder für die Gateway-ID prüfen
-        possible_fields = ['gateway_id', 'gateway_uuid', 'gatewayId', 'uuid']
+        possible_fields = ['gateway_id', 'gateway_uuid', 'gatewayUuid', 'gatewayId', 'uuid']
         for field in possible_fields:
             if field in raw_message and raw_message[field]:
                 gateway_id = str(raw_message[field]).strip()

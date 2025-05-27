@@ -1714,3 +1714,152 @@ Ein spezielles Skript (`test_in_docker.sh`) ermöglicht die einfache Ausführung
 - **Custom Devices**: Runtime-Erweiterung der Registry durch Benutzer
 - **Export/Import**: Device-Definitionen zwischen Installationen teilen
 - **Versionierung**: Änderungsverlauf für Gerätedefinitionen 
+
+## Template-System
+
+Das Template-System ermöglicht die flexible Transformation von eingehenden Nachrichten in das evAlarm-Format. Templates können:
+- Felder mappen und umbenennen
+- Werte transformieren
+- Konstante Werte setzen
+- Bedingte Logik ausführen
+- Mehrere Nachrichten zu einer zusammenfassen
+
+### Template-Gruppen
+
+Template-Gruppen ermöglichen die Zuordnung mehrerer Templates basierend auf Priorität und Filterregeln:
+- Prüfung der Nachrichteninhalte gegen Filterregeln
+- Auswahl des Templates mit höchster Priorität bei Match
+- Fallback auf Standard-Templates
+
+## Flow-basierte Nachrichtenverarbeitung (Neue Architektur)
+
+Das bisherige Template-System wird zu einem Flow-System erweitert, das eine vollständige Nachrichtenverarbeitungspipeline darstellt. Dies ermöglicht sowohl Gateway- als auch Device-spezifische Verarbeitung mit deutlich mehr Flexibilität.
+
+### Was ist ein Flow?
+
+Ein Flow definiert den kompletten Verarbeitungspfad einer Nachricht von der Eingangsnachricht bis zur Weiterleitung. Im Gegensatz zu Templates, die nur Transformationen durchführen, können Flows:
+
+- **Mehrere Schritte** verketten (Filter → Transform → Forward)
+- **Bedingte Logik** ausführen (if-then-else Verzweigungen)
+- **Fehlerbehandlung** implementieren (Retry, Fallback-Flows)
+- **Mehrere Ausgänge** haben (evAlarm + Logging + andere Systeme)
+
+### Flow-Architektur
+
+```
+Kunde
+├── Gateway (mit Gateway-Flow-Gruppe)
+│   ├── Gateway-Flow 1: "Heartbeat" (für Keep-Alive)
+│   ├── Gateway-Flow 2: "Connection Error" (für Fehler)
+│   └── Gateway-Flow 3: "Status Report" (für Aggregationen)
+└── Geräte
+    └── Device (mit Device-Flow-Gruppe)
+        ├── Device-Flow 1: "Panic Alarm" (Priorität 100)
+        ├── Device-Flow 2: "Battery Warning" (Priorität 90)
+        └── Device-Flow 3: "Status Update" (Priorität 10)
+```
+
+### Flow-Typen
+
+#### Gateway-Flows
+Für Gateway-spezifische Nachrichten:
+- Verbindungsstatus (online/offline)
+- Heartbeat/Keep-Alive
+- Fehlerberichte
+- Aggregierte Statistiken
+
+#### Device-Flows
+Für gerätespezifische Nachrichten:
+- Alarme und Ereignisse
+- Sensor-Messwerte
+- Statusupdates
+- Batteriestatus
+
+### Flow-Steps
+
+Ein Flow besteht aus einer Sequenz von Steps:
+
+1. **Filter Step**: Prüft Bedingungen (z.B. "nur wenn alarmtype=panic")
+2. **Transform Step**: Führt Transformationen durch (nutzt Templates)
+3. **Conditional Step**: Bedingte Verzweigung basierend auf Nachrichteninhalt
+4. **Forward Step**: Leitet Nachrichten weiter (evAlarm, MQTT, Logging)
+
+### Flow-Auswahl-Logik
+
+```
+Nachricht empfangen
+→ Gateway identifizieren
+→ Ist es eine Gateway-Nachricht?
+   JA → Gateway-Flow-Gruppe verwenden
+   NEIN → Device identifizieren → Device-Flow-Gruppe verwenden
+→ Filterregeln aller Flows prüfen
+→ Flow mit höchster Priorität wählen
+→ Flow-Steps sequenziell ausführen
+→ Bei Fehler: Error-Handling ausführen
+```
+
+### Beispiel-Flow
+
+```json
+{
+  "name": "panic_alarm_complete_flow",
+  "type": "device_flow",
+  "steps": [
+    {
+      "type": "filter",
+      "config": {
+        "rules": [{
+          "field": "devices[0].values.alarmtype",
+          "operator": "equals",
+          "value": "panic"
+        }]
+      }
+    },
+    {
+      "type": "transform",
+      "config": {
+        "template": "evalarm_panic_v2"
+      }
+    },
+    {
+      "type": "conditional",
+      "config": {
+        "condition": "devices[0].values.batterystatus == 'low'",
+        "true_step": {
+          "type": "transform",
+          "config": {
+            "add_field": "priority",
+            "value": "high"
+          }
+        }
+      }
+    },
+    {
+      "type": "forward",
+      "config": {
+        "targets": [
+          {"type": "evalarm", "endpoint": "panic"},
+          {"type": "internal_log", "level": "critical"}
+        ]
+      }
+    }
+  ]
+}
+```
+
+### Migration von Templates zu Flows
+
+Bestehende Templates werden automatisch zu Flows konvertiert:
+- Ein Template wird zu einem Flow mit Transform + Forward Steps
+- Template-Gruppen werden zu Flow-Gruppen
+- Legacy-Support für alte API-Endpunkte bleibt erhalten
+
+### Vorteile der Flow-Architektur
+
+1. **Flexibilität**: Komplexe Verarbeitungslogik möglich
+2. **Klarheit**: "Flow" beschreibt den Prozess besser als "Template"
+3. **Mächtiger**: Bedingte Logik, mehrere Ausgänge, Fehlerbehandlung
+4. **Zukunftssicher**: Vorbereitet für visuelle Flow-Editoren
+5. **Granular**: Separate Flows für Gateway- und Device-Nachrichten
+
+## Device Registry

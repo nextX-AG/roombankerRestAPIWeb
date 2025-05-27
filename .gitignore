@@ -48,6 +48,6 @@ data/*.json
 .DS_Store
 
 # Env
-# .env   # Vorläufig auskommentiert für Git Push
+.env   # Wieder aktiviert für Sicherheit
 .env.local
 .env.production
