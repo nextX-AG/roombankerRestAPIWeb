@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Button, Alert } from 'react-bootstrap';
 import { GitMerge, Plus, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { flowApi } from '../api';
+import { Link, Outlet } from 'react-router-dom';
+import { flowApi } from '../api/flowApi';
 import BasicTable from '../components/BasicTable';
+import { FlowGroup } from '../api/flowApi';
 
 const FlowGroups = () => {
-  const navigate = useNavigate();
-  const [groups, setGroups] = useState([]);
+  const [groups, setGroups] = useState<FlowGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Daten laden
   useEffect(() => {
@@ -21,7 +21,7 @@ const FlowGroups = () => {
     setError(null);
     try {
       const response = await flowApi.listGroups();
-      if (response.status === 'success') {
+      if (response.status === 'success' && response.data) {
         setGroups(response.data);
       } else {
         setError(response.error?.message || 'Fehler beim Laden der Flow-Gruppen');
@@ -49,13 +49,12 @@ const FlowGroups = () => {
       header: 'Aktionen',
       accessor: 'id',
       cell: (value) => (
-        <Button
-          variant="outline-primary"
-          size="sm"
-          onClick={() => navigate(`/flow-groups/${value}`)}
+        <Link 
+          to={`/flow-groups/${value}`}
+          className="btn btn-outline-primary btn-sm"
         >
           Bearbeiten
-        </Button>
+        </Link>
       )
     }
   ];
@@ -77,13 +76,13 @@ const FlowGroups = () => {
             <RefreshCw size={16} className="me-2" />
             Aktualisieren
           </Button>
-          <Button
-            variant="primary"
-            onClick={() => navigate('/flow-groups/new')}
+          <Link 
+            to="/flow-groups/new"
+            className="btn btn-primary"
           >
             <Plus size={16} className="me-2" />
             Neue Flow-Gruppe
-          </Button>
+          </Link>
         </div>
       </div>
 
@@ -113,6 +112,8 @@ const FlowGroups = () => {
           )}
         </Card.Body>
       </Card>
+
+      <Outlet />
     </>
   );
 };
