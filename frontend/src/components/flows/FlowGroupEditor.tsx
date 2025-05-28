@@ -5,13 +5,18 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSave, faPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { flowApi, FlowGroup } from '../../api/flowApi';
 
+interface FlowGroupData extends Omit<FlowGroup, 'group_type'> {
+  group_type: 'gateway_flows' | 'device_flows';
+}
+
 const FlowGroupEditor: React.FC = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [group, setGroup] = useState<FlowGroup>({
+  const [group, setGroup] = useState<FlowGroupData>({
     name: '',
+    group_type: 'device_flows',
     flows: []
   });
   const [availableFlows, setAvailableFlows] = useState<any[]>([]);
@@ -33,7 +38,12 @@ const FlowGroupEditor: React.FC = () => {
     try {
       const response = await flowApi.getGroup(groupId);
       if (response.status === 'success' && response.data) {
-        setGroup(response.data);
+        // Konvertiere type zu group_type falls nötig
+        const groupData = response.data;
+        setGroup({
+          ...groupData,
+          group_type: groupData.type || groupData.group_type || 'device_flows'
+        });
       } else {
         setError(response.error?.message || 'Fehler beim Laden der Flow-Gruppe');
       }
@@ -83,9 +93,15 @@ const FlowGroupEditor: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      // Konvertiere group_type zu type für die API
+      const apiGroup = {
+        ...group,
+        type: group.group_type
+      };
+
       const response = groupId && groupId !== 'new'
-        ? await flowApi.updateGroup(groupId, group)
-        : await flowApi.createGroup(group);
+        ? await flowApi.updateGroup(groupId, apiGroup)
+        : await flowApi.createGroup(apiGroup);
 
       if (response.status === 'success') {
         navigate('/flow-groups');
@@ -113,6 +129,14 @@ const FlowGroupEditor: React.FC = () => {
                 onChange={(e) => setGroup(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Name der Flow-Gruppe"
               />
+              <Form.Select
+                value={group.group_type}
+                onChange={(e) => setGroup(prev => ({ ...prev, group_type: e.target.value as 'gateway_flows' | 'device_flows' }))}
+                style={{ width: 'auto' }}
+              >
+                <option value="gateway_flows">Gateway Flows</option>
+                <option value="device_flows">Device Flows</option>
+              </Form.Select>
             </div>
           </div>
           <div>
