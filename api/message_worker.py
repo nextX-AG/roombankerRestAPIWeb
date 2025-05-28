@@ -1213,7 +1213,7 @@ def create_flow():
         data = request.json
         
         # Validierung
-        required_fields = ['name', 'type', 'steps']
+        required_fields = ['name', 'flow_type', 'steps']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({
@@ -1224,7 +1224,7 @@ def create_flow():
         # Flow erstellen
         flow = Flow.create(
             name=data['name'],
-            type=data['type'],
+            flow_type=data['flow_type'],
             description=data.get('description', ''),
             version=data.get('version', '1.0.0'),
             steps=data['steps'],
@@ -1380,7 +1380,7 @@ def list_flow_groups():
         # Optionaler Filter nach Typ
         group_type = request.args.get('type')
         if group_type:
-            groups = [g for g in groups if g.type == group_type]
+            groups = [g for g in groups if g.group_type == group_type]
         
         # Konvertiere zu Dict-Format
         groups_list = [group.to_dict() for group in groups]
@@ -1430,7 +1430,7 @@ def create_flow_group():
         data = request.json
         
         # Validierung
-        required_fields = ['name', 'type']
+        required_fields = ['name', 'group_type']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({
@@ -1441,7 +1441,7 @@ def create_flow_group():
         # Flow-Gruppe erstellen
         group = FlowGroup.create(
             name=data['name'],
-            type=data['type'],
+            group_type=data['group_type'],
             description=data.get('description', ''),
             flows=data.get('flows', [])
         )

@@ -28,8 +28,11 @@ export interface FlowTestResult {
 export interface FlowGroup {
   id?: string;
   name: string;
+  group_type: 'gateway_flows' | 'device_flows';
+  description?: string;
   flows: Array<{
     flow_id: string;
+    flow_name?: string;
     priority: number;
   }>;
 }
@@ -66,6 +69,10 @@ export const flowApi = {
   // Flow-Gruppen
   listGroups: async (): Promise<ApiResponse<FlowGroup[]>> => {
     return api.get('/v1/flow-groups');
+  },
+
+  getGroup: async (id: string): Promise<ApiResponse<FlowGroup>> => {
+    return api.get(`/v1/flow-groups/${id}`);
   },
 
   createGroup: async (group: Omit<FlowGroup, 'id'>): Promise<ApiResponse<FlowGroup>> => {
