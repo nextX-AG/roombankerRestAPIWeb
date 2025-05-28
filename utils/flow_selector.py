@@ -279,4 +279,175 @@ if __name__ == "__main__":
     if flow_id:
         info = get_flow_info(flow_id)
         if info:
-            print(f"Flow-Info: {info}") 
+            print(f"Flow-Info: {info}")
+
+class FlowSelector:
+    """Intelligente Auswahl von Flows basierend auf Nachrichten"""
+    
+    def __init__(self):
+        self.cache = {}  # Cache für häufig verwendete Flows
+    
+    def select_flow_for_message(self, gateway_id: str, message: Dict) -> Optional[str]:
+        """
+        Wählt den passenden Flow für eine Nachricht aus
+        
+        Args:
+            gateway_id: ID des Gateways
+            message: Die zu verarbeitende Nachricht
+            
+        Returns:
+            Flow-ID oder None wenn kein passender Flow gefunden wurde
+        """
+        try:
+            # 1. Prüfe ob es eine Gateway-Nachricht ist
+            if self._is_gateway_message(message):
+                return self._select_gateway_flow(gateway_id, message)
+            
+            # 2. Device-Flow auswählen
+            return self._select_device_flow(gateway_id, message)
+            
+        except Exception as e:
+            logger.error(f"Fehler bei Flow-Auswahl: {str(e)}")
+            return None
+    
+    def _is_gateway_message(self, message: Dict) -> bool:
+        """Prüft ob es sich um eine Gateway-Nachricht handelt"""
+        # Gateway-spezifische Felder
+        gateway_fields = ['gateway_status', 'connection_status', 'heartbeat']
+        return any(field in message for field in gateway_fields)
+    
+    def _select_gateway_flow(self, gateway_id: str, message: Dict) -> Optional[str]:
+        """Wählt einen Gateway-Flow aus"""
+        try:
+            gateway = Gateway.find_by_uuid(gateway_id)
+            if not gateway:
+                return None
+                
+            # 1. Direkter Flow am Gateway
+            if gateway.flow_id:
+                return gateway.flow_id
+                
+            # 2. Flow-Gruppe am Gateway
+            if gateway.flow_group_id:
+                return self._select_from_flow_group(
+                    gateway.flow_group_id,
+                    message,
+                    flow_type='gateway_flow'
+                )
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Fehler bei Gateway-Flow-Auswahl: {str(e)}")
+            return None
+    
+    def _select_device_flow(self, gateway_id: str, message: Dict) -> Optional[str]:
+        """Wählt einen Device-Flow aus"""
+        try:
+            # Device-ID aus der Nachricht extrahieren
+            device_id = self._extract_device_id(message)
+            if not device_id:
+                return None
+                
+            # Device in der Datenbank suchen
+            device = Device.find_by_gateway_and_id(gateway_id, device_id)
+            if not device:
+                return None
+                
+            # 1. Direkter Flow am Device
+            if device.flow_id:
+                return device.flow_id
+                
+            # 2. Flow-Gruppe am Device
+            if device.flow_group_id:
+                return self._select_from_flow_group(
+                    device.flow_group_id,
+                    message,
+                    flow_type='device_flow'
+                )
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Fehler bei Device-Flow-Auswahl: {str(e)}")
+            return None
+    
+    def _select_from_flow_group(self, group_id: str, message: Dict, flow_type: str) -> Optional[str]:
+        """Wählt den besten Flow aus einer Flow-Gruppe aus"""
+        try:
+            group = FlowGroup.find_by_id(group_id)
+            if not group:
+                return None
+                
+            # Flows nach Priorität sortiert durchgehen
+            flows = sorted(group.flows, key=lambda x: x.get('priority', 0), reverse=True)
+            
+            for flow_config in flows:
+                flow_id = flow_config.get('flow_id')
+                if not flow_id:
+                    continue
+                    
+                # Flow laden und prüfen
+                flow = Flow.find_by_id(flow_id)
+                if not flow or flow.flow_type != flow_type:
+                    continue
+                    
+                # Prüfe ob Flow auf die Nachricht passt
+                if self._check_flow_match(flow, message):
+                    return flow_id
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Fehler bei Flow-Gruppen-Auswahl: {str(e)}")
+            return None
+    
+    def _check_flow_match(self, flow: Flow, message: Dict) -> bool:
+        """Prüft ob ein Flow auf eine Nachricht passt"""
+        try:
+            # Prüfe Filter-Rules des ersten Steps
+            steps = flow.steps
+            if not steps:
+                return False
+                
+            first_step = steps[0]
+            if first_step.get('type') != 'filter':
+                return True  # Kein Filter = immer match
+                
+            from utils.flow_engine import FlowEngine
+            engine = FlowEngine()
+            return engine._check_filter_step(first_step.get('config', {}), message)
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Flow-Matching: {str(e)}")
+            return False
+    
+    def _extract_device_id(self, message: Dict) -> Optional[str]:
+        """Extrahiert die Device-ID aus einer Nachricht"""
+        # Format 1: subdeviceid direkt
+        if 'subdeviceid' in message:
+            return str(message['subdeviceid'])
+            
+        # Format 2: devices[0].device_id
+        if 'devices' in message and isinstance(message['devices'], list):
+            if message['devices']:
+                device = message['devices'][0]
+                if isinstance(device, dict):
+                    return device.get('device_id')
+        
+        # Format 3: subdevicelist[0].id
+        if 'subdevicelist' in message and isinstance(message['subdevicelist'], list):
+            if message['subdevicelist']:
+                device = message['subdevicelist'][0]
+                if isinstance(device, dict):
+                    return device.get('id')
+        
+        return None
+
+
+# Singleton-Instanz
+flow_selector = FlowSelector()
+
+def select_flow_for_message(gateway_id: str, message: Dict) -> Optional[str]:
+    """Convenience-Funktion für Flow-Auswahl"""
+    return flow_selector.select_flow_for_message(gateway_id, message) 

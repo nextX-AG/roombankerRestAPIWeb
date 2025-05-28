@@ -668,6 +668,9 @@ class Flow:
     @classmethod
     def create(cls, **kwargs):
         """Erstellt einen neuen Flow in der Datenbank"""
+        # Konvertiere type zu flow_type, falls vorhanden
+        if 'type' in kwargs:
+            kwargs['flow_type'] = kwargs.pop('type')
         flow = cls(**kwargs)
         db[cls.collection].insert_one(flow.__dict__)
         return flow

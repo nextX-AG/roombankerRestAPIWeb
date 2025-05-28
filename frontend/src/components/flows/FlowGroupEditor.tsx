@@ -38,11 +38,9 @@ const FlowGroupEditor: React.FC = () => {
     try {
       const response = await flowApi.getGroup(groupId);
       if (response.status === 'success' && response.data) {
-        // Konvertiere type zu group_type falls nötig
-        const groupData = response.data;
         setGroup({
-          ...groupData,
-          group_type: groupData.type || groupData.group_type || 'device_flows'
+          ...response.data,
+          group_type: response.data.group_type || 'device_flows'
         });
       } else {
         setError(response.error?.message || 'Fehler beim Laden der Flow-Gruppe');
@@ -93,15 +91,9 @@ const FlowGroupEditor: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // Konvertiere group_type zu type für die API
-      const apiGroup = {
-        ...group,
-        type: group.group_type
-      };
-
       const response = groupId && groupId !== 'new'
-        ? await flowApi.updateGroup(groupId, apiGroup)
-        : await flowApi.createGroup(apiGroup);
+        ? await flowApi.updateGroup(groupId, group)
+        : await flowApi.createGroup(group);
 
       if (response.status === 'success') {
         navigate('/flow-groups');
